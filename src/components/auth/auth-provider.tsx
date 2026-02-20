@@ -77,13 +77,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!userData && !userDocSnap.exists()) {
           // This is the first time the user logs in
           userData = {
-            subscriptionStatus: 'free',
-            role: isAdmin ? 'admin' : 'user'
+            subscriptionStatus: '',
+            role: isAdmin ? 'admin' : 'user',
+            xp: 0,
+            level: 1
           };
         }
 
-        const isProfileComplete = !!(userData?.age && userData?.country && userData?.referralSource);
-        const isSetupComplete = isProfileComplete && !!userData?.subscriptionStatus;
+        // Onboarding Chain Checks
+        const hasBasicProfile = !!(userData?.age && userData?.country && userData?.referralSource);
+        const hasPersonalization = !!userData?.theme;
+        const hasPreferences = !!userData?.mainObjective;
+        const hasPricing = !!userData?.subscriptionStatus;
+        const hasAvatar = !!userData?.avatarUrl;
+
+        const isFullySetup = hasBasicProfile && hasPersonalization && hasPreferences && hasPricing && hasAvatar;
 
         if (isAdmin) {
           // If admin is on any non-admin page, redirect to admin dashboard
@@ -91,15 +99,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             router.replace('/admin');
           }
         } else {
-          // Regular user logic
-          if (!isProfileComplete && !pathname.startsWith('/welcome')) {
-            // New user or incomplete profile - redirect to welcome transition
+          // Regular user logic - Forced Onboarding Flow
+          if (!hasBasicProfile && !pathname.startsWith('/welcome') && !pathname.startsWith('/register')) {
+            // Step 1: Basic Profile (Age, Country, Source)
             router.replace('/welcome');
-          } else if (isProfileComplete && !userData?.subscriptionStatus && !pathname.startsWith('/pricing')) {
-            // Profile complete but no subscription info - redirect to pricing
+          } else if (hasBasicProfile && !hasPersonalization && !pathname.startsWith('/personalization')) {
+            // Step 2: Theme / Style
+            router.replace('/personalization');
+          } else if (hasPersonalization && !hasPreferences && !pathname.startsWith('/preferences')) {
+            // Step 3: Goals & Restrictions
+            router.replace('/preferences');
+          } else if (hasPreferences && !hasPricing && !pathname.startsWith('/pricing')) {
+            // Step 4: Plan Selection
             router.replace('/pricing');
-          } else if (isSetupComplete && (isAuthRoute || ['/welcome', '/pricing', '/personalization', '/preferences'].some(p => pathname.startsWith(p)))) {
-            // If setup is complete, redirect from auth/setup pages to dashboard
+          } else if (hasPricing && !hasAvatar && !pathname.startsWith('/avatar-selection')) {
+            // Step 5: Avatar & Finalization
+            router.replace('/avatar-selection');
+          } else if (isFullySetup && (
+            isAuthRoute ||
+            ['/welcome', '/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p))
+          )) {
+            // All steps complete - don't allow going back to onboarding/auth pages
             router.replace('/dashboard');
           }
         }
