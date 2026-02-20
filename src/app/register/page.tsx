@@ -228,9 +228,9 @@ export default function RegisterPage() {
           <Button onClick={() => setShowForm(true)} className="w-full h-14 text-lg font-bold shadow-2xl bg-white text-primary hover:bg-gray-100 border-none">Continuer vers l'inscription</Button>
         </div>
         <div className="absolute top-12 left-12 z-10 flex flex-col gap-2">
-          <div className="p-4 rounded-3xl backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
-            <Logo className="w-48 h-auto brightness-0 invert" />
-            <p className="text-white/80 font-medium tracking-wide mt-2">L'art de cuisiner intelligemment.</p>
+          <div className="p-4 rounded-2xl backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
+            <Logo className="w-32 h-auto brightness-0 invert" />
+            <p className="text-white/80 text-[10px] font-medium tracking-wide mt-1">L'art de cuisiner intelligemment.</p>
           </div>
         </div>
       </div>

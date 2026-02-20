@@ -116,12 +116,15 @@ export default function WelcomePage() {
                         </CarouselContent>
                     </Carousel>
                 </div>
-                <div className="absolute bottom-12 left-12 z-10 flex flex-col gap-2">
-                    <div className="p-6 rounded-[2.5rem] backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
-                        <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg leading-tight italic">
+                <div className="absolute top-12 left-12 z-10 flex flex-col gap-2">
+                    <div className="p-5 rounded-[2rem] backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
+                        <div className="w-12 h-12 bg-white rounded-xl shadow-2xl flex items-center justify-center transform -rotate-3 mb-4">
+                            <LogoIcon className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg leading-tight italic">
                             Presque prêt,<br />{user.displayName?.split(' ')[0]} !
                         </h2>
-                        <p className="text-white/80 font-medium tracking-wide mt-2">Plus que quelques informations pour commencer.</p>
+                        <p className="text-xs text-white/80 font-medium tracking-wide mt-2">Plus que quelques informations pour commencer.</p>
                     </div>
                 </div>
             </div>

@@ -98,11 +98,11 @@ export default function PersonalizationPage() {
         </div>
 
         <div className="absolute top-12 left-12 z-10 flex flex-col gap-2">
-          <div className="p-4 rounded-3xl backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
-            <div className="w-14 h-14 bg-white rounded-2xl shadow-2xl flex items-center justify-center transform -rotate-3 mb-4">
-              <LogoIcon className="w-10 h-10" />
+          <div className="p-5 rounded-[2rem] backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
+            <div className="w-12 h-12 bg-white rounded-xl shadow-2xl flex items-center justify-center transform -rotate-3 mb-4">
+              <LogoIcon className="w-8 h-8" />
             </div>
-            <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg leading-tight">Personnalisez votre<br />expérience culinaire.</h2>
+            <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg leading-tight">Personnalisez votre<br />expérience culinaire.</h2>
           </div>
         </div>
       </div>
