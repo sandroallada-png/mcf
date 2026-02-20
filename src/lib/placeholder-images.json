@@ -1,0 +1,341 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "Une table remplie de légumes frais et colorés, de fruits et d'ingrédients sains, filmée d'en haut.",
+      "imageUrl": "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "healthy food"
+    },
+    {
+      "id": "suggestion-1",
+      "title": "Salade César Réinventée",
+      "description": "Une version fraîche et saine de la classique salade César, avec une vinaigrette légère au yaourt, du poulet grillé et des croûtons de pain complet.",
+      "imageUrl": "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "healthy salad",
+      "category": "lunch"
+    },
+    {
+      "id": "suggestion-2",
+      "title": "Bowl Énergétique",
+      "description": "Un bol vibrant rempli de quinoa, avocat, patates douces rôties, pois chiches et légumes verts. Le carburant parfait pour votre journée.",
+      "imageUrl": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "buddha bowl",
+      "category": "lunch"
+    },
+    {
+      "id": "suggestion-3",
+      "title": "Saumon et Asperges",
+      "description": "Filet de saumon poêlé à la perfection, accompagné d'asperges fraîches et d'un quartier de citron. Un repas simple, élégant et riche en oméga-3.",
+      "imageUrl": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzYXVtb258ZW58MHx8fHwxNzYzMjU4NDY2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "salmon asparagus",
+      "category": "dinner"
+    },
+    {
+      "id": "suggestion-4",
+      "title": "Pancakes aux myrtilles",
+      "description": "Des pancakes moelleux garnis de myrtilles fraîches, un régal pour bien commencer la journée.",
+      "imageUrl": "https://images.unsplash.com/photo-1528207776546-365bb710ee93?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "blueberry pancakes",
+      "category": "breakfast"
+    },
+    {
+      "id": "suggestion-5",
+      "title": "Toast à l'avocat et œuf",
+      "description": "Un classique sain et rapide, avec un avocat crémeux et un œuf parfaitement poché sur du pain complet.",
+      "imageUrl": "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=1910&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "avocado toast",
+      "category": "breakfast"
+    },
+    {
+      "id": "suggestion-6",
+      "title": "Curry de légumes",
+      "description": "Un plat réconfortant et plein de saveurs, avec une variété de légumes de saison dans une sauce coco-curry.",
+      "imageUrl": "https://images.unsplash.com/photo-1588276552401-76028113519b?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "vegetable curry",
+      "category": "dinner"
+    },
+    {
+      "id": "feature-1",
+      "description": "Une personne en train de cuisiner un plat sain dans une cuisine moderne.",
+      "imageUrl": "https://images.unsplash.com/photo-1601002177343-070d8f2d3496?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjdWlzaW5pZXJ8ZW58MHx8fHwxNzYzMjYyODM4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "healthy cooking"
+    },
+    {
+      "id": "feature-2",
+      "description": "Un plan de travail de cuisine avec des légumes fraîchement coupés et une tablette affichant une recette.",
+      "imageUrl": "https://images.unsplash.com/photo-1522184216316-3c25379f9760?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtZWFsJTIwcHJlcGFyYXRpb258ZW58MHx8fHwxNzYzODM4MDMyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "meal preparation"
+    },
+    {
+      "id": "feature-3",
+      "description": "Une salade vibrante et colorée dans un bol, vue de dessus.",
+      "imageUrl": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxoZWFsdGh5JTIwc2FsYWR8ZW58MHx8fHwxNzYzODM3OTg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "healthy salad"
+    },
+    {
+      "id": "stove",
+      "description": "Une icône d'un fourneau de cuisine moderne et stylisé.",
+      "imageUrl": "https://images.unsplash.com/photo-1604393613693-d499f5d37651?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wzNzE3MTR8MHwxfHNlYXJjaHw4fHxzdG92ZXxlbnwwfHx8fDE3MjE4MzY3MDB8MA&ixlib=rb-4.0.3&q=80&w=1080",
+      "imageHint": "modern stove"
+    },
+    {
+      "id": "carousel-1",
+      "title": "Astuce pour manger bien à prix bas",
+      "description": "Assortiment de bols sains avec du quinoa et des légumes.",
+      "imageUrl": "https://images.unsplash.com/photo-1622646547410-57de837af350?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxoZWFsdGh5JTIwYm93bHN8ZW58MHx8fHwxNzYzMjM1NzQ3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "healthy bowls"
+    },
+    {
+      "id": "carousel-2",
+      "title": "Recettes rapides pour le quotidien",
+      "description": "Smoothie vert frais dans un verre.",
+      "imageUrl": "https://images.unsplash.com/photo-1650660149368-95e712f12ef0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxncmVlbiUyMHNtb290aGllfGVufDB8fHx8MTc2MzIwMDExOHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "green smoothie"
+    },
+    {
+      "id": "carousel-3",
+      "title": "Planifiez vos repas de la semaine",
+      "description": "Saumon grillé avec des asperges.",
+      "imageUrl": "https://images.unsplash.com/photo-1580476262798-bddd9f4b7369?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxncmlsbGVkJTIwc2FsbW9ufGVufDB8fHx8MTc2MzE2ODg5M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "grilled salmon"
+    },
+    {
+      "id": "carousel-4",
+      "title": "Objectif perte de poids",
+      "description": "Salade de fruits frais dans un bol blanc.",
+      "imageUrl": "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxmcnVpdCUyMHNhbGFkfGVufDB8fHx8MTc2MzEzNjE4OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fruit salad"
+    },
+    {
+      "id": "carousel-5",
+      "title": "Idées pour le petit-déjeuner",
+      "description": "Toast à l'avocat avec un œuf poché.",
+      "imageUrl": "https://images.unsplash.com/photo-1623691752358-0be1e4235183?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxhdm9jYWRvJTIwdG9hc3R8ZW58MHx8fHwxNzYzMTYwNjMyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "avocado toast"
+    },
+    {
+      "id": "carousel-6",
+      "title": "Manger sain en famille",
+      "description": "Une personne faisant son jogging au lever du soleil.",
+      "imageUrl": "https://images.unsplash.com/photo-1657765167225-962410a07c0e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtb3JuaW5nJTIwcnVufGVufDB8fHx8MTc2MzEzNjE4OHww&ixlibrb-4.1.0&q=80&w=1080",
+      "imageHint": "morning run"
+    },
+    {
+      "id": "carousel-7",
+      "title": "Votre liste de course intelligente",
+      "description": "Panier d'épicerie rempli de légumes frais.",
+      "imageUrl": "https://images.unsplash.com/photo-1571340910399-354d2ce7f1dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Z3JvY2VyeSUyMHNob3BwaW5nfGVufDB8fHx8MTc2MzEzMjkwN3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "grocery shopping"
+    },
+    {
+      "id": "promo-1",
+      "title": "-20% sur les paniers bio",
+      "description": "Promotion sur les paniers de fruits et légumes bio de saison.",
+      "imageUrl": "https://images.unsplash.com/photo-1590779033100-9f60a05a013d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "organic basket"
+    },
+    {
+      "id": "promo-2",
+      "title": "Kits repas à -15%",
+      "description": "Essayez nos nouveaux kits repas pour des dîners rapides et sains.",
+      "imageUrl": "https://images.unsplash.com/photo-1606787366850-de633012821e?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "meal kit"
+    },
+    {
+      "id": "promo-3",
+      "title": "Livraison gratuite",
+      "description": "Livraison offerte pour toute commande de plus de 50€ de produits frais.",
+      "imageUrl": "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D%3D",
+      "imageHint": "fresh produce"
+    },
+    {
+      "id": "promo-4",
+      "title": "1 épice achetée = 1 offerte",
+      "description": "Agrémentez vos plats avec notre sélection d'épices du monde.",
+      "imageUrl": "https://images.unsplash.com/photo-1600742633276-c1f7b3403a53?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "spices selection"
+    },
+    {
+      "id": "promo-5",
+      "title": "Guide nutritionnel offert",
+      "description": "Recevez notre guide 'Manger Mieux' pour tout achat d'un abonnement.",
+      "imageUrl": "https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d?q=80&w=2076&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D3D",
+      "imageHint": "nutrition guide"
+    },
+    {
+      "id": "market-fresh-1",
+      "title": "Tomates Bio",
+      "description": "Tomates juteuses et savoureuses, cultivées localement sans pesticides.",
+      "imageUrl": "https://images.unsplash.com/photo-1724128239194-4bde5d240555?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxM3x8dG9tYXRlJTIwYmlvfGVufDB8fHx8MTc2MzI1OTgwNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fresh tomatoes",
+      "price": "3,50 € / kg",
+      "category": "fresh"
+    },
+    {
+      "id": "market-fresh-2",
+      "title": "Avocats Hass",
+      "description": "Avocats crémeux et riches en nutriments, parfaits pour vos toasts et salades.",
+      "imageUrl": "https://images.unsplash.com/photo-1601039641847-7857b994d704?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxhdm9jYXQlMjBmcnVpdHxlbnwwfHx8fDE3NjMyNTk5NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fresh avocados",
+      "price": "1,80 € / pièce",
+      "category": "fresh"
+    },
+    {
+      "id": "market-fresh-3",
+      "title": "Épinards Frais",
+      "description": "Jeunes pousses d'épinards tendres, idéales pour les smoothies ou les salades.",
+      "imageUrl": "https://images.unsplash.com/photo-1755443433338-b61061f7d9f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxOXx8JUMzJUE5cGluYXJkc3xlbnwwfHx8fDE3NjMyNjAwODR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fresh spinach",
+      "price": "2,20 € / 200g",
+      "category": "fresh"
+    },
+    {
+      "id": "market-fresh-4",
+      "title": "Citrons Jaunes",
+      "description": "Citrons non traités pour ajouter une touche de peps à tous vos plats.",
+      "imageUrl": "https://images.unsplash.com/photo-1590502593747-42a996133562?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjaXRyb258ZW58MHx8fHwxNzYzMjYwMTgzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fresh lemons",
+      "price": "0,80 € / pièce",
+      "category": "fresh"
+    },
+    {
+      "id": "market-spice-1",
+      "title": "Paprika Fumé",
+      "description": "Donne une saveur fumée et profonde à vos plats. Indispensable pour la cuisine espagnole.",
+      "imageUrl": "https://images.unsplash.com/photo-1732348679620-210d6d484f7f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwYXByaWthJTIwfGVufDB8fHx8MTc2MzI2MDMyMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "smoked paprika",
+      "price": "4,50 €",
+      "category": "spices"
+    },
+    {
+      "id": "market-spice-2",
+      "title": "Curcuma en Poudre",
+      "description": "Épice dorée aux multiples bienfaits pour la santé et au goût subtilement poivré.",
+      "imageUrl": "https://images.unsplash.com/photo-1702041295331-840d4d9aa7c9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjdXJjdW1hJTIwfGVufDB8fHx8MTc2MzI2MDQ1NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "turmeric powder",
+      "price": "3,90 €",
+      "category": "spices"
+    },
+    {
+      "id": "market-spice-3",
+      "title": "Herbes de Provence",
+      "description": "Mélange classique de thym, romarin, sarriette et origan pour parfumer vos grillades.",
+      "imageUrl": "https://images.unsplash.com/photo-1657631700323-81d7c6adc64e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxoZXJiZSUyMGRlJTIwcHJvdmVuY2V8ZW58MHx8fHwxNzYzMjYwNjU1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "provence herbs",
+      "price": "5,10 €",
+      "category": "spices"
+    },
+    {
+      "id": "market-spice-4",
+      "title": "Graines de Chia",
+      "description": "Super-aliment riche en fibres et oméga-3, parfait pour vos puddings et smoothies.",
+      "imageUrl": "https://images.unsplash.com/photo-1688817842143-ff6f62841df3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxncmFpbmUlMjB8ZW58MHx8fHwxNzYzMjYwNzg5fDA&ixlibrb-4.1.0&q=80&w=1080",
+      "imageHint": "chia seeds",
+      "price": "6,20 €",
+      "category": "spices"
+    },
+    {
+      "id": "market-prepared-1",
+      "title": "Lasagnes Végétariennes",
+      "description": "Un plat réconfortant avec des couches de pâtes fraîches, légumes de saison et béchamel onctueuse.",
+      "imageUrl": "https://images.unsplash.com/photo-1730900737654-ac6d843139da?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxsYXNhZ25lfGVufDB8fHx8MTc2MzI2MTMxMHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "vegetarian lasagna",
+      "price": "12,90 €",
+      "category": "prepared"
+    },
+    {
+      "id": "market-prepared-2",
+      "title": "Curry de Poulet Coco",
+      "description": "Poulet tendre mijoté dans une sauce crémeuse au lait de coco, curry et petits légumes.",
+      "imageUrl": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "chicken curry",
+      "price": "14,50 €",
+      "category": "prepared"
+    },
+    {
+      "id": "market-prepared-3",
+      "title": "Buddha Bowl au Tofu",
+      "description": "Un repas complet et équilibré avec du tofu mariné, quinoa, avocat et légumes croquants.",
+      "imageUrl": "https://images.unsplash.com/photo-1596352670192-5a95e357df7b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxUb2Z1fGVufDB8fHx8MTc2MzI2MTQ0Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tofu bowl",
+      "price": "11,80 €",
+      "category": "prepared"
+    },
+    {
+      "id": "market-prepared-4",
+      "title": "Soupe Pho Vietnamienne",
+      "description": "Bouillon de bœuf aromatique, nouilles de riz, fines tranches de bœuf et herbes fraîches.",
+      "imageUrl": "https://images.unsplash.com/photo-1547592166-23ac45744acd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxTb3VwZXxlbnwwfHx8fDE3NjMyNjE1Njl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "pho soup",
+      "price": "13,00 €",
+      "category": "prepared"
+    },
+    {
+      "id": "market-restaurant-1",
+      "title": "Le Bistrot du Coin",
+      "description": "Cuisine française traditionnelle dans une ambiance chaleureuse. Parfait pour un dîner sain et savoureux.",
+      "imageUrl": "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D%3D",
+      "imageHint": "french bistro",
+      "category": "restaurant"
+    },
+    {
+      "id": "market-restaurant-2",
+      "title": "Verde",
+      "description": "Le meilleur de la cuisine végétarienne et vegan. Des plats créatifs et pleins de saveurs.",
+      "imageUrl": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D3D",
+      "imageHint": "vegan restaurant",
+      "category": "restaurant"
+    },
+    {
+      "id": "market-restaurant-3",
+      "title": "Sushi Zen",
+      "description": "Une sélection de sushis et makis préparés avec du poisson frais de première qualité.",
+      "imageUrl": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "sushi place",
+      "category": "restaurant"
+    },
+    {
+      "id": "market-restaurant-4",
+      "title": "La Trattoria",
+      "description": "Les saveurs de l'Italie avec des pâtes fraîches maison et des pizzas au feu de bois.",
+      "imageUrl": "https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D3D%3D",
+      "imageHint": "italian restaurant",
+      "category": "restaurant"
+    },
+    {
+      "id": "market-recipe-1",
+      "title": "Recette: Tarte aux Légumes",
+      "description": "Apprenez à faire une délicieuse tarte soleil aux légumes du sud. Facile et rapide.",
+      "imageUrl": "https://images.unsplash.com/photo-1686736314846-6675fa64f161?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx0YXJ0ZXxlbnwwfHx8fDE3NjMyNjA5MTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "vegetable tart",
+      "price": "0,50 €",
+      "category": "recipe"
+    },
+    {
+      "id": "market-recipe-2",
+      "title": "Recette: Smoothie Détox",
+      "description": "Une recette de smoothie vert gratuite pour nettoyer votre organisme et faire le plein d'énergie.",
+      "imageUrl": "https://images.unsplash.com/photo-1662130187270-a4d52c700eb6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxTbW9vdGhpZXxlbnwwfHx8fDE3NjMyNjEwMTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "detox smoothie",
+      "price": "Gratuit",
+      "category": "recipe"
+    },
+    {
+      "id": "market-guide-1",
+      "title": "Guide: Batch Cooking",
+      "description": "Le guide complet pour préparer tous vos repas de la semaine en moins de 2 heures.",
+      "imageUrl": "https://images.unsplash.com/photo-1528712306091-ed0763094c98?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHwlMjBCYXRjaCUyMENvb2tpbmd8ZW58MHx8fHwxNzYzMjYxMTYyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "meal prep",
+      "price": "0,50 €",
+      "category": "guide"
+    },
+    {
+      "id": "market-guide-2",
+      "title": "Guide: Équilibre Acido-basique",
+      "description": "Comprendre et appliquer les principes de l'équilibre acido-basique pour une santé optimale.",
+      "imageUrl": "https://images.unsplash.com/photo-1543362906-acfc16c67564?q=80&w=1965&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%D3D%3D",
+      "imageHint": "healthy balance",
+      "category": "guide"
+    }
+  ]
+}

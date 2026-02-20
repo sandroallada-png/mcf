@@ -1,0 +1,189 @@
+'use server';
+/**
+ * @fileOverview A conversational AI agent for nutritional advice using a direct SDK call to OpenRouter.
+ */
+
+import OpenAI from 'openai';
+import type { NutritionalAgentChatInput, NutritionalAgentChatOutput, Dish } from '@/lib/types';
+import { collection, getDocs, Firestore } from 'firebase/firestore';
+import { getFirestoreInstance } from '@/firebase/server-init';
+import fs from 'fs';
+import path from 'path';
+
+// Initialize the OpenAI client to point to OpenRouter
+const openrouter = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+async function getDishesFromFirestore(db: Firestore): Promise<string> {
+    const dishesCol = collection(db, 'dishes');
+    const dishSnapshot = await getDocs(dishesCol);
+    const dishes = dishSnapshot.docs.map(doc => doc.data() as Dish);
+    
+    // Format the dish list with name and image URL if available
+    return dishes.map(d => {
+        let dishInfo = `- ${d.name}`;
+        if (d.imageUrl) {
+            dishInfo += ` (Image: ${d.imageUrl})`;
+        }
+        return dishInfo;
+    }).join('\n');
+}
+
+function getAppDocumentation(): string {
+    try {
+        const docPath = path.join(process.cwd(), 'docs', 'user_manual.md');
+        return fs.readFileSync(docPath, 'utf-8');
+    } catch (error) {
+        console.error("Could not read app documentation:", error);
+        return "La documentation de l'application n'est pas disponible pour le moment.";
+    }
+}
+
+export async function nutritionalAgentChat(
+  input: NutritionalAgentChatInput
+): Promise<NutritionalAgentChatOutput> {
+
+  const firestore = await getFirestoreInstance();
+  const dishList = await getDishesFromFirestore(firestore);
+  const appDocumentation = getAppDocumentation();
+
+  // Build the system prompt dynamically
+  let systemPrompt = `You are My Flex AI, the friendly and helpful nutritional assistant for an app called "my cook flex".
+
+Your role is to act as a personal nutrition coach. You must answer user questions about nutrition, healthy eating, recipes, and general well-being.
+Your mission is to make healthy eating simple, smart, and accessible to everyone.
+Keep your answers concise, encouraging, easy to understand, and always benevolent.
+
+IMPORTANT: You must answer exclusively in French.
+
+The app has a "Cuisine" section with a list of known recipes. When a user asks for recipe ideas, you should suggest recipes from this list and mention they can be found in the "Cuisine" section.
+Here is the list of available dishes with their images (if available, you can show the image to the user):\n${dishList}.
+
+**NEW CAPABILITY: MEAL PLANNING**
+If the user asks you to plan meals for one or more days, you can do this.
+When you generate a meal plan, you MUST respond with a special JSON block.
+First, write a short introductory sentence.
+Then, provide a \`\`\`json-meal-plan block containing the plan.
+
+The JSON object MUST be an array of meals. Each meal object in the array must have the following properties:
+- "name": string (e.g., "Salade César au poulet")
+- "type": "breakfast", "lunch", "dinner", or "snack"
+- "calories": number (e.g., 450)
+- "date": string in "YYYY-MM-DD" format (e.g., "2024-12-25")
+
+Example of a valid meal plan response:
+"Voici une proposition de repas pour demain. Vous pouvez l'approuver ci-dessous."
+\`\`\`json-meal-plan
+[
+  {
+    "name": "Porridge aux fruits rouges",
+    "type": "breakfast",
+    "calories": 350,
+    "date": "2024-09-16"
+  },
+  {
+    "name": "Salade de quinoa et légumes grillés",
+    "type": "lunch",
+    "calories": 500,
+    "date": "2024-09-16"
+  },
+  {
+    "name": "Filet de saumon, purée de patate douce",
+    "type": "dinner",
+    "calories": 600,
+    "date": "2024-09-16"
+  }
+]
+\`\`\`
+
+**APP DOCUMENTATION**
+If the user asks a question about how the app works (e.g., "how do I use the calendar?", "what is 'Mon Niveau'?", "comment fonctionne le frigo ?"), you MUST use the following user manual to answer their question. Be helpful and summarize the relevant section.
+Do not mention that you are reading from a document, just answer the question.
+
+Here is the user manual:
+<documentation>
+${appDocumentation}
+</documentation>
+`;
+
+  // --- Start of new context integration ---
+  systemPrompt += "\n\n**USER CONTEXT**\nHere is some information about the current user. Use it to make your responses more personal and relevant.";
+
+  if (input.userName) {
+    systemPrompt += `\n- User's name is ${input.userName}. Greet them by their name when appropriate.`;
+  }
+  if (input.userLevel) {
+    systemPrompt += `\n- User's current level is ${input.userLevel}. You can congratulate them on their progress!`;
+  }
+  
+  if (input.fridgeContents && input.fridgeContents.length > 0) {
+    systemPrompt += `\n- The user's fridge contains: ${input.fridgeContents.join(', ')}. Prioritize suggesting recipes that use these ingredients.`;
+  } else {
+    systemPrompt += `\n- The user's fridge is currently empty.`;
+  }
+
+  if (input.plannedMeals && input.plannedMeals.length > 0) {
+    const mealList = input.plannedMeals.map(m => `${m.name} on ${m.date}`).join('; ');
+    systemPrompt += `\n- The user has already planned the following meals: ${mealList}. Avoid suggesting meals for these dates unless asked.`;
+  }
+
+  if (input.mealHistory && input.mealHistory.length > 0) {
+    systemPrompt += `\n- The user's recent meal history: ${input.mealHistory.join(', ')}. Use this to avoid suggesting the same meals too frequently and to better understand their habits.`;
+  }
+  
+  if (input.householdMembers && input.householdMembers.length > 0) {
+    systemPrompt += `\n- The user's household members are: ${input.householdMembers.join(', ')}. You can use this information to make suggestions about who should cook.`;
+  }
+
+  if (input.todaysCooks && Object.keys(input.todaysCooks).length > 0) {
+    const assignments = Object.entries(input.todaysCooks).map(([mealType, cookName]) => `${cookName} is cooking ${mealType}`).join('; ');
+    systemPrompt += `\n- Today's cooking assignments are: ${assignments}. You can use this to remind the user who is cooking.`;
+  }
+
+  if (input.personality) {
+    systemPrompt += "\n- The user's AI personalization settings are:";
+    if (input.personality.tone) {
+        systemPrompt += `\n  - Tone: ${input.personality.tone}.`;
+    }
+    if (input.personality.mainObjective) {
+        systemPrompt += `\n  - Main objective: ${input.personality.mainObjective}.`;
+    }
+    if (input.personality.allergies) {
+        systemPrompt += `\n  - Allergies/intolerances: ${input.personality.allergies}. Be very careful about these.`;
+    }
+    if (input.personality.preferences) {
+        systemPrompt += `\n  - Food preferences: ${input.personality.preferences}.`;
+    }
+  }
+  // --- End of new context integration ---
+
+
+  try {
+    const userContent: (
+      | OpenAI.Chat.Completions.ChatCompletionContentPartText
+      | OpenAI.Chat.Completions.ChatCompletionContentPartImage
+    )[] = [{ type: 'text', text: input.message }];
+
+    const completion = await openrouter.chat.completions.create({
+      model: 'openai/gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+      ],
+    });
+
+    const response = completion.choices[0]?.message?.content;
+
+    if (!response) {
+      throw new Error('No response from AI');
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Error calling OpenRouter API:', error);
+    // In case of error, return a user-friendly message in French.
+    return "Désolé, je rencontre un problème technique pour vous répondre. Veuillez réessayer plus tard.";
+  }
+}

@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 25 5% 19%;
+    /* Notion's soft black #37352F */
+    --card: 0 0% 100%;
+    --card-foreground: 25 5% 19%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 25 5% 19%;
+    --primary: 211 76% 51%;
+    /* Notion Blue #2383E2 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 10% 97%;
+    /* Notion soft grey #F7F7F5 */
+    --secondary-foreground: 25 5% 19%;
+    --muted: 40 10% 97%;
+    --muted-foreground: 25 5% 45%;
+    --accent: 40 10% 94%;
+    --accent-foreground: 25 5% 19%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 90%;
+    --input: 240 5% 90%;
+    --ring: 211 76% 51%;
+    --radius: 0.375rem;
+    --sidebar-background: 48 20% 96.5%;
+    /* Notion Sidebar light grey/yellow tint */
+    --sidebar-foreground: 25 5% 19%;
+    --sidebar-border: 240 5% 90%;
+    --sidebar-accent: 40 10% 92%;
+    --sidebar-accent-foreground: 25 5% 19%;
+    --sidebar-primary: 211 76% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 211 76% 51%;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    /* Notion Dark #191919 */
+    --foreground: 0 0% 83%;
+    /* Notion Dark Text #D4D4D4 */
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 83%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 83%;
+    --primary: 211 76% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 14%;
+    /* Notion Sidebar Dark #202020 */
+    --secondary-foreground: 0 0% 83%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 83%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 211 76% 51%;
+    --radius: 0.375rem;
+    --sidebar-background: 0 0% 12%;
+    --sidebar-foreground: 0 0% 83%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-accent: 0 0% 16%;
+    --sidebar-accent-foreground: 0 0% 83%;
+    --sidebar-primary: 211 76% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 211 76% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@keyframes slideInFromRightSmooth {
+  from {
+    transform: translateY(-50%) translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(-50%) translateX(0);
+    opacity: 1;
+  }
+}

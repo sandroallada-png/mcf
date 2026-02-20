@@ -1,0 +1,691 @@
+
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the Habit Planner application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "xp": {
+            "type": "number",
+            "description": "Total experience points of the user."
+        },
+        "level": {
+            "type": "number",
+            "description": "Current level of the user."
+        },
+        "streak": {
+            "type": "number",
+            "description": "Current daily streak for objective completion."
+        },
+        "mainObjective": {
+            "type": "string",
+            "description": "The user's primary goal."
+        },
+        "secondaryObjectives": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "The user's secondary goals."
+        },
+        "isAITrainingEnabled": {
+            "type": "boolean",
+            "description": "Whether the user has enabled personalized AI training."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role.",
+          "enum": ["user", "admin"]
+        },
+        "subscriptionStatus": {
+          "type": "string",
+          "description": "The user's subscription status.",
+          "enum": ["free", "welcome", "eco", "premium"]
+        },
+        "tone": { "type": "string" },
+        "mainGoals": { "type": "string" },
+        "allergies": { "type": "string" },
+        "preferences": { "type": "string" },
+        "household": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of household members for cooking rotation."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name"
+      ]
+    },
+    "Goal": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Goal",
+      "type": "object",
+      "description": "Represents a dietary goal set by the user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the goal."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Goal)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the goal."
+        },
+        "targetValue": {
+          "type": "number",
+          "description": "Target value for the goal (e.g., calories, carbs, protein)."
+        },
+        "timeFrame": {
+          "type": "string",
+          "description": "Time frame for the goal (daily/weekly)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "description",
+        "targetValue",
+        "timeFrame"
+      ]
+    },
+    "FoodLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FoodLog",
+      "type": "object",
+      "description": "Represents a log of food consumed by the user on a specific date.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the food log."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N FoodLog)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the food log.",
+          "format": "date-time"
+        },
+        "foodItems": {
+          "type": "array",
+          "description": "An array of food items consumed.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cookedBy": {
+            "type": "string",
+            "description": "Name of the person who cooked the meal for this day."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "date",
+        "foodItems"
+      ]
+    },
+    "HabitLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "HabitLog",
+      "type": "object",
+      "description": "Represents a user's habit log for a specific day.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the habit log."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N HabitLog)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the habit log.",
+          "format": "date-time"
+        },
+        "habits": {
+          "type": "array",
+          "description": "An array of habits tracked.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "date",
+        "habits"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a single message within a conversation.",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "ai"
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "text"
+      ]
+    },
+    "Conversation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Conversation",
+      "type": "object",
+      "description": "Represents a single conversation thread with the AI assistant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the conversation."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Conversation)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A short, AI-generated title for the conversation."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the conversation was created."
+        },
+        "messages": {
+          "type": "array",
+          "description": "The messages within the conversation.",
+          "items": {
+            "$ref": "#/backend/entities/Message"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "createdAt",
+        "messages"
+      ]
+    },
+    "FridgeItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FridgeItem",
+      "type": "object",
+      "description": "Represents a single ingredient in the user's fridge.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the fridge item."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the ingredient."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the item was added."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "createdAt"
+      ]
+    },
+    "Promotion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Promotion",
+      "type": "object",
+      "description": "Represents a promotional item displayed in carousels.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "link": { "type": "string", "format": "uri" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "imageUrl", "isActive", "createdAt"]
+    },
+    "CarouselItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CarouselItem",
+      "type": "object",
+      "description": "Represents a single item in the landing page mini-carousel.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "link": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "imageUrl", "createdAt"]
+    },
+    "Publication": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Publication",
+      "type": "object",
+      "description": "Represents a user-submitted recipe or guide for moderation.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "price": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string", "format": "uri" },
+        "category": { "type": "string", "enum": ["recipe", "guide"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "description", "imageUrl", "authorId", "authorName", "category", "status", "createdAt"]
+    },
+    "Dish": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Dish",
+      "type": "object",
+      "description": "Represents a single dish available in the application.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "origin": { "type": "string" },
+        "cookingTime": { "type": "string" },
+        "recipe": { "type": "string", "description": "The recipe in Markdown format." }
+      },
+      "required": ["id", "name", "category", "origin", "cookingTime"]
+    },
+    "Feedback": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Feedback",
+      "type": "object",
+      "description": "Represents feedback submitted by a user.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number", "minimum": -1, "maximum": 1, "description": "-1 for dislike, 1 for like" },
+        "comment": { "type": "string", "description": "The AI message that was rated." },
+        "page": { "type": "string", "description": "The page from which feedback was submitted." },
+        "status": { "type": "string", "enum": ["new", "read", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "userName", "rating", "comment", "status", "createdAt"]
+    },
+    "UserContribution": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserContribution",
+      "type": "object",
+      "description": "Represents a meal submitted by a user.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"] },
+        "calories": { "type": "number" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "type", "calories", "authorId", "authorName", "status", "createdAt"]
+    },
+    "Cooking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Cooking",
+      "type": "object",
+      "description": "Represents a saved meal with its recipe, ready to be cooked.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string", "optional": true },
+        "calories": { "type": "number" },
+        "cookingTime": { "type": "string" },
+        "type": { "type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"] },
+        "recipe": { "type": "string" },
+        "imageHint": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "plannedFor": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "calories", "cookingTime", "type", "recipe", "createdAt", "plannedFor"]
+    },
+    "PendingCooking": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PendingCooking",
+      "type": "object",
+      "description": "Represents a meal idea sent from the fridge, waiting to be cooked.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "imageHint": { "type": "string", "optional": true }
+      },
+      "required": ["id", "userId", "name", "createdAt"]
+    },
+    "Notification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notification",
+      "type": "object",
+      "description": "Represents a notification for a user.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "link": { "type": "string", "format": "uri", "optional": true },
+        "isRead": { "type": "boolean", "default": false },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "body", "isRead", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles and their AI personalization settings. Path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/goals/{goalId}",
+        "definition": {
+          "entityName": "Goal",
+          "schema": {
+            "$ref": "#/backend/entities/Goal"
+          },
+          "description": "Stores dietary goals set by the user. Path-based ownership. All data within this path is owned and controlled by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "goalId",
+              "description": "The unique identifier of the goal."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/foodLogs/{foodLogId}",
+        "definition": {
+          "entityName": "FoodLog",
+          "schema": {
+            "$ref": "#/backend/entities/FoodLog"
+          },
+          "description": "Stores food logs for a user on a specific date. Path-based ownership. All data within this path is owned and controlled by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "foodLogId",
+              "description": "The unique identifier of the food log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/habitLogs/{habitLogId}",
+        "definition": {
+          "entityName": "HabitLog",
+          "schema": {
+            "$ref": "#/backend/entities/HabitLog"
+          },
+          "description": "Stores habit logs for a user on a specific date. Path-based ownership. All data within this path is owned and controlled by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "habitLogId",
+              "description": "The unique identifier of the habit log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "schema": {
+            "$ref": "#/backend/entities/Conversation"
+          },
+          "description": "Stores AI chat conversations for a user. Path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the conversation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/fridge/{itemId}",
+        "definition": {
+          "entityName": "FridgeItem",
+          "schema": {
+            "$ref": "#/backend/entities/FridgeItem"
+          },
+          "description": "Stores ingredients in the user's virtual fridge. Path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "itemId",
+              "description": "The unique identifier of the fridge item."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/users/{userId}/cooking/{cookingId}",
+        "definition": {
+          "entityName": "Cooking",
+          "schema": { "$ref": "#/backend/entities/Cooking" },
+          "description": "Stores saved meals and their recipes that the user intends to cook. Path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "cookingId",
+              "description": "The unique identifier of the cooking item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/pendingCookings/{pendingCookingId}",
+        "definition": {
+          "entityName": "PendingCooking",
+          "schema": { "$ref": "#/backend/entities/PendingCooking" },
+          "description": "Stores meal ideas from the fridge, waiting to be planned and cooked. Path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "pendingCookingId",
+              "description": "The unique identifier of the pending cooking item."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": { "$ref": "#/backend/entities/Notification" },
+          "description": "Stores notifications for a specific user. Readable by user, writable by admin.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "notificationId",
+              "description": "The unique identifier of the notification."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/promotions/{promotionId}",
+        "definition": {
+          "entityName": "Promotion",
+          "schema": { "$ref": "#/backend/entities/Promotion" },
+          "description": "Stores promotional content. Publicly readable, admin writable.",
+          "params": [
+            {
+              "name": "promotionId",
+              "description": "The unique identifier of the promotion."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/carouselItems/{itemId}",
+        "definition": {
+          "entityName": "CarouselItem",
+          "schema": { "$ref": "#/backend/entities/CarouselItem" },
+          "description": "Stores items for the landing page mini-carousel. Publicly readable, admin writable.",
+          "params": [
+            {
+              "name": "itemId",
+              "description": "The unique identifier of the carousel item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/publications/{publicationId}",
+        "definition": {
+          "entityName": "Publication",
+          "schema": { "$ref": "#/backend/entities/Publication" },
+          "description": "Stores user-submitted content for moderation.",
+          "params": [
+            {
+              "name": "publicationId",
+              "description": "The unique identifier of the publication."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/dishes/{dishId}",
+        "definition": {
+          "entityName": "Dish",
+          "schema": { "$ref": "#/backend/entities/Dish" },
+          "description": "Stores all available dishes in the application. Publicly readable, admin writable.",
+          "params": [
+            {
+              "name": "dishId",
+              "description": "The unique identifier of the dish."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/feedbacks/{feedbackId}",
+        "definition": {
+          "entityName": "Feedback",
+          "schema": { "$ref": "#/backend/entities/Feedback" },
+          "description": "Stores user feedback. Writable by authenticated users, readable by admin.",
+          "params": [
+            {
+              "name": "feedbackId",
+              "description": "The unique identifier for the feedback entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/userContributions/{contributionId}",
+        "definition": {
+          "entityName": "UserContribution",
+          "schema": { "$ref": "#/backend/entities/UserContribution" },
+          "description": "Stores meals submitted by users. Writable by authenticated users, readable by admin.",
+          "params": [
+            {
+              "name": "contributionId",
+              "description": "The unique identifier for the user contribution."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, following the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User data, goals, food logs, and habit logs are structured under user-specific subcollections to maintain clear ownership and access control. This structure enables atomic operations and simplifies security rules by denormalizing authorization context where necessary and segregating data based on access requirements.\\n\\nAuthorization Independence:\\nAuthorization is achieved by leveraging path-based ownership for user-specific data. For instance, goals, food logs, and habit logs are stored within the `/users/{userId}` path, inherently associating them with the user. The `userId` field inside of each document will be validated against `request.auth.uid` in the security rules. This eliminates the need for `get()` calls to parent documents, ensuring atomic operations.\\n\\nQAPs (Rules are not Filters):\\nSecure list operations are enabled via structural segregation. Each user's data (goals, food logs, habit logs) resides in their own dedicated subcollections. Listing operations on these collections are secured by verifying that `request.auth.uid` matches the `userId` in the path, ensuring that only the user can access their own data. The structure avoids mixing data with different access requirements in the same collection, which simplifies the security rules and prevents filtering on the client side. Furthermore, the DBAC approach eliminates the need for custom claims."
+  }
+}
+    

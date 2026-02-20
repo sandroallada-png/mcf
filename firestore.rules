@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'maxyculture11@gmail.com';
+    }
+
+    function isUser(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/{documents=**} {
+      allow read, write: if isUser(userId) || isAdmin();
+    }
+    
+    match /users/{userId} {
+      allow list: if isAdmin();
+      allow get: if isUser(userId) || isAdmin();
+      allow create: if isUser(userId);
+      allow update: if isUser(userId) || isAdmin();
+      allow delete: if isUser(userId) || isAdmin();
+    }
+    
+    // Promotions: Lecture publique, écriture réservée à l'admin.
+    match /promotions/{promotionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /promotions {
+      allow list: if true;
+    }
+    
+    // Carousel Items: Lecture publique, écriture réservée à l'admin.
+    match /carouselItems/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /carouselItems {
+      allow list: if true;
+    }
+    
+    // Publications: Lecture publique, soumission par les utilisateurs connectés, modération par l'admin.
+    match /publications/{publicationId} {
+      // Tout le monde peut lire les documents. Le filtrage (ex: status == 'approved') se fait dans la requête.
+      allow get, list: if true;
+      
+      // Seuls les utilisateurs connectés peuvent créer (soumettre).
+      allow create: if request.auth != null;
+      
+      // Seul l'admin peut modifier (approuver/rejeter) ou supprimer.
+      allow update, delete: if isAdmin();
+    }
+    
+    // Dishes: Lecture publique, écriture réservée à l'admin.
+    match /dishes/{dishId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /dishes {
+        allow list: if true;
+    }
+
+    // Feedbacks: Écriture pour les utilisateurs connectés, lecture publique.
+    match /feedbacks/{feedbackId} {
+      allow create: if request.auth != null;
+      allow read: if true;
+      allow update, delete: if isAdmin();
+    }
+    
+    match /feedbacks {
+        allow list: if true;
+    }
+    
+    // User Contributions: Écriture pour les utilisateurs connectés, lecture pour l'admin.
+    match /userContributions/{contributionId} {
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow read, list, update, delete: if isAdmin();
+    }
+  }
+}
