@@ -71,11 +71,11 @@ export function FeedbackButton() {
       <DialogTrigger asChild>
         <Button
           variant="default"
-          className="fixed top-32 right-0 z-50 h-24 w-8 rounded-l-xl rounded-r-none shadow-[-2px_4px_12px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center gap-2 p-0 hover:w-10 transition-all duration-300 bg-primary/90 hover:bg-primary border-l border-y border-white/20"
+          className="fixed top-32 right-0 z-50 h-16 w-6 md:h-24 md:w-8 rounded-l-xl rounded-r-none shadow-[-2px_4px_12px_rgba(0,0,0,0.15)] flex flex-col items-center justify-center gap-1 md:gap-2 p-0 hover:w-7 md:hover:w-10 transition-all duration-300 bg-primary/90 hover:bg-primary border-l border-y border-white/20"
           aria-label="Laisser un avis"
         >
-          <span className="text-[10px] font-bold tracking-widest uppercase -rotate-90 whitespace-nowrap">Avis</span>
-          <MessageSquarePlus className="h-4 w-4" />
+          <span className="text-[8px] md:text-[10px] font-bold tracking-widest uppercase -rotate-90 whitespace-nowrap">Avis</span>
+          <MessageSquarePlus className="h-3 w-3 md:h-4 md:w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
