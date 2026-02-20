@@ -117,10 +117,12 @@ export default function WelcomePage() {
                     </Carousel>
                 </div>
                 <div className="absolute bottom-12 left-12 z-10 flex flex-col gap-2">
-                    <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg leading-tight italic">
-                        Presque prêt,<br />{user.displayName?.split(' ')[0]} !
-                    </h2>
-                    <p className="text-white/80 font-medium tracking-wide">Plus que quelques informations pour commencer.</p>
+                    <div className="p-6 rounded-[2.5rem] backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
+                        <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg leading-tight italic">
+                            Presque prêt,<br />{user.displayName?.split(' ')[0]} !
+                        </h2>
+                        <p className="text-white/80 font-medium tracking-wide mt-2">Plus que quelques informations pour commencer.</p>
+                    </div>
                 </div>
             </div>
 

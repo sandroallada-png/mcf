@@ -181,10 +181,12 @@ export default function PreferencesPage() {
                 </div>
 
                 <div className="absolute top-12 left-12 z-10 flex flex-col gap-2">
-                    <div className="w-14 h-14 bg-white rounded-2xl shadow-2xl flex items-center justify-center transform -rotate-3 mb-4">
-                        <LogoIcon className="w-10 h-10" />
+                    <div className="p-6 rounded-[2.5rem] backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
+                        <div className="w-14 h-14 bg-white rounded-2xl shadow-2xl flex items-center justify-center transform -rotate-3 mb-4">
+                            <LogoIcon className="w-10 h-10" />
+                        </div>
+                        <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg leading-tight">Mieux vous connaître<br />pour mieux cuisiner.</h2>
                     </div>
-                    <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-lg leading-tight">Mieux vous connaître<br />pour mieux cuisiner.</h2>
                 </div>
             </div>
 
