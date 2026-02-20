@@ -10,13 +10,7 @@ export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/login');
-      }
-    }
+    // We let AuthProvider handle redirections to avoid conflicts
   }, [user, loading, router]);
 
   return (

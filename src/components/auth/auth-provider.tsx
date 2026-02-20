@@ -20,7 +20,6 @@ function NavigationEvents() {
   const { hideLoading } = useLoading();
 
   useEffect(() => {
-    // Hide loading indicator whenever the path changes
     hideLoading();
   }, [pathname, hideLoading]);
 
@@ -33,7 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { showLoading, hideLoading } = useLoading();
 
   const ADMIN_EMAIL = 'emapms@gmail.com';
 
@@ -46,13 +44,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const isProtectedRoute = !['/', '/about', '/support', '/market', '/forum', '/terms', '/privacy'].includes(pathname) && !isAuthRoute;
 
       if (u) {
-        // User is logged in
         const isAdmin = u.email === ADMIN_EMAIL;
         const userDocRef = doc(firestore, 'users', u.uid);
         const userDocSnap = await getDoc(userDocRef);
+        let userData;
 
         if (!userDocSnap.exists()) {
-          // Create user document if it doesn't exist
+          // Create new user doc
           await setDoc(userDocRef, {
             id: u.uid,
             name: u.displayName || 'Nouvel utilisateur',
@@ -60,71 +58,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             photoURL: u.photoURL,
             role: isAdmin ? 'admin' : 'user',
             createdAt: serverTimestamp(),
-            subscriptionStatus: 'free',
+            subscriptionStatus: '', // Empty initially
             xp: 0,
             level: 1,
           }, { merge: true });
+
+          const freshSnap = await getDoc(userDocRef);
+          userData = freshSnap.data();
         } else {
-          // Ensure role is correctly set if it changed
-          if (isAdmin && userDocSnap.data()?.role !== 'admin') {
+          userData = userDocSnap.data();
+          if (isAdmin && userData?.role !== 'admin') {
             await updateDoc(userDocRef, { role: 'admin' });
+            userData.role = 'admin';
           }
         }
 
-        let userData = userDocSnap.data();
-
-        // If the doc was just created or data is missing, we might need to re-fetch or use initial data
-        if (!userData && !userDocSnap.exists()) {
-          // This is the first time the user logs in
-          userData = {
-            subscriptionStatus: '',
-            role: isAdmin ? 'admin' : 'user',
-            xp: 0,
-            level: 1
-          };
+        if (!userData) {
+          userData = { subscriptionStatus: '', role: isAdmin ? 'admin' : 'user', xp: 0, level: 1 };
         }
 
-        // Onboarding Chain Checks
         const hasBasicProfile = !!(userData?.age && userData?.country && userData?.referralSource);
         const hasPersonalization = !!userData?.theme;
         const hasPreferences = !!userData?.mainObjective;
         const hasPricing = !!userData?.subscriptionStatus;
         const hasAvatar = !!userData?.avatarUrl;
-
         const isFullySetup = hasBasicProfile && hasPersonalization && hasPreferences && hasPricing && hasAvatar;
 
         if (isAdmin) {
-          // If admin is on any non-admin page, redirect to admin dashboard
           if (!pathname.startsWith('/admin')) {
             router.replace('/admin');
           }
         } else {
-          // Regular user logic - Forced Onboarding Flow
+          // Linear Onboarding Flow
           if (!hasBasicProfile && !pathname.startsWith('/welcome') && !pathname.startsWith('/register')) {
-            // Step 1: Basic Profile (Age, Country, Source)
             router.replace('/welcome');
           } else if (hasBasicProfile && !hasPersonalization && !pathname.startsWith('/personalization')) {
-            // Step 2: Theme / Style
             router.replace('/personalization');
           } else if (hasPersonalization && !hasPreferences && !pathname.startsWith('/preferences')) {
-            // Step 3: Goals & Restrictions
             router.replace('/preferences');
           } else if (hasPreferences && !hasPricing && !pathname.startsWith('/pricing')) {
-            // Step 4: Plan Selection
             router.replace('/pricing');
           } else if (hasPricing && !hasAvatar && !pathname.startsWith('/avatar-selection')) {
-            // Step 5: Avatar & Finalization
             router.replace('/avatar-selection');
-          } else if (isFullySetup && (
-            isAuthRoute ||
-            ['/welcome', '/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p))
-          )) {
-            // All steps complete - don't allow going back to onboarding/auth pages
+          } else if (isFullySetup && (isAuthRoute || ['/welcome', '/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p)))) {
             router.replace('/dashboard');
           }
         }
       } else {
-        // User is not logged in
         if (isProtectedRoute) {
           router.replace('/login');
         }
@@ -132,12 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, firestore, router]);
 
-  if (loading) {
-    return null;
-  }
+  if (loading) return null;
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
@@ -149,8 +126,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuthContext() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuthContext must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuthContext must be used within an AuthProvider');
   return context;
 }
