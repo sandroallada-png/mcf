@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Palette, ArrowRight, Sparkles } from 'lucide-react';
+import { Palette, ArrowRight, Sparkles, Check, Layout, Utensils, Zap } from 'lucide-react';
 import { ThemeSelector } from '@/components/personalization/theme-selector';
 import { useAccentTheme } from '@/contexts/accent-theme-context';
 import { useUser, useFirebase } from '@/firebase';
@@ -16,6 +15,7 @@ import { LogoIcon } from '@/components/icons';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import Image from 'next/image';
 import Autoplay from 'embla-carousel-autoplay';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const carouselItems = [
   { image: '/mcf/19.png' },
@@ -59,7 +59,6 @@ export default function PersonalizationPage() {
         await setDocumentNonBlocking(userRef, { theme: theme.name }, { merge: true });
       }
 
-      // Petit délai pour savourer l'animation "Waouh"
       setTimeout(() => {
         router.push('/preferences');
         localStorage.removeItem('mcf_personalization_theme');
@@ -77,19 +76,14 @@ export default function PersonalizationPage() {
 
   return (
     <div className="flex min-h-screen w-full lg:grid lg:grid-cols-2 lg:h-screen lg:overflow-hidden bg-background">
-      {/* Left Pane - Visual Inspiration (Sticky on Desktop) */}
+      {/* Left Pane - Visual Inspiration */}
       <div className="hidden lg:flex bg-primary flex-col items-center justify-center relative overflow-hidden w-full h-screen lg:sticky lg:top-0">
         <div className="absolute inset-0 z-0 text-white">
-          <Carousel
-            setApi={setApi}
-            plugins={[autoplay.current]}
-            className="w-full h-full"
-            opts={{ loop: true }}
-          >
+          <Carousel setApi={setApi} plugins={[autoplay.current]} className="w-full h-full" opts={{ loop: true }}>
             <CarouselContent className="h-screen -ml-0">
               {carouselItems.map((item, index) => (
                 <CarouselItem key={index} className="pl-0 relative h-screen">
-                  <Image src={item.image} alt="Cuisine Inspiration" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" priority={index === 0} />
+                  <Image src={item.image} alt="Cuisine Inspiration" fill sizes="50vw" className="object-cover" priority={index === 0} />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
                 </CarouselItem>
               ))}
@@ -108,64 +102,103 @@ export default function PersonalizationPage() {
       </div>
 
       {/* Right Pane - Content */}
-      <div className="w-full flex items-start justify-center p-6 lg:p-12 lg:h-full overflow-y-auto bg-background">
-        <div className="mx-auto w-full max-w-[500px] space-y-12 py-16">
-
+      <div className="w-full flex items-start justify-center p-6 lg:p-12 lg:h-full overflow-y-auto bg-background selection:bg-primary/20">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="mx-auto w-full max-w-[540px] space-y-12 py-16"
+        >
           <div className="flex flex-col items-center text-center gap-10">
-            {/* Logo and Greeting */}
             <div className="flex flex-col items-center gap-4">
-              <div className="w-16 h-16 bg-white rounded-2xl shadow-2xl flex items-center justify-center transform -rotate-3 transition-transform hover:rotate-0 duration-500">
+              <motion.div
+                whileHover={{ rotate: 12, scale: 1.1 }}
+                className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center border border-primary/5"
+              >
                 <LogoIcon className="w-10 h-10" />
-              </div>
-              <p className="text-primary font-black text-xs tracking-[0.3em] uppercase">Configuration du Style</p>
-            </div>
-
-            <div className="w-20 h-20 bg-primary/10 rounded-[2.5rem] flex items-center justify-center shadow-inner relative group">
-              <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full animate-pulse group-hover:scale-150 transition-transform duration-1000" />
-              <Palette className="h-10 w-10 text-primary relative z-10" />
+              </motion.div>
+              <p className="text-primary font-black text-[10px] tracking-[0.4em] uppercase opacity-70">Configuration du Style</p>
             </div>
 
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">Votre Cuisine,<br />Vos Couleurs.</h1>
-              <p className="text-muted-foreground font-medium max-w-[340px] mx-auto leading-relaxed">
-                Choisissez une couleur qui vous ressemble pour l'interface de My Cook Flex.
+              <h1 className="text-4xl md:text-5xl font-black tracking-tighter leading-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70">
+                Votre Cuisine,<br />Vos Couleurs.
+              </h1>
+              <p className="text-muted-foreground font-medium max-w-[360px] mx-auto leading-relaxed">
+                Personnalisez l'outil avec une palette qui vous inspire à cuisiner.
               </p>
             </div>
           </div>
 
-          <div className="bg-primary/[0.02] border-2 border-primary/10 rounded-[3rem] p-10 space-y-10 relative overflow-hidden group hover:border-primary/20 transition-all duration-500 shadow-xl shadow-primary/[0.02]">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
+          {/* Interactive Preview Container */}
+          <div className="space-y-10">
+            {/* Live Preview Card */}
+            <motion.div
+              layout
+              className="relative p-6 rounded-[2.5rem] bg-muted/30 border-2 border-primary/5 overflow-hidden group shadow-2xl shadow-black/5"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 blur-3xl rounded-full opacity-20 transition-colors duration-500" style={{ backgroundColor: `hsl(${theme.hsl})` }} />
 
-            <div className="space-y-8 relative z-10 text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start gap-4">
-                <div className="h-8 w-1 bg-primary rounded-full hidden md:block" />
-                <Label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Thèmes Disponibles</Label>
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-colors duration-500" style={{ backgroundColor: `hsl(${theme.hsl})` }}>
+                      <Layout className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Aperçu direct</p>
+                      <p className="font-black tracking-tight">{theme.name}</p>
+                    </div>
+                  </div>
+                  <div className="h-8 w-24 rounded-full bg-background/50 backdrop-blur-sm border flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full animate-pulse mr-2" style={{ backgroundColor: `hsl(${theme.hsl})` }} />
+                    <span className="text-[9px] font-bold">Actif</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-background shadow-sm border space-y-2">
+                    <Utensils className="h-4 w-4 opacity-20" />
+                    <div className="h-2 w-12 rounded-full bg-muted" />
+                    <div className="h-3 w-full rounded-full transition-colors duration-500" style={{ backgroundColor: `hsl(${theme.hsl} / 0.1)` }} />
+                  </div>
+                  <div className="p-4 rounded-2xl transition-colors duration-500 shadow-sm space-y-2" style={{ backgroundColor: `hsl(${theme.hsl})` }}>
+                    <Zap className="h-4 w-4 text-white opacity-40" />
+                    <div className="h-2 w-12 rounded-full bg-white/20" />
+                    <div className="h-3 w-full rounded-full bg-white/40" />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Theme Selector */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 px-2">
+                <div className="h-px flex-1 bg-muted-foreground/10" />
+                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground whitespace-nowrap">Choisir votre Ton</Label>
+                <div className="h-px flex-1 bg-muted-foreground/10" />
               </div>
 
-              <div className="pt-2 flex justify-center">
-                <ThemeSelector selectedThemeName={theme.name} onThemeChange={setTheme} />
-              </div>
-
-              <div className="flex items-start gap-4 p-6 bg-background/50 rounded-3xl border border-primary/5 italic text-sm text-muted-foreground leading-relaxed shadow-inner">
-                <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                "Ce réglage s'appliquera sur tous vos écrans pour une expérience utilisateur sur-mesure et immersive."
-              </div>
+              <ThemeSelector selectedThemeName={theme.name} onThemeChange={setTheme} />
             </div>
           </div>
 
-          <div className="space-y-5 pt-4">
-            <Button onClick={handleFinish} className="w-full h-18 py-8 text-xl font-black shadow-2xl shadow-primary/30 rounded-3xl group relative overflow-hidden">
+          <div className="space-y-4 pt-4">
+            <Button
+              onClick={handleFinish}
+              className="w-full h-18 py-8 text-xl font-black shadow-2xl shadow-primary/30 rounded-[2rem] group relative overflow-hidden"
+              style={{ backgroundColor: `hsl(${theme.hsl})` }}
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-              Appliquer & Continuer
+              Valider ce style
               <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
             </Button>
 
-            <Button onClick={handleSkip} variant="ghost" className="w-full h-14 text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-foreground rounded-2xl">
-              Passer pour le moment
+            <Button onClick={handleSkip} variant="ghost" className="w-full h-14 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-foreground rounded-2xl">
+              Plus tard
             </Button>
           </div>
-
-        </div>
+        </motion.div>
       </div>
     </div>
   );
