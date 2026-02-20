@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <head>
         <meta name="google-site-verification" content="wdOON2yavcg3beYQ-NO04Q1HjdA_qgRyZygGUyn4Sxk" />
-        <link rel="icon" href="/my_cookflex_logo.png" />
+        <link rel="icon" href="/mcf-logo.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#2E7D32" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -38,7 +38,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
           rel="stylesheet"
         />
-        <link rel="apple-touch-icon" href="/my_cookflex_logo.png" />
+        <link rel="apple-touch-icon" href="/mcf-logo.png" />
       </head>
       <body className={cn("font-body antialiased", fontSans.variable)}>
         <Providers>

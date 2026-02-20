@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { showLoading, hideLoading } = useLoading();
-  
+
   const ADMIN_EMAIL = 'emapms@gmail.com';
 
   useEffect(() => {
@@ -61,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: isAdmin ? 'admin' : 'user',
             createdAt: serverTimestamp(),
             subscriptionStatus: 'free',
+            xp: 0,
+            level: 1,
           }, { merge: true });
         } else {
           // Ensure role is correctly set if it changed
@@ -68,8 +70,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await updateDoc(userDocRef, { role: 'admin' });
           }
         }
-        
-        const isSetupComplete = userDocSnap.exists() && userDocSnap.data()?.subscriptionStatus;
+
+        let userData = userDocSnap.data();
+
+        // If the doc was just created or data is missing, we might need to re-fetch or use initial data
+        if (!userData && !userDocSnap.exists()) {
+          // This is the first time the user logs in
+          userData = {
+            subscriptionStatus: 'free',
+            role: isAdmin ? 'admin' : 'user'
+          };
+        }
+
+        const isProfileComplete = !!(userData?.age && userData?.country && userData?.referralSource);
+        const isSetupComplete = isProfileComplete && !!userData?.subscriptionStatus;
 
         if (isAdmin) {
           // If admin is on any non-admin page, redirect to admin dashboard
@@ -78,10 +92,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           // Regular user logic
-          if (!isSetupComplete && !pathname.startsWith('/pricing') && !pathname.startsWith('/personalization') && !pathname.startsWith('/preferences')) {
-            // If setup is not complete, force them to the setup flow
+          if (!isProfileComplete && !pathname.startsWith('/welcome')) {
+            // New user or incomplete profile - redirect to welcome transition
+            router.replace('/welcome');
+          } else if (isProfileComplete && !userData?.subscriptionStatus && !pathname.startsWith('/pricing')) {
+            // Profile complete but no subscription info - redirect to pricing
             router.replace('/pricing');
-          } else if (isSetupComplete && (isAuthRoute || ['/pricing', '/personalization', '/preferences'].some(p => pathname.startsWith(p)))) {
+          } else if (isSetupComplete && (isAuthRoute || ['/welcome', '/pricing', '/personalization', '/preferences'].some(p => pathname.startsWith(p)))) {
             // If setup is complete, redirect from auth/setup pages to dashboard
             router.replace('/dashboard');
           }
@@ -95,11 +112,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsub();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
-  
+
   if (loading) {
-    return null; 
+    return null;
   }
 
   return (

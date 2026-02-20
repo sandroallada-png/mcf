@@ -354,6 +354,7 @@ export const SingleMealSuggestionSchema = z.object({
   imageHint: z.string().describe("Deux ou trois mots-clés pour une recherche d'image (ex: 'salade saine')."),
   imageUrl: z.string().url().optional(),
   recipe: z.string().optional().describe("La recette détaillée du plat au format Markdown."),
+  message: z.string().optional().describe("Un message amical de l'IA expliquant pourquoi elle suggère ce repas."),
 });
 export type SingleMealSuggestion = z.infer<typeof SingleMealSuggestionSchema>;
 

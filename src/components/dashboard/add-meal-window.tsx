@@ -15,7 +15,8 @@ import {
     Sparkles,
     UtensilsCrossed,
     PlusCircle,
-    HelpCircle
+    HelpCircle,
+    Flame
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -372,14 +373,29 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     name="name"
                                     render={({ field }) => (
                                         <FormItem className="relative">
-                                            <FormLabel>Que mangez-vous ?</FormLabel>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <FormLabel>Que mangez-vous ?</FormLabel>
+                                                {!selectedDish && !searchTerm && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/5 gap-1.5"
+                                                        onClick={handleFindAlternative}
+                                                        disabled={isSearchingAlternative}
+                                                    >
+                                                        {isSearchingAlternative ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                        Besoin d'une idée ?
+                                                    </Button>
+                                                )}
+                                            </div>
                                             <FormControl>
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                     <Input
                                                         placeholder="ex: Poulet Yassa, Ratatouille..."
                                                         {...field}
-                                                        className="pl-9"
+                                                        className="pl-9 h-12 rounded-xl focus-visible:ring-primary/20"
                                                         autoComplete="off"
                                                         onChange={(e) => {
                                                             field.onChange(e);
@@ -394,7 +410,70 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     )}
                                 />
 
-                                {/* Search Results / Suggestions */}
+                                {/* Close Suggestion if it exists when searching something else */}
+                                {searchTerm && suggestedAlternative && !selectedDish && (
+                                    <div className="flex justify-between items-center px-1">
+                                        <p className="text-[10px] font-medium text-muted-foreground italic">Recherche en cours...</p>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-[10px] text-muted-foreground px-2"
+                                            onClick={() => setSuggestedAlternative(null)}
+                                        >
+                                            Ignorer la suggestion
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* AI Suggestion Display */}
+                                {suggestedAlternative && !selectedDish && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                                        {/* AI Speech Bubble */}
+                                        <div className="relative bg-primary/10 border border-primary/20 p-4 rounded-2xl rounded-tl-none ml-4 shadow-sm">
+                                            <div className="absolute -left-3 top-0 w-3 h-3 bg-primary/10 border-l border-t border-primary/20" style={{ clipPath: 'polygon(100% 0, 0 0, 100% 100%)' }} />
+                                            <div className="flex items-start gap-3">
+                                                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 shadow-lg">
+                                                    <Sparkles className="h-4 w-4 text-white" />
+                                                </div>
+                                                <p className="text-sm font-medium leading-relaxed italic text-foreground/90">
+                                                    "{suggestedAlternative.message}"
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            className="flex items-center gap-4 p-4 rounded-2xl border-2 border-primary bg-primary/5 cursor-pointer hover:bg-primary/10 transition-all hover:scale-[1.02] shadow-sm group"
+                                            onClick={handleSelectAlternative}
+                                        >
+                                            <div className="h-16 w-16 rounded-xl bg-background flex items-center justify-center shrink-0 overflow-hidden border-2 border-primary/20 shadow-inner">
+                                                {suggestedAlternative.imageUrl ? (
+                                                    <img src={suggestedAlternative.imageUrl} alt={suggestedAlternative.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                ) : (
+                                                    <UtensilsCrossed className="h-8 w-8 text-primary/30" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Coup de cœur suggéré</p>
+                                                <p className="text-lg font-black text-foreground truncate">{suggestedAlternative.name}</p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                                                        <Flame className="h-3 w-3 text-orange-500" />
+                                                        {suggestedAlternative.calories} kcal
+                                                    </div>
+                                                    <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                                                        <Clock className="h-3 w-3 text-blue-500" />
+                                                        {suggestedAlternative.cookingTime}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button type="button" size="sm" className="rounded-full px-6 font-bold shadow-lg shadow-primary/20">
+                                                Choisir
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Search Results */}
                                 {searchTerm && !selectedDish && (
                                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
@@ -433,47 +512,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                 ))
                                             ) : (
                                                 <div className="p-4 rounded-xl border border-dashed bg-muted/5 text-center space-y-3">
-                                                    {suggestedAlternative ? (
-                                                        <div className="space-y-3 animate-in fade-in zoom-in duration-300">
-                                                            <div className="text-left space-y-2">
-                                                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                                                    <Sparkles className="h-3 w-3" />
-                                                                    Alternative suggérée par notre outil
-                                                                </p>
-                                                                <div
-                                                                    className="flex items-center gap-3 p-3 rounded-xl border-2 border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
-                                                                    onClick={handleSelectAlternative}
-                                                                >
-                                                                    <div className="h-12 w-12 rounded-lg bg-background flex items-center justify-center shrink-0 overflow-hidden border shadow-sm">
-                                                                        {suggestedAlternative.imageUrl ? (
-                                                                            <img src={suggestedAlternative.imageUrl} alt={suggestedAlternative.name} className="h-full w-full object-cover" />
-                                                                        ) : (
-                                                                            <UtensilsCrossed className="h-5 w-5 text-primary/50" />
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0 text-left">
-                                                                        <p className="text-sm font-bold text-foreground">{suggestedAlternative.name}</p>
-                                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                                            <span className="text-[10px] font-medium text-muted-foreground">{suggestedAlternative.calories} kcal</span>
-                                                                            <span className="text-[10px] font-medium text-muted-foreground">• {suggestedAlternative.cookingTime}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <Button type="button" size="sm" className="h-8 text-xs font-bold shadow-none" onClick={(e) => { e.stopPropagation(); handleSelectAlternative(); }}>
-                                                                        Choisir
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-xs text-muted-foreground hover:text-foreground"
-                                                                onClick={() => setSuggestedAlternative(null)}
-                                                            >
-                                                                Chercher une autre idée
-                                                            </Button>
-                                                        </div>
-                                                    ) : isSearchingAlternative && displaySuggestions.length > 0 ? (
+                                                    {isSearchingAlternative && displaySuggestions.length > 0 ? (
                                                         <div className="py-2 animate-in fade-in duration-300 space-y-3">
                                                             <div className="flex flex-col items-center gap-3">
                                                                 <div className="relative h-16 w-16 rounded-full border-2 border-primary/30 p-1">

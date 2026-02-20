@@ -95,9 +95,9 @@ export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
     console.error('Google sign-in error:', error);
 
     if (error.code === 'auth/cancelled-popup-request') {
-        throw new Error('Popup cancelled'); // Throw to be caught by the caller
+      throw new Error('Popup cancelled'); // Throw to be caught by the caller
     }
-    
+
     if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked') {
       try {
         await signInWithRedirect(authInstance, provider);
@@ -108,13 +108,12 @@ export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
         throw redirectError; // Throw to be caught
       }
     } else {
-        // Handle other potential errors, like misconfiguration.
-        showError('Erreur de connexion Google', 'Connexion Google impossible. Vérifiez la configuration.');
-        throw error; // Throw to be caught
+      // Handle other potential errors, like misconfiguration.
+      showError('Erreur de connexion Google', 'Connexion Google impossible. Vérifiez la configuration.');
+      throw error; // Throw to be caught
     }
   }
 }
-
 
 /** Send verification email */
 export function initiateEmailVerification(currentUser: User | null): void {

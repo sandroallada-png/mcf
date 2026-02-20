@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 const siteUrl = 'https://www.mycookflex.com';
 const siteTitle = 'My Cook Flex : Votre Plan de Repas Intelligent & Coach Nutritionnel IA';
 const siteDescription = "Générez des plans de repas adaptés à vos objectifs (perte de poids, prise de masse...), créez des listes de courses automatiques et discutez avec notre IA pour des conseils nutritionnels sur mesure. Simplifiez votre alimentation dès aujourd'hui.";
-const siteImage = `${siteUrl}/my_cookflex_logo.png`; // Assurez-vous que cette image existe dans /public
+const siteImage = `${siteUrl}/mcf-logo.png`; // Assurez-vous que cette image existe dans /public
 
 export const AppMetadata: Metadata = {
   title: siteTitle,
@@ -26,7 +26,7 @@ export const AppMetadata: Metadata = {
   authors: [{ name: 'My Cook Flex Team' }],
   creator: 'My Cook Flex',
   publisher: 'My Cook Flex',
-  
+
   // --- Open Graph Metadata ---
   openGraph: {
     type: 'website',
@@ -44,7 +44,7 @@ export const AppMetadata: Metadata = {
     siteName: 'My Cook Flex',
     locale: 'fr_FR',
   },
-  
+
   // --- Twitter Card Metadata ---
   twitter: {
     card: 'summary_large_image',
@@ -69,5 +69,5 @@ export const AppMetadata: Metadata = {
   alternates: {
     canonical: siteUrl,
   },
-  
+
 };

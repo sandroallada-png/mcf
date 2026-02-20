@@ -25,33 +25,33 @@ const openrouter = new OpenAI({
 });
 
 async function getDishesFromFirestore(db: Firestore): Promise<Dish[]> {
-    const dishesCol = collection(db, 'dishes');
-    const dishSnapshot = await getDocs(dishesCol);
-    return dishSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
+  const dishesCol = collection(db, 'dishes');
+  const dishSnapshot = await getDocs(dishesCol);
+  return dishSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
 }
 
 function mapTimeOfDayToMealType(timeOfDay: 'matin' | 'midi' | 'soir' | 'collation'): 'breakfast' | 'lunch' | 'dinner' | 'snack' {
-    switch (timeOfDay) {
-        case 'matin': return 'breakfast';
-        case 'midi': return 'lunch';
-        case 'soir': return 'dinner';
-        case 'collation': return 'snack';
-    }
+  switch (timeOfDay) {
+    case 'matin': return 'breakfast';
+    case 'midi': return 'lunch';
+    case 'soir': return 'dinner';
+    case 'collation': return 'snack';
+  }
 }
 
 
 export async function suggestSingleMeal(
   input: SuggestSingleMealInput
 ): Promise<SuggestSingleMealOutput> {
-    
+
   try {
     const firestore = await getFirestoreInstance();
     const allDishes = await getDishesFromFirestore(firestore);
 
     if (allDishes.length === 0) {
-        throw new Error('No dishes found in the database.');
+      throw new Error('No dishes found in the database.');
     }
-    
+
     // Step 1: Ask the AI to pick the *name* of the best dish.
     const dishListForAI = allDishes.map(d => `- ${d.name} (Catégorie: ${d.category}, Type: ${d.type || 'N/A'})`).join('\n');
 
@@ -73,42 +73,59 @@ Here is the list of available dishes:
 ${dishListForAI}
 
 Based on all this information, what is the single best dish to suggest?
+Also, write a very short, friendly and encouraging message (in French) to accompany this suggestion, explaining why it's a great choice for them right now (e.g. "Je pense que ce repas sera votre régal ce soir 😋").
 
-Your response MUST be ONLY the name of the dish you have chosen, exactly as it appears in the list. Do not add any other text, explanation, or formatting.
-Example of a valid response: "Salade César Réinventée"
+Your response MUST be a valid JSON object with the following structure:
+{
+  "dishName": "The exact name of the dish from the list",
+  "message": "Your short personalized message in French"
+}
 `;
-    
+
     const completion = await openrouter.chat.completions.create({
-        model: 'openai/gpt-4o-mini',
-        messages: [{ role: 'system', content: systemPrompt }],
-        temperature: 0.5,
+      model: 'openai/gpt-4o-mini',
+      messages: [{ role: 'system', content: systemPrompt }],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
     });
 
-    const chosenDishName = completion.choices[0]?.message?.content?.trim();
+    const responseContent = completion.choices[0]?.message?.content;
+    let aiChoice: { dishName: string; message: string } | null = null;
+
+    try {
+      if (responseContent) {
+        aiChoice = JSON.parse(responseContent);
+      }
+    } catch (e) {
+      console.error("Failed to parse AI response:", e);
+    }
+
+    const chosenDishName = aiChoice?.dishName?.trim();
 
     // Step 2: Validate the AI's choice.
     let chosenDish = chosenDishName ? allDishes.find(d => d.name.toLowerCase() === chosenDishName.toLowerCase()) : undefined;
 
     // Step 3: If AI fails or returns invalid data, fall back to random selection.
     if (!chosenDish) {
-        console.warn(`AI suggested an invalid dish: "${chosenDishName}". Falling back to random selection.`);
-        const mealType = mapTimeOfDayToMealType(input.timeOfDay);
-        let relevantDishes = allDishes.filter(d => (d.type || '').toLowerCase() === mealType);
-        if (relevantDishes.length === 0) {
-           relevantDishes = allDishes; // Fallback to all if no type matches
-        }
-        chosenDish = relevantDishes[Math.floor(Math.random() * relevantDishes.length)];
+      console.warn(`AI suggested an invalid dish: "${chosenDishName}". Falling back to random selection.`);
+      const mealType = mapTimeOfDayToMealType(input.timeOfDay);
+      let relevantDishes = allDishes.filter(d => (d.type || '').toLowerCase() === mealType);
+      if (relevantDishes.length === 0) {
+        relevantDishes = allDishes; // Fallback to all if no type matches
+      }
+      chosenDish = relevantDishes[Math.floor(Math.random() * relevantDishes.length)];
     }
-    
+
     // Step 4: Construct the final output based on the (now guaranteed valid) dish data.
     return {
-        name: chosenDish.name,
-        calories: Math.floor(Math.random() * 300) + 300, // Random calories as it's not in the model
-        cookingTime: chosenDish.cookingTime,
-        type: mapTimeOfDayToMealType(input.timeOfDay),
-        imageHint: `${chosenDish.category.toLowerCase()} ${chosenDish.origin.toLowerCase()}`.substring(0, 50),
-        imageUrl: chosenDish.imageUrl,
-        recipe: chosenDish.recipe, // Pass the existing recipe, which can be undefined
+      name: chosenDish.name,
+      calories: Math.floor(Math.random() * 300) + 300, // Random calories as it's not in the model
+      cookingTime: chosenDish.cookingTime,
+      type: mapTimeOfDayToMealType(input.timeOfDay),
+      imageHint: `${chosenDish.category.toLowerCase()} ${chosenDish.origin.toLowerCase()}`.substring(0, 50),
+      imageUrl: chosenDish.imageUrl,
+      recipe: chosenDish.recipe,
+      message: aiChoice?.message || "Voici une excellente idée pour vous !",
     };
 
   } catch (error: any) {
@@ -116,17 +133,17 @@ Example of a valid response: "Salade César Réinventée"
     // Fallback in case of a complete API failure
     const firestore = await getFirestoreInstance();
     const allDishes = await getDishesFromFirestore(firestore);
-    if(allDishes.length > 0) {
-        const randomDish = allDishes[Math.floor(Math.random() * allDishes.length)];
-        return {
-            name: randomDish.name,
-            calories: Math.floor(Math.random() * 300) + 300,
-            cookingTime: randomDish.cookingTime,
-            type: mapTimeOfDayToMealType(input.timeOfDay),
-            imageHint: `${randomDish.category.toLowerCase()} ${randomDish.origin.toLowerCase()}`.substring(0, 50),
-            imageUrl: randomDish.imageUrl,
-            recipe: randomDish.recipe,
-        };
+    if (allDishes.length > 0) {
+      const randomDish = allDishes[Math.floor(Math.random() * allDishes.length)];
+      return {
+        name: randomDish.name,
+        calories: Math.floor(Math.random() * 300) + 300,
+        cookingTime: randomDish.cookingTime,
+        type: mapTimeOfDayToMealType(input.timeOfDay),
+        imageHint: `${randomDish.category.toLowerCase()} ${randomDish.origin.toLowerCase()}`.substring(0, 50),
+        imageUrl: randomDish.imageUrl,
+        recipe: randomDish.recipe,
+      };
     }
     throw new Error('Failed to generate meal suggestion. ' + error.message);
   }
