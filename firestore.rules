@@ -10,6 +10,10 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    function isFamilyMember(chefId) {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.chefId == chefId;
+    }
+
     // Users: Profiles and their sub-collections (foodLogs, goals, notifications, etc.)
     match /users/{userId} {
       // Allow listing for phone-based login and household member lookups
@@ -24,8 +28,8 @@ service cloud.firestore {
       // 2. Admin
       // 3. Members of the household (if userId is their chef)
       match /{allPaths=**} {
-        allow read: if isUser(userId) || isAdmin() || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.chefId == userId);
-        allow write: if isUser(userId) || isAdmin();
+        allow read: if isUser(userId) || isAdmin() || isFamilyMember(userId);
+        allow write: if isUser(userId) || isAdmin() || isFamilyMember(userId);
       }
     }
 
