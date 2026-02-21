@@ -69,6 +69,13 @@ export default function DashboardPage() {
   const [previewImage, setPreviewImage] = useState<{ url: string, name: string } | null>(null);
 
 
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [user, firestore]);
+
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
+
   const effectiveChefId = userProfile?.chefId || user?.uid;
 
   // --- Meals Data ---
@@ -103,13 +110,6 @@ export default function DashboardPage() {
     [goalsCollectionRef]
   )
   const { data: goalsData, isLoading: isLoadingGoals } = useCollection<{ description: string }>(singleGoalQuery);
-
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [user, firestore]);
-
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   const [goals, setGoals] = useState('Perdre du poids, manger plus sainement et réduire ma consommation de sucre.');
   const [goalId, setGoalId] = useState<string | null>(null);

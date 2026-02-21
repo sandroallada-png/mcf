@@ -120,6 +120,14 @@ export default function CuisinePage() {
     const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
     const { data: dishes, isLoading: isLoadingDishes } = useCollection<Dish>(dishesCollectionRef);
 
+    // --- User Profile ---
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, `users/${user.uid}`);
+    }, [user, firestore]);
+
+    const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
+
     const effectiveChefId = userProfile?.chefId || user?.uid;
 
     const cookingCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, `users/${effectiveChefId}/cooking`) : null), [effectiveChefId, firestore]);
@@ -230,12 +238,6 @@ export default function CuisinePage() {
     )
     const { data: goalsData, isLoading: isLoadingGoals } = useCollection<{ description: string }>(singleGoalQuery);
 
-    const userProfileRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return doc(firestore, `users/${user.uid}`);
-    }, [user, firestore]);
-
-    const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
     const [goals, setGoals] = useState('Perdre du poids, manger plus sainement et réduire ma consommation de sucre.');
     const [goalId, setGoalId] = useState<string | null>(null);
