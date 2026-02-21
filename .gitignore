@@ -14,6 +14,8 @@
 
 # production
 /build
+/dist/
+
 
 # misc
 .DS_Store
@@ -51,3 +53,7 @@ DOCUMENTATION.md
 /.firebaserc
 /website/.next/
 /website/node_modules/
+/website/dist/
+/website/out/
+/website/.idx/
+

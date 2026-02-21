@@ -10,20 +10,26 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    match /users/{userId}/{documents=**} {
-      // Lecture permise pour l'utilisateur, l'admin, ou tout le monde (pour l'interface visiteur)
-      // Note: On pourrait restreindre davantage avec un flag 'isPublic' dans le futur.
-      allow read: if isUser(userId) || isAdmin() || true;
-      allow write: if isUser(userId) || isAdmin();
-    }
-    
+    // Users: Profiles and their sub-collections (foodLogs, goals, notifications, etc.)
     match /users/{userId} {
-      allow list: if isAdmin();
-      allow get: if true; // Permettre aux visiteurs de charger le profil
+      // Allow any authenticated user to list the collection (for household member queries)
+      // and allow anyone to look up a specific profile (visitor landing pages)
+      allow list: if request.auth != null;
+      allow get: if true;
       allow create: if isUser(userId);
       allow update: if isUser(userId) || isAdmin();
-      allow delete: if isUser(userId) || isAdmin();
+      allow delete: if isAdmin();
+
+      // For all sub-collections: 
+      // 1. The user themself
+      // 2. Admin
+      // 3. Members of the household (if userId is their chef)
+      match /{allPaths=**} {
+        allow read: if isUser(userId) || isAdmin() || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.chefId == userId);
+        allow write: if isUser(userId) || isAdmin();
+      }
     }
+
     
     // Promotions: Lecture publique, écriture réservée à l'admin.
     match /promotions/{promotionId} {
@@ -81,7 +87,7 @@ service cloud.firestore {
     // Invites: Root level collection for household invitations
     match /invites/{inviteId} {
       allow read: if true; // Needs to be readable for pre-filling during signup
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.chefId == request.auth.uid;
       allow update, delete: if request.auth != null && (resource.data.chefId == request.auth.uid || isAdmin());
     }
 

@@ -85,6 +85,7 @@ export default function AvatarSelectionPage() {
         avatarUrl: selectedAvatar,
         photoURL: selectedAvatar,
         country: selectedCountry,
+        targetCalories: 2000,
       });
 
       toast({

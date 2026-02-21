@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ShoppingCart, Menu, LogOut, Settings, LifeBuoy, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
@@ -60,6 +60,10 @@ export function AppHeader({ title, icon, user, sidebarProps }: AppHeaderProps) {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="w-[280px] p-0 border-r bg-sidebar">
+                            <div className="sr-only">
+                                <SheetTitle>Navigation Menu</SheetTitle>
+                                <SheetDescription>Accéder aux différentes sections de l'application.</SheetDescription>
+                            </div>
                             <Sidebar {...sidebarProps} isMobile={true} />
                         </SheetContent>
                     </Sheet>
@@ -122,9 +126,10 @@ export function AppHeader({ title, icon, user, sidebarProps }: AppHeaderProps) {
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild className="rounded-lg h-10 text-xs font-bold cursor-pointer focus:bg-primary/5 focus:text-primary">
-                                    <Link href="/support" className="flex items-center w-full">
+                                    <Link href="/settings" className="flex items-center w-full">
                                         <LifeBuoy className="mr-3 h-4 w-4 opacity-70" />Aide & Support
                                     </Link>
+
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild className="rounded-lg h-10 text-xs font-bold cursor-pointer focus:bg-primary/5 focus:text-primary">
                                     <Link href="/foyer-control" className="flex items-center w-full">

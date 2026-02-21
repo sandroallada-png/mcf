@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, updateDoc, arrayRemove, deleteDoc } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc, arrayRemove, deleteDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { UserProfile, HouseholdInvite } from '@/lib/types';
 import {
     Users,
@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { useToast } from '@/hooks/use-toast';
-import { createHouseholdInviteAction } from '../actions';
+// import { createHouseholdInviteAction } from '../actions';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -100,14 +100,22 @@ export default function FoyerControlPage() {
             const country = phoneCountries.find(c => c.name === selectedCountryName);
             const code = country?.code || '+33';
             const fullPhone = `${code}${invitePhone.replace(/^0/, '').replace(/\s+/g, '')}`;
-            const { inviteId, error } = await createHouseholdInviteAction({
+
+            const inviteId = Math.random().toString(36).substring(2, 10);
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+            const inviteData = {
+                id: inviteId,
                 chefId: user.uid,
                 chefName: userProfile.name,
-                memberName: inviteName,
-                phoneNumber: fullPhone
-            });
+                name: inviteName,
+                phone: fullPhone,
+                createdAt: Timestamp.now(),
+                expiresAt: Timestamp.fromDate(expiresAt),
+                status: 'pending'
+            };
 
-            if (error) throw new Error(error);
+            await setDoc(doc(firestore, 'invites', inviteId), inviteData);
 
             const link = `${window.location.origin}/join-family/${inviteId}`;
             setLastInviteLink(link);

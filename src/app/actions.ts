@@ -239,41 +239,6 @@ export async function trackInteractionAction(
         return { success: false };
     }
 }
-export async function createHouseholdInviteAction(input: {
-    chefId: string;
-    chefName: string;
-    memberName: string;
-    phoneNumber: string;
-}) {
-    try {
-        const { getFirestoreInstance } = await import('@/firebase/server-init');
-        const { doc, setDoc, Timestamp } = await import('firebase/firestore');
-        const firestore = await getFirestoreInstance();
-
-        const inviteId = Math.random().toString(36).substring(2, 10);
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-        const inviteData = {
-            id: inviteId,
-            chefId: input.chefId,
-            chefName: input.chefName,
-            name: input.memberName,
-            phone: input.phoneNumber,
-            createdAt: Timestamp.now(),
-            expiresAt: Timestamp.fromDate(expiresAt),
-            status: 'pending'
-        };
-
-        const inviteRef = doc(firestore, 'invites', inviteId);
-        await setDoc(inviteRef, inviteData);
-
-        return { inviteId, error: null };
-    } catch (e: any) {
-        console.error(e);
-        return { inviteId: null, error: e.message || 'Failed to create invite.' };
-    }
-}
-
 export async function getInviteAction(inviteId: string) {
     try {
         const { getFirestoreInstance } = await import('@/firebase/server-init');

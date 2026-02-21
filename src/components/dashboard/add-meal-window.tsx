@@ -393,15 +393,16 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
 
     return (
         <DialogContent className="sm:max-w-[600px] sm:h-[600px] gap-0 p-0 overflow-hidden rounded-2xl border-2 flex flex-col">
+            <DialogHeader className="px-6 pt-6 pb-4 bg-muted/10 border-b">
+                <DialogTitle className="text-2xl font-black flex items-center gap-2">
+                    🍽️ Ajouter ou Planifier un repas
+                </DialogTitle>
+                <DialogDescription className="font-medium text-muted-foreground">
+                    Enregistrez ce que vous mangez pour suivre vos objectifs.
+                </DialogDescription>
+            </DialogHeader>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'today' | 'later')} className="w-full flex flex-col h-full">
-                <DialogHeader className="px-6 pt-6 pb-4 bg-muted/10 border-b">
-                    <DialogTitle className="text-2xl font-black flex items-center gap-2">
-                        {activeTab === 'today' ? '🍽️ Ajouter un repas' : '📅 Planifier un repas'}
-                    </DialogTitle>
-                    <DialogDescription className="font-medium text-muted-foreground">
-                        {activeTab === 'today' ? "Qu'avez-vous mangé aujourd'hui ?" : "Préparez votre semaine à l'avance."}
-                    </DialogDescription>
-                </DialogHeader>
+
                 <div className="px-6 py-2 bg-muted/5 border-b">
                     <TabsList className="grid w-full grid-cols-2 h-10">
                         <TabsTrigger value="today" className="text-xs font-bold uppercase tracking-wide">Aujourd'hui</TabsTrigger>

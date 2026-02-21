@@ -122,6 +122,7 @@ export default function JoinFamilyPage() {
                 xp: 0,
                 level: 1,
                 streak: 0,
+                targetCalories: 2000,
                 createdAt: Timestamp.now(),
                 isAITrainingEnabled: true,
                 origin: invite.chefName ? `Cuisine familiale (${invite.chefName})` : 'Cuisine familiale',

@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, limit, updateDoc, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, doc, query, limit, updateDoc, Timestamp, orderBy, getDoc, increment } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Meal, AIPersonality, SingleMealSuggestion, Dish, Cooking, PendingCooking, UserProfile } from '@/lib/types';
 import { Loader2, ChefHat, Search, Clock as ClockIcon, MapPin, AlarmClock, Bot, PlusCircle, Sprout, Calendar, History, Hourglass, Sparkles, X, UtensilsCrossed, CookingPot, BookOpen } from 'lucide-react';
@@ -120,12 +120,14 @@ export default function CuisinePage() {
     const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
     const { data: dishes, isLoading: isLoadingDishes } = useCollection<Dish>(dishesCollectionRef);
 
-    const cookingCollectionRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/cooking`) : null), [user, firestore]);
+    const effectiveChefId = userProfile?.chefId || user?.uid;
+
+    const cookingCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, `users/${effectiveChefId}/cooking`) : null), [effectiveChefId, firestore]);
     const cookingQuery = useMemoFirebase(() => (cookingCollectionRef ? query(cookingCollectionRef, orderBy('plannedFor', 'desc')) : null), [cookingCollectionRef]);
     const { data: cookingItems, isLoading: isLoadingCookingItems } = useCollection<Cooking>(cookingQuery);
     const [selectedCookingItem, setSelectedCookingItem] = useState<Cooking | null>(null);
 
-    const pendingCookingCollectionRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/pendingCookings`) : null), [user, firestore]);
+    const pendingCookingCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, `users/${effectiveChefId}/pendingCookings`) : null), [effectiveChefId, firestore]);
     const pendingCookingQuery = useMemoFirebase(() => (pendingCookingCollectionRef ? query(pendingCookingCollectionRef, orderBy('createdAt', 'desc')) : null), [pendingCookingCollectionRef]);
     const { data: pendingCookingItems, isLoading: isLoadingPendingItems } = useCollection<PendingCooking>(pendingCookingQuery);
 
@@ -205,8 +207,8 @@ export default function CuisinePage() {
 
     // --- Data fetching for sidebar and AI ---
     const allMealsCollectionRef = useMemoFirebase(
-        () => (user ? collection(firestore, 'users', user.uid, 'foodLogs') : null),
-        [user, firestore]
+        () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
+        [effectiveChefId, firestore]
     );
 
     const allMealsQuery = useMemoFirebase(
@@ -319,7 +321,7 @@ export default function CuisinePage() {
     const handleShowRecipeForDish = (dish: Dish) => {
         setSuggestion({
             name: dish.name,
-            calories: Math.floor(Math.random() * 300) + 300, // Placeholder
+            calories: dish.calories || 450, // Use dish calories if available, else a reasonable average
             cookingTime: dish.cookingTime,
             type: (dish.type?.toLowerCase() || 'lunch') as SingleMealSuggestion['type'],
             imageHint: `${dish.category} ${dish.origin}`,
@@ -334,8 +336,11 @@ export default function CuisinePage() {
         }
     };
 
-    const handleAcceptSuggestion = (meal: SingleMealSuggestion, date: Date, recipe: string) => {
-        if (!user || !cookingCollectionRef) return;
+    const handleAcceptSuggestion = async (meal: SingleMealSuggestion, date: Date, recipe: string) => {
+        if (!user || !userProfileRef) return;
+
+        const XP_PER_LEVEL = 500;
+        const xpGained = meal.xpGained || 10; // Use XP from suggestion or default to 10
 
         // Find the dish if possible to get origin/category for tracking
         const relatedDish = dishes?.find(d => d.name === meal.name);
@@ -350,7 +355,7 @@ export default function CuisinePage() {
         }
 
         // 1. Add to food log
-        addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'foodLogs'), {
+        addDocumentNonBlocking(collection(firestore, 'users', effectiveChefId!, 'foodLogs'), {
             userId: user.uid,
             name: meal.name,
             calories: meal.calories,
@@ -359,7 +364,7 @@ export default function CuisinePage() {
         });
 
         // 2. Add to "cooking" collection with the recipe
-        addDocumentNonBlocking(cookingCollectionRef, {
+        addDocumentNonBlocking(collection(firestore, `users/${effectiveChefId}/cooking`), {
             userId: user.uid,
             name: meal.name,
             calories: meal.calories,
@@ -372,9 +377,24 @@ export default function CuisinePage() {
             plannedFor: Timestamp.fromDate(date),
         });
 
-        // 3. If it came from a pending item, delete it
+        // 3. Update User XP and Level
+        try {
+            const userDoc = await getDoc(userProfileRef);
+            const currentXp = userDoc.data()?.xp ?? 0;
+            const newXp = currentXp + xpGained;
+            const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
+
+            await updateDoc(userProfileRef, {
+                xp: increment(xpGained),
+                level: newLevel
+            });
+        } catch (error) {
+            console.error("Error updating user XP:", error);
+        }
+
+        // 4. If it came from a pending item, delete it
         if (pendingItemToCook) {
-            const pendingDocRef = doc(firestore, 'users', user.uid, 'pendingCookings', pendingItemToCook.id);
+            const pendingDocRef = doc(firestore, 'users', effectiveChefId!, 'pendingCookings', pendingItemToCook.id);
             deleteDocumentNonBlocking(pendingDocRef);
             setPendingItemToCook(null);
         }
@@ -382,7 +402,7 @@ export default function CuisinePage() {
 
         toast({
             title: "Repas ajouté !",
-            description: `${meal.name} a été ajouté à votre journal et à votre section de cuisine.`
+            description: `${meal.name} a été ajouté à votre journal. +${xpGained} XP !`
         });
         setSuggestion(null);
         setIsDialogOpen(false);
@@ -400,8 +420,8 @@ export default function CuisinePage() {
     }
 
     const handleDeletePendingItem = (itemId: string) => {
-        if (!user) return;
-        const itemRef = doc(firestore, 'users', user.uid, 'pendingCookings', itemId);
+        if (!effectiveChefId) return;
+        const itemRef = doc(firestore, 'users', effectiveChefId, 'pendingCookings', itemId);
         deleteDocumentNonBlocking(itemRef);
         toast({
             variant: "destructive",

@@ -133,6 +133,7 @@ export default function PreferencesPage() {
                 xp: 0,
                 level: 1,
                 streak: 0,
+                targetCalories: 2000,
                 ...finalPersonality,
                 isAITrainingEnabled: true,
                 updatedAt: serverTimestamp(),

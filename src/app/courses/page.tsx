@@ -37,17 +37,19 @@ export default function CoursesPage() {
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
     const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
-    const fridgeCollectionRef = useMemoFirebase(() => (user ? collection(firestore, 'users', user.uid, 'fridge') : null), [user, firestore]);
+    const effectiveChefId = userProfile?.chefId || user?.uid;
+
+    const fridgeCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'fridge') : null), [effectiveChefId, firestore]);
     const { data: fridgeItems, isLoading: isLoadingFridge } = useCollection<FridgeItem>(fridgeCollectionRef);
 
-    const foodLogsCollectionRef = useMemoFirebase(() => (user ? collection(firestore, 'users', user.uid, 'foodLogs') : null), [user, firestore]);
+    const foodLogsCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null), [effectiveChefId, firestore]);
     const foodLogsQuery = useMemoFirebase(() => (foodLogsCollectionRef ? query(foodLogsCollectionRef, orderBy('date', 'desc'), limit(15)) : null), [foodLogsCollectionRef]);
     const { data: foodLogs, isLoading: isLoadingLogs } = useCollection<Meal>(foodLogsQuery);
 
-    const goalsCollectionRef = useMemoFirebase(() => (user ? collection(firestore, 'users', user.uid, 'goals') : null), [user, firestore]);
+    const goalsCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'goals') : null), [effectiveChefId, firestore]);
     const { data: goalsData, isLoading: isLoadingGoals } = useCollection<{ description: string }>(goalsCollectionRef);
 
-    const historyCollectionRef = useMemoFirebase(() => (user ? collection(firestore, 'users', user.uid, 'shoppingHistory') : null), [user, firestore]);
+    const historyCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'shoppingHistory') : null), [effectiveChefId, firestore]);
     const historyQuery = useMemoFirebase(() => (historyCollectionRef ? query(historyCollectionRef, orderBy('createdAt', 'desc'), limit(5)) : null), [historyCollectionRef]);
     const { data: historyItems, isLoading: isLoadingHistory } = useCollection<ShoppingListHistoryItem>(historyQuery);
 

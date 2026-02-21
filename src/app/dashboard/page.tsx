@@ -69,24 +69,26 @@ export default function DashboardPage() {
   const [previewImage, setPreviewImage] = useState<{ url: string, name: string } | null>(null);
 
 
+  const effectiveChefId = userProfile?.chefId || user?.uid;
+
   // --- Meals Data ---
   // This query specifically fetches meals for the current day for the main panel
   const todaysMealsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!effectiveChefId) return null;
     const todayStart = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());
     return query(
-      collection(firestore, 'users', user.uid, 'foodLogs'),
+      collection(firestore, 'users', effectiveChefId, 'foodLogs'),
       where('date', '>=', Timestamp.fromDate(todayStart)),
       where('date', '<=', Timestamp.fromDate(todayEnd))
     );
-  }, [user, firestore]);
+  }, [effectiveChefId, firestore]);
   const { data: todaysMeals, isLoading: isLoadingTodaysMeals } = useCollection<Meal>(todaysMealsQuery);
 
   // This query fetches all meals, which is needed for the sidebar context (AI tips)
   const allMealsCollectionRef = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'foodLogs') : null),
-    [user, firestore]
+    () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
+    [effectiveChefId, firestore]
   );
   const { data: allMeals, isLoading: isLoadingAllMeals } = useCollection<Omit<Meal, 'id'>>(allMealsCollectionRef);
 
@@ -216,9 +218,10 @@ export default function DashboardPage() {
         calories = estimation.calories;
         xpGained = estimation.xpGained;
       } else {
-        // rough XP estimation if calories provided (optional, or just give 50)
-        xpGained = 50;
+        // balanced XP for manual entry
+        xpGained = 5;
       }
+
 
       const fullMealData = {
         name: meal.name,
@@ -229,7 +232,7 @@ export default function DashboardPage() {
         date: Timestamp.now()
       };
 
-      const mealsCollectionRef = collection(firestore, 'users', user.uid, 'foodLogs');
+      const mealsCollectionRef = collection(firestore, 'users', effectiveChefId!, 'foodLogs');
       addDocumentNonBlocking(mealsCollectionRef, fullMealData);
 
       // Use a transaction or a server-side function for atomicity if critical
@@ -255,8 +258,8 @@ export default function DashboardPage() {
   };
 
   const handleAddToPending = (meal: Omit<Meal, 'id' | 'date'>) => {
-    if (!user) return;
-    const pendingCookingCollectionRef = collection(firestore, 'users', user.uid, 'pendingCookings');
+    if (!effectiveChefId) return;
+    const pendingCookingCollectionRef = collection(firestore, 'users', effectiveChefId, 'pendingCookings');
     addDocumentNonBlocking(pendingCookingCollectionRef, {
       userId: user.uid,
       name: meal.name,
@@ -270,18 +273,18 @@ export default function DashboardPage() {
   }
 
   const removeMeal = (mealId: string) => {
-    if (!user) return;
-    const mealRef = doc(firestore, 'users', user.uid, 'foodLogs', mealId);
+    if (!effectiveChefId) return;
+    const mealRef = doc(firestore, 'users', effectiveChefId, 'foodLogs', mealId);
     deleteDocumentNonBlocking(mealRef);
   };
 
   const handleAcceptPlan = async () => {
-    if (!user || dayPlan.length === 0) return;
+    if (!effectiveChefId || dayPlan.length === 0) return;
     setIsAcceptingPlan(true);
 
     try {
       const batch = writeBatch(firestore);
-      const mealsCollectionRef = collection(firestore, 'users', user.uid, 'foodLogs');
+      const mealsCollectionRef = collection(firestore, 'users', effectiveChefId, 'foodLogs');
       const today = Timestamp.now();
 
       dayPlan.forEach(meal => {
@@ -452,11 +455,42 @@ export default function DashboardPage() {
               <div className="border border-border rounded-xl p-3 md:p-5 bg-card shadow-sm">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
                   {[
-                    { label: 'CALORIES', value: displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0), unit: 'kcal', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-500/10', progress: (displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0) / 2000) * 100 },
-                    { label: 'REPAS', value: displayMeals.length, unit: '/ 4', icon: UtensilsCrossed, color: 'text-blue-500', bg: 'bg-blue-500/10', progress: (displayMeals.length / 4) * 100 },
-                    { label: 'OBJECTIF', value: '2000', unit: 'kcal', icon: Target, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                    { label: 'NIVEAU', value: userProfile?.level || 1, unit: 'Master', icon: Award, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                    {
+                      label: 'CALORIES',
+                      value: displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0),
+                      unit: 'kcal',
+                      icon: Flame,
+                      color: 'text-orange-500',
+                      bg: 'bg-orange-500/10',
+                      progress: (displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0) / (userProfile?.targetCalories || 2000)) * 100
+                    },
+                    {
+                      label: 'REPAS',
+                      value: displayMeals.length,
+                      unit: '/ 4',
+                      icon: UtensilsCrossed,
+                      color: 'text-blue-500',
+                      bg: 'bg-blue-500/10',
+                      progress: (displayMeals.length / 4) * 100
+                    },
+                    {
+                      label: 'OBJECTIF',
+                      value: userProfile?.targetCalories || 2000,
+                      unit: 'kcal',
+                      icon: Target,
+                      color: 'text-emerald-500',
+                      bg: 'bg-emerald-500/10'
+                    },
+                    {
+                      label: 'NIVEAU',
+                      value: userProfile?.level || 1,
+                      unit: userProfile?.level && userProfile.level < 10 ? 'Novice' : userProfile?.level && userProfile.level < 20 ? 'Apprenti' : userProfile?.level && userProfile.level < 30 ? 'Cdt' : 'Expert',
+                      icon: Award,
+                      color: 'text-purple-500',
+                      bg: 'bg-purple-500/10'
+                    },
                   ].map((stat, i) => (
+
                     <div key={i} className="group relative bg-background border border-border rounded-lg p-2.5 md:p-4 hover:border-primary/30 hover:shadow-md transition-all duration-300">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">

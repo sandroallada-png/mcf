@@ -103,11 +103,6 @@ export async function generateReminderMessageAction(
     return { message: null, error: 'Not available in native mode' };
 }
 
-export async function createHouseholdInviteAction(input: any) {
-    console.warn('Native: createHouseholdInviteAction called (stub)');
-    return { inviteId: null, error: 'Not available in native mode' };
-}
-
 export async function getInviteAction(inviteId: string) {
     console.warn('Native: getInviteAction called (stub)');
     return { invite: null, error: 'Not available in native mode' };

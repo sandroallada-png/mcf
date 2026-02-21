@@ -10,8 +10,10 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { PlusCircle, Refrigerator, X, Sparkles, Loader2, Bot, ShoppingCart, ChefHat } from 'lucide-react';
-import { useUser, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, serverTimestamp, query, orderBy, Timestamp } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
+
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Input } from '../ui/input';
 import { getRecipesFromIngredientsAction } from '@/app/actions';
@@ -34,6 +36,11 @@ export function MainPanel() {
     const { user } = useUser();
     const router = useRouter();
     const { firestore } = useFirebase();
+    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+    const effectiveChefId = userProfile?.chefId || user?.uid;
+
     const [newItem, setNewItem] = useState('');
     const [suggestions, setSuggestions] = useState<RecipeSuggestion[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -41,8 +48,8 @@ export function MainPanel() {
     const { toast } = useToast();
 
     const fridgeCollectionRef = useMemoFirebase(
-        () => (user ? collection(firestore, 'users', user.uid, 'fridge') : null),
-        [user, firestore]
+        () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'fridge') : null),
+        [effectiveChefId, firestore]
     );
 
     const fridgeQuery = useMemoFirebase(
@@ -64,8 +71,8 @@ export function MainPanel() {
     };
 
     const handleRemoveItem = (itemId: string) => {
-        if (!user) return;
-        const itemRef = doc(firestore, 'users', user.uid, 'fridge', itemId);
+        if (!effectiveChefId) return;
+        const itemRef = doc(firestore, 'users', effectiveChefId, 'fridge', itemId);
         deleteDocumentNonBlocking(itemRef);
     };
 
@@ -85,13 +92,13 @@ export function MainPanel() {
     };
 
     const handleSendToKitchen = async (recipe: RecipeSuggestion) => {
-        if (!user) return;
+        if (!effectiveChefId) return;
         setIsSendingToKitchen(recipe.name);
         try {
-            const pendingCookingCollectionRef = collection(firestore, 'users', user.uid, 'pendingCookings');
+            const pendingCookingCollectionRef = collection(firestore, 'users', effectiveChefId, 'pendingCookings');
 
             await addDocumentNonBlocking(pendingCookingCollectionRef, {
-                userId: user.uid,
+                userId: user?.uid || '',
                 name: recipe.name,
                 createdAt: Timestamp.now(),
                 imageHint: recipe.name,
