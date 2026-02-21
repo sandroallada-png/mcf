@@ -12,9 +12,8 @@ service cloud.firestore {
 
     // Users: Profiles and their sub-collections (foodLogs, goals, notifications, etc.)
     match /users/{userId} {
-      // Allow any authenticated user to list the collection (for household member queries)
-      // and allow anyone to look up a specific profile (visitor landing pages)
-      allow list: if request.auth != null;
+      // Allow listing for phone-based login and household member lookups
+      allow list: if true;
       allow get: if true;
       allow create: if isUser(userId);
       allow update: if isUser(userId) || isAdmin();
@@ -88,7 +87,8 @@ service cloud.firestore {
     match /invites/{inviteId} {
       allow read: if true; // Needs to be readable for pre-filling during signup
       allow create: if request.auth != null && request.resource.data.chefId == request.auth.uid;
-      allow update, delete: if request.auth != null && (resource.data.chefId == request.auth.uid || isAdmin());
+      allow update: if request.auth != null; // Allow members to mark as 'accepted'
+      allow delete: if request.auth != null && (resource.data.chefId == request.auth.uid || isAdmin());
     }
 
     // User Contributions: Écriture pour les utilisateurs connectés, lecture pour l'admin.
