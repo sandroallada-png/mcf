@@ -12,7 +12,7 @@ import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/
 import { collection, doc, query, limit, updateDoc, Timestamp, orderBy, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Meal, SaveUserRecipeInput, Dish, Cooking } from '@/lib/types';
-import { Loader2, UtensilsCrossed, Save, Share2, ChefHat, Sprout, MapPin, ClockIcon, BookOpen, PlusCircle, Calendar } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Save, Share2, ChefHat, Sprout, MapPin, ClockIcon, BookOpen, PlusCircle, Calendar, Search, X } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,7 @@ export default function AtelierPage() {
     const [selectedDish, setSelectedDish] = useState<Dish | Cooking | null>(null);
     const [isSuggestionDialogOpen, setIsSuggestionDialogOpen] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const form = useForm<RecipeFormValues>({
         resolver: zodResolver(recipeFormSchema),
@@ -109,6 +110,25 @@ export default function AtelierPage() {
 
     const [goals, setGoals] = useState('Perdre du poids, manger plus sainement et réduire ma consommation de sucre.');
     const [goalId, setGoalId] = useState<string | null>(null);
+
+    const filteredDishes = useMemo(() => {
+        if (!dishes) return [];
+        return dishes.filter(dish =>
+            dish.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            dish.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            dish.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            dish.origin?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [dishes, searchTerm]);
+
+    const filteredUserCookingItems = useMemo(() => {
+        if (!userCookingItems) return [];
+        return userCookingItems.filter(item =>
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.type?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [userCookingItems, searchTerm]);
 
     useEffect(() => {
         if (goalsData) {
@@ -253,6 +273,28 @@ export default function AtelierPage() {
                                             Donnez vie à vos inspirations culinaires. Explorez nos signatures ou immortalisez vos créations.
                                         </p>
                                     </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-col md:flex-row items-center gap-4 w-full">
+                                <div className="relative flex-1 group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Search className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                    </div>
+                                    <Input
+                                        type="text"
+                                        placeholder="Rechercher une recette, un ingrédient ou une origine..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="h-14 pl-12 rounded-2xl bg-muted/30 border-2 border-transparent focus:border-primary/20 focus:bg-background transition-all font-medium text-base shadow-sm"
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            onClick={() => setSearchTerm('')}
+                                            className="absolute inset-y-0 right-0 pr-4 flex items-center hover:opacity-70 transition-opacity"
+                                        >
+                                            <X className="h-4 w-4 text-muted-foreground" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -435,8 +477,8 @@ export default function AtelierPage() {
                                             Array.from({ length: 3 }).map((_, i) => (
                                                 <div key={i} className="aspect-[4/5] sm:aspect-square md:aspect-[4/5] w-full bg-muted/50 rounded-3xl animate-shimmer border-2" />
                                             ))
-                                        ) : userCookingItems && userCookingItems.length > 0 ? (
-                                            userCookingItems.map((item) => (
+                                        ) : filteredUserCookingItems && filteredUserCookingItems.length > 0 ? (
+                                            filteredUserCookingItems.map((item) => (
                                                 <Card key={item.id} className="group relative aspect-video sm:aspect-square md:aspect-[4/5] rounded-3xl border-2 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 overflow-hidden bg-background/50 backdrop-blur-sm">
                                                     <div className="absolute inset-0 z-0">
                                                         <Image
@@ -520,7 +562,7 @@ export default function AtelierPage() {
                                                 <div key={i} className="aspect-[4/5] sm:aspect-square md:aspect-[4/5] w-full bg-muted/50 rounded-3xl animate-shimmer border-2" />
                                             ))
                                         ) : (
-                                            dishes?.map((dish) => (
+                                            filteredDishes?.map((dish) => (
                                                 <Card key={dish.id} className="group relative aspect-video sm:aspect-square md:aspect-[4/5] rounded-3xl border-2 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 overflow-hidden bg-background/50 backdrop-blur-sm">
                                                     <div className="absolute inset-0 z-0">
                                                         <Image
