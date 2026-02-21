@@ -4,19 +4,19 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { MainPanel } from '@/components/fridge/main-panel';
-import type { Meal } from '@/lib/types';
 import {
   SidebarProvider,
   Sidebar as AppSidebar,
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, limit, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, limit } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { UserProfile, Meal } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { AppHeader } from '@/components/layout/app-header';
+import { Refrigerator, Loader2 } from 'lucide-react';
 
 export default function FridgePage() {
   const { user, isUserLoading } = useUser();
