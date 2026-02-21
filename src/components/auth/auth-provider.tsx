@@ -97,20 +97,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const hasPreferences = !!data?.mainObjective;
       const hasPricing = !!data?.subscriptionStatus;
       const hasAvatar = !!data?.avatarUrl;
-      const fullySetup = hasBasicProfile && hasPersonalization && hasPreferences && hasPricing && hasAvatar;
+      const isFamilyMember = !!data?.chefId;
+      const fullySetup = (hasBasicProfile && hasPersonalization && hasPreferences && hasPricing && hasAvatar) || isFamilyMember;
 
       setIsFullySetup(fullySetup);
       setLoading(false);
 
-      const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password');
+      const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password') || pathname.startsWith('/join-family');
 
       if (isAdmin) {
         if (!pathname.startsWith('/admin')) {
           router.replace('/admin');
         }
+      } else if (isFamilyMember) {
+        // Skip onboarding for family members
+        if (isAuthRoute || ['/welcome', '/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p))) {
+          router.replace('/dashboard');
+        }
       } else {
-        // Onboarding logic
-        if (!hasBasicProfile && !pathname.startsWith('/welcome') && !pathname.startsWith('/register')) {
+        // Onboarding logic: only for primary users
+        if (!hasBasicProfile && !pathname.startsWith('/welcome') && !pathname.startsWith('/register') && !pathname.startsWith('/join-family')) {
           router.replace('/welcome');
         } else if (hasBasicProfile && !hasPersonalization && !pathname.startsWith('/personalization')) {
           router.replace('/personalization');

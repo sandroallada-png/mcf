@@ -8,7 +8,9 @@ import { doc, getDoc, updateDoc, setDoc, Timestamp } from 'firebase/firestore';
 import {
     createUserWithEmailAndPassword,
     updateProfile,
-    signOut
+    signOut,
+    signInWithPopup,
+    GoogleAuthProvider
 } from 'firebase/auth';
 import {
     Users,
@@ -104,55 +106,77 @@ export default function JoinFamilyPage() {
         const email = `foyer${invite.phone.replace(/\+/g, '')}@cook.flex`;
 
         try {
-            // 1. Create Auth User
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-
-            // 2. Update Auth Profile
-            await updateProfile(user, { displayName: name });
-
-            // 3. Create User Profile in Firestore
-            const userProfile = {
-                id: user.uid,
-                name: name,
-                email: email,
-                chefId: invite.chefId,
-                role: 'user',
-                phoneNumber: invite.phone,
-                xp: 0,
-                level: 1,
-                streak: 0,
-                targetCalories: 2000,
-                createdAt: Timestamp.now(),
-                isAITrainingEnabled: true,
-                origin: invite.chefName ? `Cuisine familiale (${invite.chefName})` : 'Cuisine familiale',
-            };
-
-            await setDoc(doc(firestore, 'users', user.uid), userProfile);
-
-            // 4. Mark invite as accepted
-            await updateDoc(doc(firestore, 'invites', invite.id), { status: 'accepted' });
-
-            toast({
-                title: "Bienvenue dans la famille !",
-                description: `Vous avez rejoint le foyer de ${invite.chefName}.`,
-            });
-
-            router.push('/dashboard');
+            await finishJoin(user, email, name);
         } catch (error: any) {
             console.error(error);
             let msg = "Une erreur est survenue lors de l'inscription.";
             if (error.code === 'auth/email-already-in-use') {
                 msg = "Ce numéro de téléphone est déjà associé à un compte.";
             }
-            toast({
-                variant: "destructive",
-                title: "Échec de l'inscription",
-                description: msg
-            });
+            toast({ variant: "destructive", title: "Échec de l'inscription", description: msg });
         } finally {
             setIsJoining(false);
         }
+    };
+
+    const handleGoogleJoin = async () => {
+        if (!invite) return;
+        setIsJoining(true);
+        try {
+            const provider = new GoogleAuthProvider();
+            const userCredential = await signInWithPopup(auth, provider);
+            const user = userCredential.user;
+            await finishJoin(user, user.email || '', user.displayName || name);
+        } catch (error: any) {
+            console.error(error);
+            toast({ variant: "destructive", title: "Échec Google", description: "Impossible de se connecter avec Google." });
+        } finally {
+            setIsJoining(false);
+        }
+    };
+
+    const finishJoin = async (user: any, email: string, displayName: string) => {
+        // 3. Create/Update User Profile in Firestore
+        const userProfile = {
+            id: user.uid,
+            name: displayName,
+            email: email,
+            chefId: invite.chefId,
+            role: 'user',
+            phoneNumber: invite.phone || '',
+            xp: 0,
+            level: 1,
+            streak: 0,
+            targetCalories: 2000,
+            createdAt: Timestamp.now(),
+            isAITrainingEnabled: true,
+            origin: invite.chefName ? `Cuisine familiale (${invite.chefName})` : 'Cuisine familiale',
+        };
+
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const existingDoc = await getDoc(userDocRef);
+
+        if (existingDoc.exists()) {
+            await updateDoc(userDocRef, {
+                chefId: invite.chefId,
+                role: 'user',
+                origin: userProfile.origin
+            });
+        } else {
+            await setDoc(userDocRef, userProfile);
+        }
+
+        // 4. Mark invite as accepted
+        await updateDoc(doc(firestore, 'invites', invite.id), { status: 'accepted' });
+
+        toast({
+            title: "Bienvenue dans la famille !",
+            description: `Vous avez rejoint le foyer de ${invite.chefName}.`,
+        });
+
+        router.push('/dashboard');
     };
 
     if (isLoading) {
@@ -261,17 +285,36 @@ export default function JoinFamilyPage() {
                         </div>
 
                         <Button
+                            type="submit"
+                            className="w-full h-16 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group"
                             disabled={isJoining}
-                            className="w-full h-16 rounded-2xl bg-white text-black hover:bg-primary hover:text-white transition-all duration-500 font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-white/5 group"
                         >
-                            {isJoining ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
+                            {isJoining ? <Loader2 className="h-6 w-6 animate-spin" /> : (
                                 <>
-                                    Finaliser mon accès
+                                    Rejoindre le foyer
                                     <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
+                        </Button>
+
+                        <div className="relative py-2">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-white/5"></div>
+                            </div>
+                            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest">
+                                <span className="bg-black px-4 text-white/20">Ou</span>
+                            </div>
+                        </div>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleGoogleJoin}
+                            className="w-full h-14 rounded-2xl border-white/10 bg-white/5 text-white font-bold hover:bg-white/10 transition-all flex gap-3"
+                            disabled={isJoining}
+                        >
+                            <Globe className="h-5 w-5 text-blue-400" />
+                            Continuer avec Google
                         </Button>
                     </form>
                 </CardContent>
