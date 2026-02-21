@@ -49,3 +49,5 @@ DOCUMENTATION.md
 /.idx/
 /firebase.json
 /.firebaserc
+/website/.next/
+/website/node_modules/

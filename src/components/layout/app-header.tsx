@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ShoppingCart, Menu, LogOut, Settings, LifeBuoy } from 'lucide-react';
+import { ShoppingCart, Menu, LogOut, Settings, LifeBuoy, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -36,9 +36,14 @@ export function AppHeader({ title, icon, user, sidebarProps }: AppHeaderProps) {
     const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
     const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
-    const handleLogout = () => {
-        auth.signOut();
-        router.push('/');
+    const handleLogout = async () => {
+        try {
+            await auth.signOut();
+            router.push('/login');
+        } catch (error) {
+            console.error("Logout error:", error);
+            toast({ variant: "destructive", title: "Erreur", description: "Impossible de vous déconnecter." });
+        }
     };
 
     return (
@@ -119,6 +124,11 @@ export function AppHeader({ title, icon, user, sidebarProps }: AppHeaderProps) {
                                 <DropdownMenuItem asChild className="rounded-lg h-10 text-xs font-bold cursor-pointer focus:bg-primary/5 focus:text-primary">
                                     <Link href="/support" className="flex items-center w-full">
                                         <LifeBuoy className="mr-3 h-4 w-4 opacity-70" />Aide & Support
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="rounded-lg h-10 text-xs font-bold cursor-pointer focus:bg-primary/5 focus:text-primary">
+                                    <Link href="/foyer-control" className="flex items-center w-full">
+                                        <ArrowUpRight className="mr-3 h-4 w-4 opacity-70" />Gérer le Foyer
                                     </Link>
                                 </DropdownMenuItem>
                             </div>

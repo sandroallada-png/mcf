@@ -204,9 +204,13 @@ export default function RegisterPage() {
                   <div className="hidden lg:block absolute inset-0">
                     <Image src={item.image} alt="Cuisine" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" priority={index === 0} />
                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
+                    <div className="absolute bottom-16 left-12 right-12 z-20 space-y-2">
+                      <h3 className="text-3xl font-black uppercase tracking-tighter">L'intelligence au service de la santé</h3>
+                      <p className="text-lg font-medium text-white/80">Automatisation et rappel intelligent</p>
+                    </div>
                   </div>
                   <div className="lg:hidden relative w-full h-full flex items-center justify-center p-6 sm:p-12">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-[500px] max-h-[500px] bg-white/5 blur-[120px] rounded-full" />
+                    <div className="absolute top-12 left-1/2 -translate-x-1/2 w-full h-full max-w-[500px] max-h-[500px] bg-white/5 blur-[120px] rounded-full" />
                     <div className="relative w-full max-w-[360px] aspect-[9/14] bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-2xl rounded-[3.5rem] border border-white/20 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.4)] overflow-hidden flex items-center justify-center self-center mb-12">
                       <div className="absolute inset-0 bg-gradient-to-tr from-white/5 via-transparent to-transparent pointer-events-none" />
                       <div className="relative w-full h-full p-10">
@@ -219,7 +223,7 @@ export default function RegisterPage() {
             </CarouselContent>
           </Carousel>
         </div>
-        <div className="absolute bottom-32 lg:bottom-12 left-0 right-0 z-20 flex justify-center gap-2">
+        <div className="absolute bottom-40 lg:bottom-36 left-0 right-0 z-20 flex justify-center gap-2">
           {carouselItems.map((_, index) => (
             <div key={index} className={`h-2 w-2 rounded-full transition-all duration-300 ${current === index ? 'bg-white w-6' : 'bg-white/40'}`} />
           ))}
@@ -236,7 +240,7 @@ export default function RegisterPage() {
       </div>
 
       {/* Right Pane - Professional Multi-step Form */}
-      <div className={`${showForm ? 'flex' : 'hidden lg:flex'} w-full bg-background p-6 lg:p-12 lg:h-full lg:overflow-y-auto relative`}>
+      <div className={`${showForm ? 'flex' : 'hidden lg:flex'} w-full bg-background p-6 lg:p-12 lg:h-full lg:overflow-y-auto relative justify-center`}>
         <div className="mx-auto w-full max-w-[420px] py-12 space-y-12">
           {/* Step Progress Indicator (Enhanced) - Now in normal flow */}
           <div className="flex items-center justify-center gap-3 w-full px-6">

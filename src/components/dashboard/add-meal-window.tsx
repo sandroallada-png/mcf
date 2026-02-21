@@ -16,7 +16,8 @@ import {
     UtensilsCrossed,
     PlusCircle,
     HelpCircle,
-    Flame
+    Flame,
+    CheckCircle2
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -64,21 +65,67 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [sentMissingMeal, setSentMissingMeal] = useState(false);
 
     // Fetch dishes for search
     const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
     const dishesQuery = useMemoFirebase(() => query(dishesCollectionRef, orderBy('name'), limit(50)), [dishesCollectionRef]);
     const { data: dishes, isLoading: isLoadingDishes } = useCollection<Dish>(dishesQuery);
 
+    const handleSendMissingMeal = async () => {
+        if (!searchTerm || !userId) return;
+        setIsSubmitting(true);
+        try {
+            await addDocumentNonBlocking(collection(firestore, 'missingMeals'), {
+                name: searchTerm,
+                userId: userId,
+                userEmail: user?.email || 'Inconnu',
+                userName: user?.displayName || 'Utilisateur',
+                createdAt: Timestamp.now(),
+                status: 'pending'
+            });
+            setSentMissingMeal(true);
+            toast({
+                title: "Demande envoyée !",
+                description: "Nous avons bien reçu votre suggestion. Nos experts l'ajouteront bientôt."
+            });
+        } catch (error) {
+            console.error("Error sending missing meal:", error);
+            toast({ variant: "destructive", title: "Erreur", description: "Impossible d'envoyer votre demande." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const getDefaultMealType = (): 'breakfast' | 'lunch' | 'dinner' | 'dessert' => {
+        const hour = new Date().getHours();
+        // Si on est le matin (5h-11h), on suggère le Déjeuner
+        if (hour >= 5 && hour < 11) return 'lunch';
+        // Si on est le midi (11h-15h), on suggère le Dîner (ou Dessert/Goûter ?)
+        // Le client dit "on ne peut pas être à 6h et programmer pour 6h", donc on anticipe.
+        if (hour >= 11 && hour < 17) return 'dinner';
+        // Le soir, on suggère le Petit-déjeuner du lendemain
+        if (hour >= 17 && hour < 22) return 'breakfast';
+        // Fin de soirée / Nuit, on suggère le Petit-déjeuner ou Déjeuner
+        return 'breakfast';
+    };
+
     const form = useForm<MealFormValues>({
         resolver: zodResolver(mealFormSchema),
         defaultValues: {
             name: '',
-            type: 'lunch', // Default
+            type: getDefaultMealType(),
             cookedBy: '',
             date: new Date(),
         },
     });
+
+    useEffect(() => {
+        if (isOpen) {
+            form.setValue('type', getDefaultMealType());
+            form.setValue('date', new Date());
+        }
+    }, [isOpen, form]);
 
     // Filter dishes based on search term (client-side for responsiveness on small dataset)
     const filteredDishes = useMemo(() => {
@@ -400,6 +447,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                         onChange={(e) => {
                                                             field.onChange(e);
                                                             setSearchTerm(e.target.value);
+                                                            setSentMissingMeal(false); // Reset when user types
                                                             if (e.target.value === '') setSelectedDish(null);
                                                         }}
                                                     />
@@ -548,6 +596,32 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                             <div className="flex flex-col items-center gap-2">
                                                                 <HelpCircle className="h-8 w-8 text-muted-foreground/30" />
                                                                 <p className="text-sm font-medium text-muted-foreground">Repas pas encore disponible</p>
+                                                                {searchTerm.length > 2 && (
+                                                                    <div className="mt-2 space-y-3 w-full">
+                                                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                                            Nous avons bien remarqué que votre repas est absent.
+                                                                            Souhaitez-vous nous le signaler pour que nos modérateurs puissent l'ajouter ?
+                                                                        </p>
+                                                                        {!sentMissingMeal ? (
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="secondary"
+                                                                                size="sm"
+                                                                                className="w-full text-xs font-bold"
+                                                                                onClick={handleSendMissingMeal}
+                                                                                disabled={isSubmitting}
+                                                                            >
+                                                                                {isSubmitting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+                                                                                Envoyer ce repas absent
+                                                                            </Button>
+                                                                        ) : (
+                                                                            <div className="flex items-center justify-center gap-2 text-primary font-bold text-xs p-2 bg-primary/5 rounded-lg border border-primary/20">
+                                                                                <CheckCircle2 className="h-4 w-4" />
+                                                                                Signalé avec succès !
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <Button
                                                                 type="button"
@@ -576,7 +650,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Type</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Sélectionnez" />
@@ -601,7 +675,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Cuisinier</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value || ''}>
+                                                <Select onValueChange={field.onChange} value={field.value || ''}>
                                                     <FormControl>
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="Moi" />

@@ -74,8 +74,20 @@ export const UserProfileSchema = z.object({
   // mainGoals: z.string().optional(), // Deprecated in favor of mainObjective
   allergies: z.string().optional(),
   preferences: z.string().optional(),
+  chefId: z.string().optional().describe('The UID of the household chef/owner if this user is a member.'),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
+
+export type HouseholdInvite = {
+  id: string;
+  chefId: string;
+  chefName: string;
+  name: string;
+  phone: string;
+  createdAt: Timestamp;
+  expiresAt: Timestamp;
+  status: 'pending' | 'accepted';
+};
 
 
 export const PromotionSchema = z.object({
@@ -151,6 +163,16 @@ export const UserContributionSchema = z.object({
   imageUrl: z.string().url().optional(),
 });
 export type UserContribution = z.infer<typeof UserContributionSchema>;
+
+export type MissingMeal = {
+  id: string;
+  name: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  status: 'pending' | 'added' | 'rejected';
+  createdAt: Timestamp;
+};
 
 export const FridgeItemSchema = z.object({
   id: z.string(),

@@ -154,8 +154,22 @@ export default function PreferencesPage() {
         }
     };
 
-    const handleSkip = () => {
-        router.push('/pricing');
+    const handleSkip = async () => {
+        if (!user) return;
+        showLoading("Chargement...");
+        try {
+            const userRef = doc(firestore, `users/${user.uid}`);
+            // On définit un objectif par défaut pour que l'AuthProvider laisse passer
+            await setDoc(userRef, {
+                mainObjective: 'À définir',
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+
+            router.push('/pricing');
+        } catch (error) {
+            console.error("Failed to skip preferences:", error);
+            hideLoading();
+        }
     };
 
     return (

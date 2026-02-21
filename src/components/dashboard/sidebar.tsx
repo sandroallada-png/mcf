@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Loader2, Sparkles, Target, User, Activity, Calendar, Refrigerator, BarChart2, Star, History, ShoppingCart, MessageSquare, Bot, Save, LayoutDashboard, Trophy, ChefHat, Shield, UtensilsCrossed, Gem, Edit } from 'lucide-react';
+import { Lightbulb, Loader2, Sparkles, Target, User, Activity, Calendar, Refrigerator, BarChart2, Star, History, ShoppingCart, MessageSquare, Bot, Save, LayoutDashboard, Trophy, ChefHat, Shield, UtensilsCrossed, Gem, Edit, Package } from 'lucide-react';
 import type { Meal } from '@/lib/types';
 import { getTipsAction } from '@/app/actions';
 import { useState, useEffect } from 'react';
@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 export const mainNavLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="h-5 w-5" /> },
   { href: '/cuisine', label: 'Cuisine', icon: <ChefHat className="h-5 w-5" /> },
+  { href: '/boxe', label: <span className="flex items-center gap-2">Ma Boxe <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-primary/10 text-primary border-none">Nouveau</Badge></span>, icon: <Package className="h-5 w-5" /> },
   { href: '/atelier', label: <span className="flex items-center gap-2">Atelier du Chef <Gem className="h-3 w-3 text-primary" /></span>, icon: <UtensilsCrossed className="h-5 w-5" /> },
   { href: '/calendar', label: 'Calendrier', icon: <Calendar className="h-5 w-5" /> },
   { href: '/my-flex-ai', label: 'Assistant Personnel', icon: <Bot className="h-5 w-5" /> },

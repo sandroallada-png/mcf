@@ -11,12 +11,15 @@ service cloud.firestore {
     }
 
     match /users/{userId}/{documents=**} {
-      allow read, write: if isUser(userId) || isAdmin();
+      // Lecture permise pour l'utilisateur, l'admin, ou tout le monde (pour l'interface visiteur)
+      // Note: On pourrait restreindre davantage avec un flag 'isPublic' dans le futur.
+      allow read: if isUser(userId) || isAdmin() || true;
+      allow write: if isUser(userId) || isAdmin();
     }
     
     match /users/{userId} {
       allow list: if isAdmin();
-      allow get: if isUser(userId) || isAdmin();
+      allow get: if true; // Permettre aux visiteurs de charger le profil
       allow create: if isUser(userId);
       allow update: if isUser(userId) || isAdmin();
       allow delete: if isUser(userId) || isAdmin();
@@ -75,6 +78,13 @@ service cloud.firestore {
         allow list: if true;
     }
     
+    // Invites: Root level collection for household invitations
+    match /invites/{inviteId} {
+      allow read: if true; // Needs to be readable for pre-filling during signup
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (resource.data.chefId == request.auth.uid || isAdmin());
+    }
+
     // User Contributions: Écriture pour les utilisateurs connectés, lecture pour l'admin.
     match /userContributions/{contributionId} {
       allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;

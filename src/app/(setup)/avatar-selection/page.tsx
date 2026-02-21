@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useUser, useFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { Check, Sparkles, User, Camera, ArrowRight, Globe } from 'lucide-react';
+import { Check, Sparkles, User, Camera, ArrowRight, Globe, HelpCircle } from 'lucide-react';
 import { ImageUploader } from '@/components/admin/image-uploader';
 import Image from 'next/image';
 import { avatarUrls } from '@/lib/avatars';
@@ -22,6 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function AvatarSelectionPage() {
   const router = useRouter();
@@ -199,9 +204,26 @@ export default function AvatarSelectionPage() {
             </div>
 
             <div className="bg-background border-2 border-muted-foreground/10 rounded-[2rem] p-6 hover:border-primary/20 transition-all duration-500">
-              <div className="flex items-center gap-3 mb-4">
-                <Globe className="h-4 w-4 text-primary" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Votre Pays d'Origine</p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Votre Pays d'Origine</p>
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary group/help">
+                      <HelpCircle className="h-4 w-4 transition-transform group-hover:scale-110" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="end" className="w-72 p-5 rounded-[1.5rem] border-2 shadow-2xl bg-background/95 backdrop-blur-xl">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">Pourquoi cette info ?</p>
+                      <p className="text-xs font-medium leading-relaxed text-muted-foreground">
+                        Cela nous permet de vous proposer des recommandations culinaires adaptées à vos racines et de personnaliser votre assistant MyFlex pour qu'il comprenne mieux vos préférences de saveurs locales.
+                      </p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <Select onValueChange={setSelectedCountry} value={selectedCountry}>

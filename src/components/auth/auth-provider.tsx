@@ -11,9 +11,16 @@ import { useFirebase } from '@/firebase';
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
+  userData: any | null;
+  isFullySetup: boolean;
 };
 
-const AuthContext = createContext<AuthContextValue>({ user: null, loading: true });
+const AuthContext = createContext<AuthContextValue>({
+  user: null,
+  loading: true,
+  userData: null,
+  isFullySetup: false
+});
 
 function NavigationEvents() {
   const pathname = usePathname();
@@ -29,7 +36,9 @@ function NavigationEvents() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { firestore } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserDataState] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFullySetup, setIsFullySetup] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -38,75 +47,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+
+      if (!u) {
+        setUserDataState(null);
+        setIsFullySetup(false);
+        setLoading(false);
+
+        const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password');
+        const isProtectedRoute = !['/', '/about', '/support', '/market', '/forum', '/terms', '/privacy'].includes(pathname) && !isAuthRoute;
+
+        if (isProtectedRoute) {
+          router.replace('/login');
+        }
+        return;
+      }
+
+      // User logged in
+      const isAdmin = u.email === ADMIN_EMAIL;
+      const userDocRef = doc(firestore, 'users', u.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      let data;
+
+      if (!userDocSnap.exists()) {
+        const newData = {
+          id: u.uid,
+          name: u.displayName || 'Nouvel utilisateur',
+          email: u.email,
+          photoURL: u.photoURL,
+          role: isAdmin ? 'admin' : 'user',
+          createdAt: serverTimestamp(),
+          subscriptionStatus: '',
+          xp: 0,
+          level: 1,
+        };
+        await setDoc(userDocRef, newData, { merge: true });
+        data = newData;
+      } else {
+        data = userDocSnap.data();
+        if (isAdmin && data?.role !== 'admin') {
+          await updateDoc(userDocRef, { role: 'admin' });
+          data.role = 'admin';
+        }
+      }
+
+      setUserDataState(data);
+
+      const hasBasicProfile = !!(data?.age && data?.country && data?.referralSource);
+      const hasPersonalization = !!data?.theme;
+      const hasPreferences = !!data?.mainObjective;
+      const hasPricing = !!data?.subscriptionStatus;
+      const hasAvatar = !!data?.avatarUrl;
+      const fullySetup = hasBasicProfile && hasPersonalization && hasPreferences && hasPricing && hasAvatar;
+
+      setIsFullySetup(fullySetup);
       setLoading(false);
 
       const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password');
-      const isProtectedRoute = !['/', '/about', '/support', '/market', '/forum', '/terms', '/privacy'].includes(pathname) && !isAuthRoute;
 
-      if (u) {
-        const isAdmin = u.email === ADMIN_EMAIL;
-        const userDocRef = doc(firestore, 'users', u.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        let userData;
-
-        if (!userDocSnap.exists()) {
-          // Create new user doc
-          await setDoc(userDocRef, {
-            id: u.uid,
-            name: u.displayName || 'Nouvel utilisateur',
-            email: u.email,
-            photoURL: u.photoURL,
-            role: isAdmin ? 'admin' : 'user',
-            createdAt: serverTimestamp(),
-            subscriptionStatus: '', // Empty initially
-            xp: 0,
-            level: 1,
-          }, { merge: true });
-
-          const freshSnap = await getDoc(userDocRef);
-          userData = freshSnap.data();
-        } else {
-          userData = userDocSnap.data();
-          if (isAdmin && userData?.role !== 'admin') {
-            await updateDoc(userDocRef, { role: 'admin' });
-            userData.role = 'admin';
-          }
-        }
-
-        if (!userData) {
-          userData = { subscriptionStatus: '', role: isAdmin ? 'admin' : 'user', xp: 0, level: 1 };
-        }
-
-        const hasBasicProfile = !!(userData?.age && userData?.country && userData?.referralSource);
-        const hasPersonalization = !!userData?.theme;
-        const hasPreferences = !!userData?.mainObjective;
-        const hasPricing = !!userData?.subscriptionStatus;
-        const hasAvatar = !!userData?.avatarUrl;
-        const isFullySetup = hasBasicProfile && hasPersonalization && hasPreferences && hasPricing && hasAvatar;
-
-        if (isAdmin) {
-          if (!pathname.startsWith('/admin')) {
-            router.replace('/admin');
-          }
-        } else {
-          // Linear Onboarding Flow
-          if (!hasBasicProfile && !pathname.startsWith('/welcome') && !pathname.startsWith('/register')) {
-            router.replace('/welcome');
-          } else if (hasBasicProfile && !hasPersonalization && !pathname.startsWith('/personalization')) {
-            router.replace('/personalization');
-          } else if (hasPersonalization && !hasPreferences && !pathname.startsWith('/preferences')) {
-            router.replace('/preferences');
-          } else if (hasPreferences && !hasPricing && !pathname.startsWith('/pricing')) {
-            router.replace('/pricing');
-          } else if (hasPricing && !hasAvatar && !pathname.startsWith('/avatar-selection')) {
-            router.replace('/avatar-selection');
-          } else if (isFullySetup && (isAuthRoute || ['/welcome', '/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p)))) {
-            router.replace('/dashboard');
-          }
+      if (isAdmin) {
+        if (!pathname.startsWith('/admin')) {
+          router.replace('/admin');
         }
       } else {
-        if (isProtectedRoute) {
-          router.replace('/login');
+        // Onboarding logic
+        if (!hasBasicProfile && !pathname.startsWith('/welcome') && !pathname.startsWith('/register')) {
+          router.replace('/welcome');
+        } else if (hasBasicProfile && !hasPersonalization && !pathname.startsWith('/personalization')) {
+          router.replace('/personalization');
+        } else if (hasPersonalization && !hasPreferences && !pathname.startsWith('/preferences')) {
+          router.replace('/preferences');
+        } else if (hasPreferences && !hasPricing && !pathname.startsWith('/pricing')) {
+          router.replace('/pricing');
+        } else if (hasPricing && !hasAvatar && !pathname.startsWith('/avatar-selection')) {
+          router.replace('/avatar-selection');
+        } else if (fullySetup && (isAuthRoute || ['/welcome', '/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p)))) {
+          router.replace('/dashboard');
         }
       }
     });
@@ -117,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (loading) return null;
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, userData, isFullySetup }}>
       <NavigationEvents />
       {children}
     </AuthContext.Provider>

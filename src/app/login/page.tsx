@@ -23,7 +23,7 @@ import { useLoading } from '@/contexts/loading-context';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import Image from 'next/image';
 import Autoplay from 'embla-carousel-autoplay';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Users } from 'lucide-react';
 
 const carouselItems = [
   { image: '/mcf/19.png' },
@@ -32,6 +32,14 @@ const carouselItems = [
   { image: '/mcf/17.png' },
   { image: '/mcf/18.png' }
 ];
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,11 +62,32 @@ export default function LoginPage() {
     });
   }, [api]);
 
+  const [loginMode, setLoginMode] = useState<'email' | 'phone'>('email');
+  const [phone, setPhone] = useState('');
+  const [selectedCountryName, setSelectedCountryName] = useState('France');
+
+  const phoneCountries = [
+    { name: 'France', code: '+33', flag: '🇫🇷' },
+    { name: 'Belgique', code: '+32', flag: '🇧🇪' },
+    { name: 'Suisse', code: '+41', flag: '🇨🇭' },
+    { name: 'Luxembourg', code: '+352', flag: '🇱🇺' },
+    { name: 'Allemagne', code: '+49', flag: '🇩🇪' },
+    { name: 'Italie', code: '+39', flag: '🇮🇹' },
+    { name: 'Espagne', code: '+34', flag: '🇪🇸' },
+    { name: 'Portugal', code: '+351', flag: '🇵🇹' },
+    { name: 'Royaume-Uni', code: '+44', flag: '🇬🇧' },
+    { name: 'Pays-Bas', code: '+31', flag: '🇳🇱' },
+    { name: 'Canada', code: '+1', flag: '🇨🇦' },
+    { name: 'États-Unis', code: '+1', flag: '🇺🇸' },
+    { name: 'Brésil', code: '+55', flag: '🇧🇷' },
+    { name: 'Mexique', code: '+52', flag: '🇲🇽' },
+  ];
+
   const togglePasswordVisibility = () => setIsPasswordVisible(!isPasswordVisible);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (loginMode === 'email' && (!email || !password)) {
       toast({
         variant: 'destructive',
         title: 'Champs requis',
@@ -67,10 +96,28 @@ export default function LoginPage() {
       return;
     }
 
+    if (loginMode === 'phone' && (!phone || !password)) {
+      toast({
+        variant: 'destructive',
+        title: 'Champs requis',
+        description: 'Veuillez renseigner votre numéro et votre mot de passe.',
+      });
+      return;
+    }
+
     showLoading("Connexion en cours...");
 
     try {
-      await initiateEmailSignIn(auth, email, password);
+      if (loginMode === 'email') {
+        await initiateEmailSignIn(auth, email, password);
+      } else {
+        const { firestore } = await import('@/firebase/firestore');
+        const { initiatePhoneSignIn } = await import('@/firebase/auth-actions');
+        const country = phoneCountries.find(c => c.name === selectedCountryName);
+        const code = country?.code || '+33';
+        const fullPhone = `${code}${phone.replace(/^0/, '')}`;
+        await initiatePhoneSignIn(auth, firestore, fullPhone, password);
+      }
     } catch (error) {
       console.error("Login failed:", error);
       hideLoading();
@@ -114,7 +161,7 @@ export default function LoginPage() {
         </div>
 
         {/* Pagination Dots */}
-        <div className="absolute bottom-12 left-0 right-0 z-20 flex justify-center gap-2">
+        <div className="absolute bottom-36 left-0 right-0 z-20 flex justify-center gap-2">
           {carouselItems.map((_, index) => (
             <div key={index} className={`h-2 w-2 rounded-full transition-all duration-300 ${current === index ? 'bg-white w-6' : 'bg-white/40'}`} />
           ))}
@@ -129,8 +176,8 @@ export default function LoginPage() {
       </div>
 
       {/* Right Pane - Professional Form Side */}
-      <div className="flex w-full bg-background p-6 lg:p-12 lg:h-full lg:overflow-y-auto relative items-center justify-center">
-        <div className="mx-auto w-full max-w-[420px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      <div className="flex w-full bg-background p-6 lg:p-12 lg:h-full lg:overflow-y-auto relative justify-center">
+        <div className="mx-auto w-full max-w-[420px] py-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <div className="flex flex-col items-center gap-3 text-center">
             <div>
               <h1 className="text-4xl font-black tracking-tight">De retour ?</h1>
@@ -159,15 +206,69 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Mode Selector Tabs */}
+            <div className="flex p-1 bg-muted rounded-2xl border-2">
+              <button
+                onClick={() => setLoginMode('email')}
+                className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${loginMode === 'email' ? 'bg-background shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Email
+              </button>
+              <button
+                onClick={() => setLoginMode('phone')}
+                className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${loginMode === 'phone' ? 'bg-background shadow-lg text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Membre du foyer
+              </button>
+            </div>
+
             <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">E-mail</Label>
-                <Input type="email" placeholder="jean@exemple.com" value={email} onChange={e => setEmail(e.target.value)} className="h-14 border-2 rounded-2xl focus-visible:ring-primary focus-visible:border-primary text-base font-medium px-5" required />
-              </div>
+              {loginMode === 'email' ? (
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">E-mail</Label>
+                  <Input type="email" placeholder="jean@exemple.com" value={email} onChange={e => setEmail(e.target.value)} className="h-14 border-2 rounded-2xl focus-visible:ring-primary focus-visible:border-primary text-base font-medium px-5" required />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Numéro de téléphone</Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedCountryName} onValueChange={setSelectedCountryName}>
+                      <SelectTrigger className="w-[110px] h-14 border-2 rounded-2xl focus:ring-primary">
+                        <SelectValue>
+                          <span className="flex items-center gap-2">
+                            <span>{phoneCountries.find(c => c.name === selectedCountryName)?.flag}</span>
+                            <span className="font-bold">{phoneCountries.find(c => c.name === selectedCountryName)?.code}</span>
+                          </span>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-2">
+                        {phoneCountries.map((c) => (
+                          <SelectItem key={c.name} value={c.name}>
+                            <span className="flex items-center gap-2">
+                              <span>{c.flag}</span>
+                              <span className="font-bold">{c.code}</span>
+                              <span className="text-xs text-muted-foreground ml-1">{c.name}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="tel"
+                      placeholder="612345678"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      className="flex-1 h-14 border-2 rounded-2xl focus-visible:ring-primary focus-visible:border-primary text-base font-medium px-5"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3 relative">
                 <div className="flex items-center justify-between px-1">
                   <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Mot de passe</Label>
-                  <Link href="/forgot-password" size="sm" className="text-[10px] font-black uppercase tracking-widest text-primary hover:opacity-70 transition-opacity">Oublié ?</Link>
+                  <Link href="/forgot-password" className="text-[10px] font-black uppercase tracking-widest text-primary hover:opacity-70 transition-opacity">Oublié ?</Link>
                 </div>
                 <div className="relative group">
                   <Input type={isPasswordVisible ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="h-14 border-2 rounded-2xl pr-14 px-5 text-base" required />
@@ -176,12 +277,27 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full h-16 text-lg font-black shadow-2xl shadow-primary/30 rounded-2xl group relative overflow-hidden">
+              <Button type="submit" className="w-full h-16 text-lg font-black shadow-2xl shadow-primary/30 rounded-2xl group relative overflow-hidden text-primary border-2 border-primary/20 bg-primary/5 hover:bg-primary hover:text-white-force">
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                Se connecter
+                {loginMode === 'email' ? 'Se connecter' : 'Accéder au foyer'}
                 <ArrowLeft className="ml-3 h-5 w-5 rotate-180 group-hover:translate-x-2 transition-transform" />
               </Button>
             </form>
+
+            <div className="pt-8 border-t border-muted/50 text-center space-y-4">
+              <div className="pt-8 border-t border-muted/50 text-center space-y-4">
+                <p className="text-sm font-bold text-muted-foreground">Pas encore membre ?</p>
+                <div className="p-4 rounded-2xl bg-primary/5 border-2 border-primary/10">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-3">Accès Sécurisé</p>
+                  <p className="text-xs font-medium text-muted-foreground/80 mb-4">
+                    Si un membre de votre famille vous a envoyé un lien d'invitation, utilisez-le pour configurer votre accès. Une fois votre compte créé, vous pourrez vous connecter simplement avec votre numéro de téléphone.
+                  </p>
+                  <p className="text-[9px] font-bold italic text-muted-foreground flex items-center justify-center gap-2">
+                    <Users className="h-3 w-3" /> Rejoignez la cuisine familiale en un clic.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

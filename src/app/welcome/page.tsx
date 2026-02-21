@@ -111,10 +111,19 @@ export default function WelcomePage() {
                                 <CarouselItem key={index} className="pl-0 relative h-screen bg-[#347d1c]">
                                     <Image src={item.image} alt="Cuisine" fill sizes="50vw" className="object-cover" priority={index === 0} />
                                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
+                                    <div className="absolute bottom-16 left-12 right-12 z-20 space-y-2">
+                                        <h3 className="text-3xl font-black uppercase tracking-tighter text-white">L'intelligence au service de la santé</h3>
+                                        <p className="text-lg font-medium text-white/80">Automatisation et rappel intelligent</p>
+                                    </div>
                                 </CarouselItem>
                             ))}
                         </CarouselContent>
                     </Carousel>
+                </div>
+                <div className="absolute bottom-36 left-0 right-0 z-20 flex justify-center gap-2">
+                    {carouselItems.map((_, index) => (
+                        <div key={index} className={`h-2 w-2 rounded-full transition-all duration-300 ${current === index ? 'bg-white w-6' : 'bg-white/40'}`} />
+                    ))}
                 </div>
                 <div className="absolute top-12 left-12 z-10 flex flex-col gap-2">
                     <div className="p-5 rounded-[2rem] backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
@@ -122,7 +131,7 @@ export default function WelcomePage() {
                             <LogoIcon className="w-8 h-8" />
                         </div>
                         <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg leading-tight italic">
-                            Presque prêt,<br />{user.displayName?.split(' ')[0]} !
+                            Presque prêt,<br />{user.displayName?.split(' ')[0] || 'Ami'} !
                         </h2>
                         <p className="text-xs text-white/80 font-medium tracking-wide mt-2">Plus que quelques informations pour commencer.</p>
                     </div>
@@ -130,8 +139,8 @@ export default function WelcomePage() {
             </div>
 
             {/* Right Pane - Content */}
-            <div className="flex w-full bg-background p-6 lg:p-12 lg:h-full lg:overflow-y-auto relative items-center justify-center">
-                <div className="mx-auto w-full max-w-[420px] space-y-8">
+            <div className="flex w-full bg-background p-6 lg:p-12 lg:h-full lg:overflow-y-auto relative justify-center">
+                <div className="mx-auto w-full max-w-[420px] py-12 space-y-8">
 
                     {step === 1 && (
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">

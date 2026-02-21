@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
-export function Logo() {
+export function Logo({ className }: { className?: string }) {
   return (
-    <Link href="/" className="flex items-center gap-2" aria-label="Accueil">
+    <Link href="/" className={`flex items-center gap-2 ${className || ''}`} aria-label="Accueil">
       <LogoIcon />
       <span className="font-headline text-xl font-bold">my cook flex</span>
     </Link>

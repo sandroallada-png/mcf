@@ -149,3 +149,54 @@ export async function initiatePasswordReset(authInstance: Auth, email: string): 
     throw error;
   }
 }
+
+/** Phone Number sign-in (via shadow email) */
+export async function initiatePhoneSignIn(
+  authInstance: Auth,
+  firestore: any, // Using any for Firestore instance to avoid complex type issues in this file
+  phoneNumber: string,
+  password: string
+): Promise<UserCredential> {
+  try {
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+
+    // 1. Find user by phone number
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, where('phoneNumber', '==', phoneNumber));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      showError('Échec de la connexion', "Aucun compte n'est associé à ce numéro.");
+      throw new Error('User not found');
+    }
+
+    const userData = querySnapshot.docs[0].data();
+    const shadowEmail = userData.email;
+
+    if (!shadowEmail) {
+      showError('Échec de la connexion', "Données de compte corrompues (email manquant).");
+      throw new Error('Shadow email not found');
+    }
+
+    // 2. Standard sign-in with shadow email
+    return await signInWithEmailAndPassword(authInstance, shadowEmail, password);
+  } catch (error: any) {
+    if (error.message === 'User not found' || error.message === 'Shadow email not found') {
+      throw error;
+    }
+    console.error('Phone sign-in error:', error);
+    switch (error.code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        showError('Échec de la connexion', "Numéro ou mot de passe incorrect.");
+        break;
+      case 'auth/too-many-requests':
+        showError('Échec de la connexion', 'Trop de tentatives. Réessayez plus tard.');
+        break;
+      default:
+        showError('Échec de la connexion', 'Une erreur inconnue est survenue.');
+    }
+    throw error;
+  }
+}

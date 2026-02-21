@@ -1,14 +1,15 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, Timestamp, getDocs, writeBatch } from 'firebase/firestore';
 import type { UserProfile, Meal } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Trash2, Loader2, Utensils, ChefHat, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, Loader2, Utensils, ChefHat, Calendar as CalendarIcon, Share, Users } from 'lucide-react';
+import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import {
     Dialog,
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { startOfDay, endOfDay, format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -61,34 +63,62 @@ export function WhoIsCooking() {
     const { firestore } = useFirebase();
     const { toast } = useToast();
 
-    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, `users/${user.uid}`) : null), [user, firestore]);
+    const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
     const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
-    const [todaysCooks, setTodaysCooks] = useState<Partial<Record<MealType, string>>>({});
-    const [isLoadingCooks, setIsLoadingCooks] = useState(true);
+    // Dynamic household fetching: 
+    // If I'm the chef, household = people who have me as chef.
+    // If I have a chef, household = people who have the same chef.
+    const effectiveChefId = userProfile?.chefId || user?.uid;
 
-    const [newMember, setNewMember] = useState('');
-    const [isUpdating, setIsUpdating] = useState(false);
+    const chefProfileRef = useMemoFirebase(() => (effectiveChefId ? doc(firestore, 'users', effectiveChefId) : null), [effectiveChefId, firestore]);
+    const { data: chefProfile } = useDoc<UserProfile>(chefProfileRef);
 
-    // State for assignment dialog
+    const membersQuery = useMemoFirebase(() => {
+        if (!effectiveChefId) return null;
+        return query(collection(firestore, 'users'), where('chefId', '==', effectiveChefId));
+    }, [effectiveChefId, firestore]);
+    const { data: otherMembers } = useCollection<UserProfile>(membersQuery);
+
+    const household = useMemo(() => {
+        const list: { name: string, id: string }[] = [];
+        if (chefProfile) list.push({ name: chefProfile.name, id: chefProfile.id });
+        if (otherMembers) {
+            otherMembers.forEach(m => {
+                if (m.id !== chefProfile?.id) {
+                    list.push({ name: m.name, id: m.id });
+                }
+            });
+        }
+        return list;
+    }, [chefProfile, otherMembers]);
+
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
     const [selectedCook, setSelectedCook] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>('dinner');
 
-    // State for confirmation dialog
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
     const [pendingAssignment, setPendingAssignment] = useState<CookAssignment | null>(null);
 
-    const household = userProfile?.household || [];
+    const [todaysCooks, setTodaysCooks] = useState<Partial<Record<MealType, string>>>({});
+    const [isLoadingCooks, setIsLoadingCooks] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
 
-    useState(() => {
-        if (!user) return;
+    useEffect(() => {
+        if (!user || !effectiveChefId) return;
+
         setIsLoadingCooks(true);
         const todayStart = startOfDay(new Date());
         const todayEnd = endOfDay(new Date());
+
+        // Fetch meals for the household (using chefId to see shared logs or just own)
+        // Actually, meals are in foodLogs of EACH user? 
+        // User request says "le chef pourra voir son planning". 
+        // We might need to query ALL members logs or just chef's logs if chef marks who cooks.
+        // For now, let's keep chef's logs as source of truth for the foyer's daily plan.
         const mealsTodayQuery = query(
-            collection(firestore, `users/${user.uid}/foodLogs`),
+            collection(firestore, `users/${effectiveChefId}/foodLogs`),
             where('date', '>=', Timestamp.fromDate(todayStart)),
             where('date', '<=', Timestamp.fromDate(todayEnd))
         );
@@ -103,22 +133,7 @@ export function WhoIsCooking() {
             });
             setTodaysCooks(cooks);
         }).finally(() => setIsLoadingCooks(false));
-    });
-
-    const handleAddMember = async () => {
-        if (!newMember.trim() || !userProfileRef || household.length >= 5) return;
-        setIsUpdating(true);
-        await updateDoc(userProfileRef, { household: arrayUnion(newMember.trim()) });
-        setNewMember('');
-        setIsUpdating(false);
-    };
-
-    const handleRemoveMember = async (memberName: string) => {
-        if (!userProfileRef) return;
-        setIsUpdating(true);
-        await updateDoc(userProfileRef, { household: arrayRemove(memberName) });
-        setIsUpdating(false);
-    };
+    }, [user, effectiveChefId, firestore]);
 
     const handleOpenAssignDialog = (cookName: string) => {
         setSelectedCook(cookName);
@@ -156,7 +171,7 @@ export function WhoIsCooking() {
         const dayEnd = endOfDay(date);
 
         const mealsQuery = query(
-            collection(firestore, `users/${user.uid}/foodLogs`),
+            collection(firestore, `users/${effectiveChefId}/foodLogs`),
             where('date', '>=', Timestamp.fromDate(dayStart)),
             where('date', '<=', Timestamp.fromDate(dayEnd))
         );
@@ -233,14 +248,14 @@ export function WhoIsCooking() {
                 <div className="flex flex-wrap gap-2">
                     {household.map(member => (
                         <Button
-                            key={member}
+                            key={member.id}
                             variant="outline"
                             size="sm"
-                            onClick={() => handleOpenAssignDialog(member)}
+                            onClick={() => handleOpenAssignDialog(member.name)}
                             disabled={isUpdating}
                             className="h-8 rounded font-semibold text-xs border-muted/20 hover:border-primary/20 hover:bg-primary/5"
                         >
-                            <ChefHat className="mr-2 h-3.5 w-3.5 opacity-60" /> {member}
+                            <ChefHat className="mr-2 h-3.5 w-3.5 opacity-60" /> {member.name}
                         </Button>
                     ))}
                 </div>
@@ -250,25 +265,29 @@ export function WhoIsCooking() {
                 <p className="text-sm font-medium">Membres du foyer</p>
                 <div className="space-y-2">
                     {household.map(member => (
-                        <div key={member} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                        <div key={member.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
                             <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6"><AvatarFallback className="text-xs">{member.charAt(0)}</AvatarFallback></Avatar>
-                                <span className="text-sm">{member}</span>
+                                <Avatar className="h-6 w-6"><AvatarFallback className="text-xs">{member.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span className="text-sm">{member.name} {member.id === effectiveChefId ? '(Chef)' : ''}</span>
                             </div>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/70" onClick={() => handleRemoveMember(member)} disabled={isUpdating}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
                         </div>
                     ))}
                 </div>
-                {household.length < 5 && (
-                    <div className="flex items-center gap-2 pt-2">
-                        <Input placeholder="Ajouter un membre..." value={newMember} onChange={(e) => setNewMember(e.target.value)} disabled={isUpdating} />
-                        <Button onClick={handleAddMember} disabled={!newMember.trim() || isUpdating}><Plus className="h-4 w-4 mr-2" /> Ajouter</Button>
-                    </div>
-                )}
             </div>
 
+            {!userProfile?.chefId && (
+                <div className="pt-6 mt-6 border-t border-muted/20">
+                    <Link href="/foyer-control">
+                        <Button
+                            variant="outline"
+                            className="w-full h-10 rounded-xl font-black text-[10px] uppercase tracking-widest border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary transition-all shadow-sm"
+                        >
+                            <Users className="mr-2 h-4 w-4" />
+                            Gérer les membres & Invitations
+                        </Button>
+                    </Link>
+                </div>
+            )}
             {/* --- Dialogs --- */}
             <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
                 <DialogContent>

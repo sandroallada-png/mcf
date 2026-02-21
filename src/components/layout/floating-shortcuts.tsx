@@ -7,13 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuthContext } from '@/components/auth/auth-provider';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock } from 'lucide-react';
 
 export function FloatingShortcuts() {
     const [isOpen, setIsOpen] = useState(false);
     const [display, setDisplay] = useState('0');
     const [isResult, setIsResult] = useState(false);
     const [mode, setMode] = useState<'menu' | 'calculator'>('menu');
+    const [showOnboardingWarning, setShowOnboardingWarning] = useState(false);
     const router = useRouter();
+    const pathname = usePathname();
+    const { isFullySetup, user } = useAuthContext();
     const [showTutorial, setShowTutorial] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -48,8 +54,21 @@ export function FloatingShortcuts() {
 
     // Reset mode when closing
     useEffect(() => {
-        if (!isOpen) setMode('menu');
+        if (!isOpen) {
+            setMode('menu');
+            setShowOnboardingWarning(false);
+        }
     }, [isOpen]);
+
+    const handleNavigation = (path: string) => {
+        const isAdmin = user?.email === 'emapms@gmail.com';
+        if (!isFullySetup && user && !isAdmin) {
+            setShowOnboardingWarning(true);
+            return;
+        }
+        setIsOpen(false);
+        router.push(path);
+    };
 
     // Ensure calculator stays within viewport when opened
     useEffect(() => {
@@ -384,7 +403,7 @@ export function FloatingShortcuts() {
                             right: mode === 'menu' ? '0' : 'max(1rem, env(safe-area-inset-right, 1rem))',
                             left: 'auto',
                         }),
-                        width: mode === 'menu' ? '4rem' : 'min(20rem, calc(100vw - 2rem))',
+                        width: mode === 'menu' ? (showOnboardingWarning ? '20rem' : '4rem') : 'min(20rem, calc(100vw - 2rem))',
                         maxWidth: 'calc(100vw - 1rem)',
                         transform: !position ? 'translateY(-50%)' : 'none',
                         animation: !position && !isDragging ? 'slideInFromRightSmooth 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
@@ -397,7 +416,7 @@ export function FloatingShortcuts() {
                     <CardHeader
                         className={cn(
                             "p-2 bg-gradient-to-r from-background to-secondary/20 cursor-move select-none active:cursor-grabbing border-b transition-all duration-300",
-                            mode === 'menu' ? "justify-center" : "justify-between"
+                            (mode === 'menu' && !showOnboardingWarning) ? "justify-center" : "justify-between"
                         )}
                         style={{ touchAction: 'none' }}
                         onMouseDown={handleDragStart}
@@ -424,6 +443,21 @@ export function FloatingShortcuts() {
                                         e.stopPropagation();
                                         setIsOpen(false);
                                     }}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ) : showOnboardingWarning ? (
+                            <div className="flex justify-between items-center w-full">
+                                <CardTitle className="text-sm font-black flex items-center gap-2 text-primary uppercase tracking-tighter">
+                                    <Sparkles className="h-4 w-4" />
+                                    Accès Restreint
+                                </CardTitle>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => setShowOnboardingWarning(false)}
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -462,91 +496,116 @@ export function FloatingShortcuts() {
                     </CardHeader>
 
                     <CardContent
-                        className={cn("p-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", mode === 'menu' ? "p-1" : "p-4")}
+                        className={cn("p-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", mode === 'menu' ? "p-1" : "p-4")}
                     >
-                        {mode === 'menu' ? (
-                            <div className="flex flex-col gap-4 items-center py-2">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400 hover:scale-110 transition-transform shadow-sm"
-                                    onClick={() => setMode('calculator')}
-                                    title="Calculatrice"
+                        <AnimatePresence mode="wait">
+                            {showOnboardingWarning ? (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className="p-4 space-y-4 text-center"
                                 >
-                                    <Calculator className="h-5 w-5" />
-                                </Button>
+                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <Lock className="h-8 w-8 text-primary" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="font-black text-lg leading-tight uppercase tracking-tight">Presque là !</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed italic">
+                                            "Ne vous inquiétez pas, vous y êtes presque ! Finalisez votre profil pour débloquer tout votre univers culinaire."
+                                        </p>
+                                    </div>
+                                    <Button
+                                        className="w-full h-11 rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-primary/20"
+                                        onClick={() => setShowOnboardingWarning(false)}
+                                    >
+                                        Continuer l'inscription
+                                    </Button>
+                                </motion.div>
+                            ) : mode === 'menu' ? (
+                                <div className="flex flex-col gap-4 items-center py-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400 hover:scale-110 transition-transform shadow-sm"
+                                        onClick={() => setMode('calculator')}
+                                        title="Calculatrice"
+                                    >
+                                        <Calculator className="h-5 w-5" />
+                                    </Button>
 
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 rounded-full bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300 hover:scale-110 transition-transform shadow-sm"
-                                    onClick={() => { setIsOpen(false); router.push('/cuisine'); }}
-                                    title="Cuisine"
-                                >
-                                    <Sparkles className="h-5 w-5" />
-                                </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300 hover:scale-110 transition-transform shadow-sm"
+                                        onClick={() => handleNavigation('/cuisine')}
+                                        title="Cuisine"
+                                    >
+                                        <Sparkles className="h-5 w-5" />
+                                    </Button>
 
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 rounded-full bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300 hover:scale-110 transition-transform shadow-sm"
-                                    onClick={() => { setIsOpen(false); router.push('/fridge'); }}
-                                    title="Frigo"
-                                >
-                                    <Refrigerator className="h-5 w-5" />
-                                </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300 hover:scale-110 transition-transform shadow-sm"
+                                        onClick={() => handleNavigation('/fridge')}
+                                        title="Frigo"
+                                    >
+                                        <Refrigerator className="h-5 w-5" />
+                                    </Button>
 
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-300 hover:scale-110 transition-transform shadow-sm"
-                                    onClick={() => { setIsOpen(false); router.push('/courses'); }}
-                                    title="Courses"
-                                >
-                                    <ShoppingCart className="h-5 w-5" />
-                                </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-300 hover:scale-110 transition-transform shadow-sm"
+                                        onClick={() => handleNavigation('/courses')}
+                                        title="Courses"
+                                    >
+                                        <ShoppingCart className="h-5 w-5" />
+                                    </Button>
 
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 hover:scale-110 transition-transform shadow-sm"
-                                    onClick={() => { setIsOpen(false); router.push('/calendar'); }}
-                                    title="Calendrier"
-                                >
-                                    <Calendar className="h-5 w-5" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="bg-muted text-right text-xl font-mono p-4 rounded-md mb-4 break-words min-h-[4rem] flex items-center justify-end shadow-inner">
-                                    {display}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 hover:scale-110 transition-transform shadow-sm"
+                                        onClick={() => handleNavigation('/calendar')}
+                                        title="Calendrier"
+                                    >
+                                        <Calendar className="h-5 w-5" />
+                                    </Button>
                                 </div>
-                                <div className="grid grid-cols-4 gap-2">
-                                    <Button variant="outline" className="col-span-2 text-destructive hover:text-destructive/90 hover:bg-destructive/10" onClick={() => handleClearClick('all')}>AC</Button>
-                                    <Button variant="outline" onClick={() => handleClearClick('backspace')}>C</Button>
-                                    <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('/')}>÷</Button>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="bg-muted text-right text-xl font-mono p-4 rounded-md mb-4 break-words min-h-[4rem] flex items-center justify-end shadow-inner">
+                                        {display}
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <Button variant="outline" className="col-span-2 text-destructive hover:text-destructive/90 hover:bg-destructive/10" onClick={() => handleClearClick('all')}>AC</Button>
+                                        <Button variant="outline" onClick={() => handleClearClick('backspace')}>C</Button>
+                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('/')}>÷</Button>
 
-                                    <Button variant="outline" onClick={() => handleDigitClick('7')}>7</Button>
-                                    <Button variant="outline" onClick={() => handleDigitClick('8')}>8</Button>
-                                    <Button variant="outline" onClick={() => handleDigitClick('9')}>9</Button>
-                                    <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('*')}>×</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('7')}>7</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('8')}>8</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('9')}>9</Button>
+                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('*')}>×</Button>
 
-                                    <Button variant="outline" onClick={() => handleDigitClick('4')}>4</Button>
-                                    <Button variant="outline" onClick={() => handleDigitClick('5')}>5</Button>
-                                    <Button variant="outline" onClick={() => handleDigitClick('6')}>6</Button>
-                                    <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('-')}>-</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('4')}>4</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('5')}>5</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('6')}>6</Button>
+                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('-')}>-</Button>
 
-                                    <Button variant="outline" onClick={() => handleDigitClick('1')}>1</Button>
-                                    <Button variant="outline" onClick={() => handleDigitClick('2')}>2</Button>
-                                    <Button variant="outline" onClick={() => handleDigitClick('3')}>3</Button>
-                                    <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('+')}>+</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('1')}>1</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('2')}>2</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('3')}>3</Button>
+                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('+')}>+</Button>
 
-                                    <Button variant="outline" className="col-span-2" onClick={() => handleDigitClick('0')}>0</Button>
-                                    <Button variant="outline" onClick={() => handleDigitClick('.')}>.</Button>
-                                    <Button variant="default" className="bg-primary text-primary-foreground" onClick={handleEqualClick}>=</Button>
+                                        <Button variant="outline" className="col-span-2" onClick={() => handleDigitClick('0')}>0</Button>
+                                        <Button variant="outline" onClick={() => handleDigitClick('.')}>.</Button>
+                                        <Button variant="default" className="bg-primary text-primary-foreground" onClick={handleEqualClick}>=</Button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </AnimatePresence>
                     </CardContent>
                 </Card>
             )}

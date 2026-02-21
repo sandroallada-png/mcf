@@ -8,7 +8,7 @@ import { ThemeSelector } from '@/components/personalization/theme-selector';
 import { useAccentTheme } from '@/contexts/accent-theme-context';
 import { useUser, useFirebase } from '@/firebase';
 import { setDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { useLoading } from '@/contexts/loading-context';
 import { LogoIcon } from '@/components/icons';
@@ -70,8 +70,21 @@ export default function PersonalizationPage() {
     }
   };
 
-  const handleSkip = () => {
-    router.push('/preferences');
+  const handleSkip = async () => {
+    if (!user) return;
+    showLoading("Chargement...");
+    try {
+      const userRef = doc(firestore, 'users', user.uid);
+      // On définit un thème par défaut pour que l'AuthProvider laisse passer
+      await setDoc(userRef, {
+        theme: 'Vert Nature (Défaut)',
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      router.push('/preferences');
+    } catch (error) {
+      console.error("Error skipping personalization:", error);
+      hideLoading();
+    }
   };
 
   return (
