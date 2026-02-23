@@ -20,13 +20,20 @@ const PUBLIC_ROUTES = [
 ];
 
 // ─────────────────────────────────────────────────────────────────
-//  Routes admin : réservées aux administrateurs
+//  Routes admin : invisibles pour tout le monde sauf les admins.
+//  Si un non-admin y accède → 404 (page inexistante aux yeux du monde)
 // ─────────────────────────────────────────────────────────────────
 const ADMIN_ROUTES = ['/admin'];
 
 // Cookie inscrit par l'AuthProvider côté client dès que l'utilisateur
 // est authentifié. Sa valeur vaut 'admin' pour les admins, 'user' sinon.
 const AUTH_COOKIE = 'mcf_auth';
+
+// Réponse 404 : identique à une page qui n'existe pas
+// → Impossible pour un attaquant de distinguer /admin/users de /quelquechose-inexistant
+function notFound(): NextResponse {
+    return new NextResponse(null, { status: 404 });
+}
 
 function isPublic(pathname: string): boolean {
     return PUBLIC_ROUTES.some(
@@ -59,24 +66,20 @@ export function middleware(request: NextRequest) {
     const isAdmin = authCookie === 'admin';
 
     // ── Route Admin ──────────────────────────────────────────────────
+    // Règle : pour tout le monde qui n'est pas admin confirmé,
+    //         la route n'existe tout simplement pas (404).
+    //         Aucune redirection ne trahit l'existence de la page.
     if (isAdminRoute(pathname)) {
-        if (!isAuthenticated) {
-            // Non connecté → login
-            const url = request.nextUrl.clone();
-            url.pathname = '/login';
-            return NextResponse.redirect(url);
+        if (isAdmin) {
+            // Admin confirmé → accès autorisé
+            return NextResponse.next();
         }
-        if (!isAdmin) {
-            // Connecté mais pas admin → dashboard
-            const url = request.nextUrl.clone();
-            url.pathname = '/dashboard';
-            return NextResponse.redirect(url);
-        }
-        // Admin confirmé → OK
-        return NextResponse.next();
+        // Non connecté OU connecté sans droits admin → 404 silencieux
+        // Le pirate ne peut pas distinguer ça d'une route qui n'existe pas.
+        return notFound();
     }
 
-    // ── Route protégée (non publique) ────────────────────────────────
+    // ── Route protégée (non publique, non admin) ──────────────────────
     if (!isPublic(pathname) && !isAuthenticated) {
         const url = request.nextUrl.clone();
         url.pathname = '/login';
