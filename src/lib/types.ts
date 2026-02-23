@@ -8,6 +8,7 @@ export type Meal = {
   calories: number;
   date: Timestamp;
   cookedBy?: string;
+  imageUrl?: string;
 };
 
 export const CookingSchema = z.object({
@@ -104,6 +105,7 @@ export type Promotion = z.infer<typeof PromotionSchema>;
 export const CarouselItemSchema = z.object({
   id: z.string(),
   title: z.string().optional(),
+  subtitle: z.string().optional(),
   imageUrl: z.string().url(),
   link: z.string().url().optional(),
   createdAt: z.any(),
@@ -137,6 +139,21 @@ export const DishSchema = z.object({
   imageHint: z.string().optional(),
 });
 export type Dish = z.infer<typeof DishSchema>;
+
+export const AtelierBookSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  imageUrl: z.string().url(),
+  recipe: z.string(), // Markdown
+  description: z.string(),
+  hashtags: z.array(z.string()),
+  price: z.number().default(0),
+  cookingTime: z.string().optional(),
+  category: z.string().optional(),
+  galleryUrls: z.array(z.string()), // 3 to 10 photos
+  createdAt: z.any(),
+});
+export type AtelierBook = z.infer<typeof AtelierBookSchema>;
 
 export const FeedbackSchema = z.object({
   id: z.string(),
@@ -369,6 +386,7 @@ export const SuggestSingleMealInputSchema = z.object({
 export type SuggestSingleMealInput = z.infer<typeof SuggestSingleMealInputSchema>;
 
 export const SingleMealSuggestionSchema = z.object({
+  id: z.string().optional().describe("L'identifiant unique du repas."),
   name: z.string().describe("Le nom du repas."),
   calories: z.number().describe("Nombre de calories estimé."),
   cookingTime: z.string().describe("Temps de cuisson estimé (ex: '20 min')."),
@@ -376,7 +394,9 @@ export const SingleMealSuggestionSchema = z.object({
   imageHint: z.string().describe("Deux ou trois mots-clés pour une recherche d'image (ex: 'salade saine')."),
   imageUrl: z.string().url().optional(),
   recipe: z.string().optional().describe("La recette détaillée du plat au format Markdown."),
+  description: z.string().optional().describe("Un court résumé ou une description du plat."),
   message: z.string().optional().describe("Un message amical de l'IA expliquant pourquoi elle suggère ce repas."),
+  price: z.number().optional().describe("Le prix du repas si c'est un contenu premium."),
 });
 export type SingleMealSuggestion = z.infer<typeof SingleMealSuggestionSchema>;
 

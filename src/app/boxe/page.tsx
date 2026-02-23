@@ -35,6 +35,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { ZoomIn } from 'lucide-react';
+import { ImageZoomLightbox } from '@/components/shared/image-zoom-lightbox';
 
 // Types for the Box Program
 type BoxMeal = {
@@ -109,6 +111,7 @@ export default function BoxPage() {
     const { toast } = useToast();
     const [selectedWeek, setSelectedWeek] = useState(1);
     const [selectedDay, setSelectedDay] = useState(1);
+    const [zoomImage, setZoomImage] = useState<string | null>(null);
 
     const currentBox = useMemo(() => MOCK_BOXES.find(b => b.week === selectedWeek) || MOCK_BOXES[0], [selectedWeek]);
     const currentDayPlan = useMemo(() => currentBox.days.find(d => d.day === selectedDay) || currentBox.days[0], [currentBox, selectedDay]);
@@ -171,12 +174,13 @@ export default function BoxPage() {
                                     </div>
                                     <div className="hidden lg:block relative aspect-square group">
                                         <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-75 group-hover:scale-110 transition-transform duration-1000" />
-                                        <div className="relative z-10 w-full h-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border-8 border-white group-hover:-rotate-3 transition-transform duration-500">
+                                        <div className="relative z-10 w-full h-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border-8 border-white group-hover:-rotate-3 transition-transform duration-500 cursor-zoom-in">
                                             <Image
                                                 src="https://images.unsplash.com/photo-1547592110-803444465817?auto=format&fit=crop&q=80&w=800"
                                                 alt="Meal Prep"
                                                 fill
                                                 className="object-cover"
+                                                onClick={() => setZoomImage("https://images.unsplash.com/photo-1547592110-803444465817?auto=format&fit=crop&q=80&w=800")}
                                             />
                                         </div>
                                     </div>
@@ -280,44 +284,46 @@ export default function BoxPage() {
                                                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
                                             >
                                                 {currentDayPlan.meals.map((meal, idx) => (
-                                                    <Card key={meal.type} className="rounded-[2rem] overflow-hidden border-2 border-muted/20 hover:border-primary/30 transition-all duration-500 group flex flex-col shadow-sm">
-                                                        <div className="relative aspect-[16/10] overflow-hidden">
-                                                            <Image
-                                                                src={meal.image}
-                                                                alt={meal.name}
-                                                                fill
-                                                                className="object-cover group-hover:scale-110 transition-transform duration-700"
-                                                            />
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                                                            <div className="absolute top-4 left-4">
-                                                                <Badge className="bg-white/10 backdrop-blur-md border-white/20 text-white font-black text-[9px] tracking-[0.2em] uppercase px-3 py-1">
-                                                                    <span className="flex items-center gap-2">
+                                                    <Card key={meal.type} className="group relative aspect-[7/10] rounded-xl overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1 bg-muted cursor-zoom-in">
+                                                        <Image
+                                                            src={meal.image}
+                                                            alt={meal.name}
+                                                            fill
+                                                            className="object-cover transition-transform duration-1000 group-hover:scale-110"
+                                                            onClick={() => setZoomImage(meal.image)}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                            <ZoomIn className="h-12 w-12 text-white drop-shadow-lg" />
+                                                        </div>
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent flex flex-col justify-end p-5 md:p-8">
+                                                            <div className="flex items-center gap-1.5 mb-2 transition-transform duration-500 group-hover:-translate-y-1">
+                                                                <Badge className="bg-primary/20 backdrop-blur-sm text-white border-white/10 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm">
+                                                                    <span className="flex items-center gap-1.5">
                                                                         {mealTypes[meal.type].icon}
                                                                         {mealTypes[meal.type].label}
                                                                     </span>
                                                                 </Badge>
                                                             </div>
-                                                            <div className="absolute bottom-4 left-4 right-4">
-                                                                <h4 className="text-lg font-black text-white leading-tight truncate">
-                                                                    {meal.name}
-                                                                </h4>
-                                                            </div>
-                                                        </div>
-                                                        <CardContent className="p-6 flex items-center justify-between bg-background">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="flex items-center gap-2 text-muted-foreground font-black text-[9px] uppercase tracking-widest">
+                                                            <h4 className="text-xl md:text-2xl font-black text-white uppercase italic leading-tight mb-3 transition-transform duration-500 group-hover:-translate-y-2">
+                                                                {meal.name}
+                                                            </h4>
+                                                            <div className="flex items-center gap-5 text-[9px] font-black text-white/50 uppercase tracking-widest transition-transform duration-500 group-hover:-translate-y-1">
+                                                                <div className="flex items-center gap-2">
                                                                     <Clock className="h-3.5 w-3.5 text-primary" />
                                                                     <span>{meal.time}</span>
                                                                 </div>
-                                                                <div className="flex items-center gap-2 text-muted-foreground font-black text-[9px] uppercase tracking-widest">
+                                                                <div className="flex items-center gap-2">
                                                                     <Flame className="h-3.5 w-3.5 text-primary" />
                                                                     <span>{meal.calories} kcal</span>
                                                                 </div>
                                                             </div>
-                                                            <button className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors">
-                                                                <ChevronRight className="h-4 w-4" />
-                                                            </button>
-                                                        </CardContent>
+
+                                                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all">
+                                                                <button className="h-10 w-10 rounded-full bg-white text-primary flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all">
+                                                                    <ChevronRight className="h-5 w-5" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </Card>
                                                 ))}
                                             </motion.div>
@@ -344,6 +350,11 @@ export default function BoxPage() {
                     </div>
                 </SidebarInset>
             </SidebarProvider>
+            <ImageZoomLightbox
+                isOpen={!!zoomImage}
+                imageUrl={zoomImage}
+                onClose={() => setZoomImage(null)}
+            />
         </div>
     );
 }

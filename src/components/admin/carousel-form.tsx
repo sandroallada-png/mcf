@@ -22,7 +22,8 @@ import { ImageUploader } from './image-uploader';
 import { ScrollArea } from '../ui/scroll-area';
 
 const formSchema = z.object({
-  title: z.string().min(2, { message: 'Le titre doit faire au moins 2 caractères.' }).optional(),
+  title: z.string().min(2, { message: 'Le titre doit faire au moins 2 caractères.' }).optional().or(z.literal('')),
+  subtitle: z.string().optional().or(z.literal('')),
   imageUrl: z.string().url({ message: "L'URL de l'image est requise." }),
   link: z.string().url({ message: 'Veuillez entrer une URL valide.' }).optional().or(z.literal('')),
 });
@@ -39,21 +40,23 @@ export function CarouselItemForm({ onSubmit, initialData }: CarouselItemFormProp
 
   const defaultValues = initialData
     ? {
-        title: initialData.title || '',
-        imageUrl: initialData.imageUrl,
-        link: initialData.link || '',
-      }
+      title: initialData.title || '',
+      subtitle: initialData.subtitle || '',
+      imageUrl: initialData.imageUrl,
+      link: initialData.link || '',
+    }
     : {
-        title: '',
-        imageUrl: '',
-        link: '',
-      };
+      title: '',
+      subtitle: '',
+      imageUrl: '',
+      link: '',
+    };
 
   const form = useForm<CarouselFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
-  
+
   useEffect(() => {
     form.reset(defaultValues);
   }, [initialData, form]);
@@ -63,7 +66,7 @@ export function CarouselItemForm({ onSubmit, initialData }: CarouselItemFormProp
     onSubmit(values);
     setIsSubmitting(false);
   };
-  
+
   const handleImageUpload = (url: string) => {
     form.setValue('imageUrl', url);
     form.clearErrors('imageUrl');
@@ -73,52 +76,65 @@ export function CarouselItemForm({ onSubmit, initialData }: CarouselItemFormProp
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <ScrollArea className="h-[65vh] pr-6">
-            <div className="space-y-6">
-                <FormField
-                    control={form.control}
-                    name="imageUrl"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Image</FormLabel>
-                            <FormControl>
-                            <ImageUploader 
-                                initialImageUrl={field.value}
-                                onUploadSuccess={handleImageUpload}
-                            />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            
-                <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Titre (optionnel)</FormLabel>
-                    <FormControl>
-                        <Input placeholder="ex: Astuce pour manger bien" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="link"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Lien (optionnel)</FormLabel>
-                    <FormControl>
-                        <Input placeholder="https://exemple.com/article" {...field} />
-                    </FormControl>
-                    <FormDescription>URL vers laquelle l'élément redirigera.</FormDescription>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            </div>
+          <div className="space-y-6">
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image</FormLabel>
+                  <FormControl>
+                    <ImageUploader
+                      initialImageUrl={field.value}
+                      onUploadSuccess={handleImageUpload}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Titre (optionnel)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ex: Start Strong" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="subtitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sous-titre (optionnel)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ex: Petit-déjeuner" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="link"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lien (optionnel)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://exemple.com/article" {...field} />
+                  </FormControl>
+                  <FormDescription>URL vers laquelle l'élément redirigera.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </ScrollArea>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

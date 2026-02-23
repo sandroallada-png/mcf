@@ -274,300 +274,296 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="min-h-screen w-full bg-background font-body">
-            <SidebarProvider>
-                <AppSidebar collapsible="icon" className="w-64 peer hidden md:block border-r bg-sidebar">
-                    <Sidebar {...sidebarProps} />
-                </AppSidebar>
-                <SidebarInset className="bg-background">
-                    <div className="flex flex-col min-h-screen">
-                        <AppHeader
-                            title="Paramètres"
-                            icon={<Settings className="h-4 w-4" />}
-                            user={user}
-                            sidebarProps={sidebarProps}
-                        />
+        <SidebarProvider defaultOpen={true}>
+            <AppSidebar collapsible="icon" className="w-64 peer hidden md:block border-r bg-sidebar">
+                <Sidebar {...sidebarProps} />
+            </AppSidebar>
+            <SidebarInset className="bg-background flex flex-col h-screen">
+                <AppHeader
+                    title="Paramètres"
+                    icon={<Settings className="h-4 w-4" />}
+                    user={user}
+                    sidebarProps={sidebarProps}
+                />
 
-                        <main className="flex-1 max-w-4xl mx-auto w-full px-6 md:px-12 py-10 space-y-12">
+                <main className="flex-1 max-w-4xl mx-auto w-full px-6 md:px-12 py-10 space-y-12">
 
-                            <div className="space-y-2">
-                                <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
-                                <p className="text-muted-foreground text-sm">Gérez votre compte, vos préférences et personnalisez votre expérience.</p>
+                    <div className="space-y-2">
+                        <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
+                        <p className="text-muted-foreground text-sm">Gérez votre compte, vos préférences et personnalisez votre expérience.</p>
+                    </div>
+
+                    <div className="space-y-10">
+                        {/* PROFIL SECTION */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profil public</h2>
                             </div>
 
-                            <div className="space-y-10">
-                                {/* PROFIL SECTION */}
-                                <section className="space-y-6">
-                                    <div className="flex items-center gap-2 border-b pb-2">
-                                        <User className="h-4 w-4 text-muted-foreground" />
-                                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profil public</h2>
+                            <div className="flex flex-col md:flex-row gap-10 items-start">
+                                <div className="relative group">
+                                    <Avatar className="h-24 w-24 border rounded-lg cursor-pointer transition-opacity hover:opacity-80" onClick={() => router.push('/avatar-selection')}>
+                                        <AvatarImage src={userProfile?.avatarUrl || user.photoURL || undefined} />
+                                        <AvatarFallback className="text-2xl font-bold bg-muted">{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-background border shadow-sm"
+                                        onClick={() => router.push('/avatar-selection')}
+                                    >
+                                        <ImageIcon className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+
+                                <div className="flex-1 w-full space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="displayName" className="text-xs font-medium">Nom d'affichage</Label>
+                                        <Input
+                                            id="displayName"
+                                            value={displayName}
+                                            onChange={(e) => setDisplayName(e.target.value)}
+                                            className="max-w-md h-9 text-sm rounded shadow-sm"
+                                        />
                                     </div>
 
-                                    <div className="flex flex-col md:flex-row gap-10 items-start">
-                                        <div className="relative group">
-                                            <Avatar className="h-24 w-24 border rounded-lg cursor-pointer transition-opacity hover:opacity-80" onClick={() => router.push('/avatar-selection')}>
-                                                <AvatarImage src={userProfile?.avatarUrl || user.photoURL || undefined} />
-                                                <AvatarFallback className="text-2xl font-bold bg-muted">{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                                            </Avatar>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="email" className="text-xs font-medium">Adresse e-mail</Label>
+                                        <div className="flex items-center gap-2 max-w-md">
+                                            <Input id="email" value={user.email || ''} readOnly disabled className="h-9 text-sm rounded bg-accent/30 opacity-70" />
                                             <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-background border shadow-sm"
-                                                onClick={() => router.push('/avatar-selection')}
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={user.emailVerified}
+                                                onClick={handleSendVerification}
+                                                className={cn(
+                                                    "h-8 px-3 text-[10px] font-bold uppercase tracking-wider",
+                                                    user.emailVerified ? "text-emerald-600 bg-emerald-50" : "text-primary hover:bg-primary/5"
+                                                )}
                                             >
-                                                <ImageIcon className="h-3.5 w-3.5" />
+                                                {user.emailVerified ? "Vérifié" : "Vérifier"}
                                             </Button>
                                         </div>
+                                    </div>
 
-                                        <div className="flex-1 w-full space-y-4">
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="displayName" className="text-xs font-medium">Nom d'affichage</Label>
+                                    <Button
+                                        onClick={handleSaveProfile}
+                                        disabled={isSaving}
+                                        className="h-9 px-4 text-xs font-bold rounded shadow-sm"
+                                    >
+                                        {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
+                                        Enregistrer les modifications
+                                    </Button>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* IA SECTION */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <BrainCircuit className="h-4 w-4 text-muted-foreground" />
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Intelligence MyFlex</h2>
+                            </div>
+
+                            <div className="space-y-6 max-w-2xl">
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-accent/20 border">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="enable-training" className="text-sm font-bold">Personnalisation de l'IA</Label>
+                                        <p className="text-xs text-muted-foreground">Permettre à l'assistant d'adapter ses conseils à votre profil.</p>
+                                    </div>
+                                    <Switch
+                                        id="enable-training"
+                                        checked={isTrainingEnabled}
+                                        onCheckedChange={handleToggleTraining}
+                                    />
+                                </div>
+
+                                {isTrainingEnabled && (
+                                    <div className="space-y-6 bg-accent/5 p-6 rounded-lg border border-dashed animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="main-objective" className="text-xs font-medium flex items-center gap-1.5">
+                                                <Target className="h-3 w-3" />
+                                                Objectif principal
+                                            </Label>
+                                            <Textarea
+                                                id="main-objective"
+                                                placeholder="Ex: Perdre 5kg, manger plus de protéines..."
+                                                className="min-h-[80px] text-sm rounded shadow-sm"
+                                                value={personality?.mainObjective || ''}
+                                                onChange={(e) => handleFieldChange('mainObjective', e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="ai-tone" className="text-xs font-medium">Ton de l'assistant</Label>
+                                                <Select value={personality?.tone || ''} onValueChange={(value) => handleFieldChange('tone', value)}>
+                                                    <SelectTrigger className="h-9 text-xs rounded shadow-sm">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded border shadow-md">
+                                                        <SelectItem value="Amical et encourageant" className="text-xs">Amical</SelectItem>
+                                                        <SelectItem value="Formel et direct" className="text-xs">Formel</SelectItem>
+                                                        <SelectItem value="Scientifique et détaillé" className="text-xs">Scientifique</SelectItem>
+                                                        <SelectItem value="Humoristique" className="text-xs">Humoristique</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="allergies" className="text-xs font-medium">Allergies / Restrictions</Label>
                                                 <Input
-                                                    id="displayName"
-                                                    value={displayName}
-                                                    onChange={(e) => setDisplayName(e.target.value)}
-                                                    className="max-w-md h-9 text-sm rounded shadow-sm"
+                                                    id="allergies"
+                                                    placeholder="Lactose, gluten..."
+                                                    className="h-9 text-sm rounded shadow-sm"
+                                                    value={personality?.allergies || ''}
+                                                    onChange={(e) => handleFieldChange('allergies', e.target.value)}
                                                 />
                                             </div>
-
-                                            <div className="space-y-1.5">
-                                                <Label htmlFor="email" className="text-xs font-medium">Adresse e-mail</Label>
-                                                <div className="flex items-center gap-2 max-w-md">
-                                                    <Input id="email" value={user.email || ''} readOnly disabled className="h-9 text-sm rounded bg-accent/30 opacity-70" />
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        disabled={user.emailVerified}
-                                                        onClick={handleSendVerification}
-                                                        className={cn(
-                                                            "h-8 px-3 text-[10px] font-bold uppercase tracking-wider",
-                                                            user.emailVerified ? "text-emerald-600 bg-emerald-50" : "text-primary hover:bg-primary/5"
-                                                        )}
-                                                    >
-                                                        {user.emailVerified ? "Vérifié" : "Vérifier"}
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            <Button
-                                                onClick={handleSaveProfile}
-                                                disabled={isSaving}
-                                                className="h-9 px-4 text-xs font-bold rounded shadow-sm"
-                                            >
-                                                {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
-                                                Enregistrer les modifications
-                                            </Button>
                                         </div>
-                                    </div>
-                                </section>
 
-                                {/* IA SECTION */}
-                                <section className="space-y-6">
-                                    <div className="flex items-center gap-2 border-b pb-2">
-                                        <BrainCircuit className="h-4 w-4 text-muted-foreground" />
-                                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Intelligence MyFlex</h2>
-                                    </div>
-
-                                    <div className="space-y-6 max-w-2xl">
-                                        <div className="flex items-center justify-between p-4 rounded-lg bg-accent/20 border">
-                                            <div className="space-y-0.5">
-                                                <Label htmlFor="enable-training" className="text-sm font-bold">Personnalisation de l'IA</Label>
-                                                <p className="text-xs text-muted-foreground">Permettre à l'assistant d'adapter ses conseils à votre profil.</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="origin" className="text-xs font-medium">Origine culinaire</Label>
+                                                <Input
+                                                    id="origin"
+                                                    placeholder="Ex: Française, Africaine, Italienne..."
+                                                    className="h-9 text-sm rounded shadow-sm"
+                                                    value={personality?.origin || ''}
+                                                    onChange={(e) => handleFieldChange('origin', e.target.value)}
+                                                />
                                             </div>
-                                            <Switch
-                                                id="enable-training"
-                                                checked={isTrainingEnabled}
-                                                onCheckedChange={handleToggleTraining}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="country" className="text-xs font-medium">Pays de résidence</Label>
+                                                <Input
+                                                    id="country"
+                                                    placeholder="Ex: France, Sénégal..."
+                                                    className="h-9 text-sm rounded shadow-sm"
+                                                    value={personality?.country || ''}
+                                                    onChange={(e) => handleFieldChange('country', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="preferences" className="text-xs font-medium">Préférences alimentaires</Label>
+                                            <Textarea
+                                                id="preferences"
+                                                placeholder="Vos goûts, dégoûts..."
+                                                className="min-h-[80px] text-sm rounded shadow-sm"
+                                                value={personality?.preferences || ''}
+                                                onChange={(e) => handleFieldChange('preferences', e.target.value)}
                                             />
                                         </div>
 
-                                        {isTrainingEnabled && (
-                                            <div className="space-y-6 bg-accent/5 p-6 rounded-lg border border-dashed animate-in fade-in slide-in-from-top-2 duration-300">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="main-objective" className="text-xs font-medium flex items-center gap-1.5">
-                                                        <Target className="h-3 w-3" />
-                                                        Objectif principal
-                                                    </Label>
-                                                    <Textarea
-                                                        id="main-objective"
-                                                        placeholder="Ex: Perdre 5kg, manger plus de protéines..."
-                                                        className="min-h-[80px] text-sm rounded shadow-sm"
-                                                        value={personality?.mainObjective || ''}
-                                                        onChange={(e) => handleFieldChange('mainObjective', e.target.value)}
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="ai-tone" className="text-xs font-medium">Ton de l'assistant</Label>
-                                                        <Select value={personality?.tone || ''} onValueChange={(value) => handleFieldChange('tone', value)}>
-                                                            <SelectTrigger className="h-9 text-xs rounded shadow-sm">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded border shadow-md">
-                                                                <SelectItem value="Amical et encourageant" className="text-xs">Amical</SelectItem>
-                                                                <SelectItem value="Formel et direct" className="text-xs">Formel</SelectItem>
-                                                                <SelectItem value="Scientifique et détaillé" className="text-xs">Scientifique</SelectItem>
-                                                                <SelectItem value="Humoristique" className="text-xs">Humoristique</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="allergies" className="text-xs font-medium">Allergies / Restrictions</Label>
-                                                        <Input
-                                                            id="allergies"
-                                                            placeholder="Lactose, gluten..."
-                                                            className="h-9 text-sm rounded shadow-sm"
-                                                            value={personality?.allergies || ''}
-                                                            onChange={(e) => handleFieldChange('allergies', e.target.value)}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="origin" className="text-xs font-medium">Origine culinaire</Label>
-                                                        <Input
-                                                            id="origin"
-                                                            placeholder="Ex: Française, Africaine, Italienne..."
-                                                            className="h-9 text-sm rounded shadow-sm"
-                                                            value={personality?.origin || ''}
-                                                            onChange={(e) => handleFieldChange('origin', e.target.value)}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="country" className="text-xs font-medium">Pays de résidence</Label>
-                                                        <Input
-                                                            id="country"
-                                                            placeholder="Ex: France, Sénégal..."
-                                                            className="h-9 text-sm rounded shadow-sm"
-                                                            value={personality?.country || ''}
-                                                            onChange={(e) => handleFieldChange('country', e.target.value)}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="preferences" className="text-xs font-medium">Préférences alimentaires</Label>
-                                                    <Textarea
-                                                        id="preferences"
-                                                        placeholder="Vos goûts, dégoûts..."
-                                                        className="min-h-[80px] text-sm rounded shadow-sm"
-                                                        value={personality?.preferences || ''}
-                                                        onChange={(e) => handleFieldChange('preferences', e.target.value)}
-                                                    />
-                                                </div>
-
-                                                <Button
-                                                    onClick={handleSaveAISettings}
-                                                    size="sm"
-                                                    disabled={isSaving}
-                                                    className="h-8 px-4 text-[10px] font-bold uppercase tracking-wider rounded"
-                                                >
-                                                    Enregistrer les préférences IA
-                                                </Button>
-                                            </div>
-                                        )}
+                                        <Button
+                                            onClick={handleSaveAISettings}
+                                            size="sm"
+                                            disabled={isSaving}
+                                            className="h-8 px-4 text-[10px] font-bold uppercase tracking-wider rounded"
+                                        >
+                                            Enregistrer les préférences IA
+                                        </Button>
                                     </div>
-                                </section>
-
-                                {/* APPEARANCE SECTION */}
-                                <section className="space-y-6">
-                                    <div className="flex items-center gap-2 border-b pb-2">
-                                        <Palette className="h-4 w-4 text-muted-foreground" />
-                                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Apparence</h2>
-                                    </div>
-                                    <div className="max-w-2xl bg-accent/10 p-6 rounded-lg border">
-                                        <p className="text-xs text-muted-foreground mb-6">Personnalisez les couleurs d'accentuation de votre interface.</p>
-                                        {activeAccentTheme && (
-                                            <ThemeSelector
-                                                selectedThemeName={activeAccentTheme.name}
-                                                onThemeChange={handleSaveAppearance}
-                                            />
-                                        )}
-                                    </div>
-                                </section>
-
-                                {/* LANGUAGE SECTION */}
-                                <section className="space-y-6">
-                                    <div className="flex items-center gap-2 border-b pb-2">
-                                        <Languages className="h-4 w-4 text-muted-foreground" />
-                                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Langue & Région</h2>
-                                    </div>
-                                    <div className="max-w-2xl bg-card p-6 rounded-lg border">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                                            <div className="space-y-1">
-                                                <Label htmlFor="language-select" className="text-sm font-medium">Langue de l'application</Label>
-                                                <p className="text-xs text-muted-foreground">Choisissez la langue d'affichage de l'interface et de l'assistant.</p>
-                                            </div>
-                                            <Select value={language} onValueChange={handleSaveLanguage}>
-                                                <SelectTrigger id="language-select" className="w-full">
-                                                    <SelectValue placeholder="Choisir une langue" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="system">
-                                                        Système (Détecté: {
-                                                            detectedLanguage === 'fr' ? 'Français' :
-                                                                detectedLanguage === 'en' ? 'English' :
-                                                                    detectedLanguage === 'de' ? 'Deutsch' :
-                                                                        detectedLanguage === 'it' ? 'Italiano' :
-                                                                            detectedLanguage === 'es' ? 'Español' :
-                                                                                detectedLanguage === 'pt' ? 'Português' : detectedLanguage
-                                                        })
-                                                    </SelectItem>
-                                                    <SelectItem value="fr">Français (France)</SelectItem>
-                                                    <SelectItem value="en">English (US)</SelectItem>
-                                                    <SelectItem value="de">Deutsch</SelectItem>
-                                                    <SelectItem value="it">Italiano</SelectItem>
-                                                    <SelectItem value="es">Español</SelectItem>
-                                                    <SelectItem value="pt">Português</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                </section>
-
-                                {/* DANGER SECTION */}
-                                <section className="space-y-6 pt-10 border-t">
-                                    <div className="flex items-center gap-2">
-                                        <Trash2 className="h-4 w-4 text-destructive/60" />
-                                        <h2 className="text-sm font-semibold text-destructive/60">Zone de danger</h2>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-6 bg-destructive/5 border border-destructive/10 rounded-lg">
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-bold text-destructive/80">Supprimer le compte</p>
-                                            <p className="text-xs text-destructive/60">Cette action est irréversible et effacera toutes vos données.</p>
-                                        </div>
-
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" className="h-8 text-xs font-bold text-destructive hover:bg-destructive/10">
-                                                    Supprimer définitivement
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent className="rounded-lg">
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Cela supprimera définitivement votre compte et retirera vos données de nos serveurs.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel className="h-9 text-xs rounded">Annuler</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleDeleteAccount} className="h-9 text-xs rounded bg-destructive hover:bg-destructive/90">
-                                                        Supprimer mon compte
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                </section>
+                                )}
                             </div>
-                        </main>
+                        </section>
+
+                        {/* APPEARANCE SECTION */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <Palette className="h-4 w-4 text-muted-foreground" />
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Apparence</h2>
+                            </div>
+                            <div className="max-w-2xl bg-accent/10 p-6 rounded-lg border">
+                                <p className="text-xs text-muted-foreground mb-6">Personnalisez les couleurs d'accentuation de votre interface.</p>
+                                {activeAccentTheme && (
+                                    <ThemeSelector
+                                        selectedThemeName={activeAccentTheme.name}
+                                        onThemeChange={handleSaveAppearance}
+                                    />
+                                )}
+                            </div>
+                        </section>
+
+                        {/* LANGUAGE SECTION */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <Languages className="h-4 w-4 text-muted-foreground" />
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Langue & Région</h2>
+                            </div>
+                            <div className="max-w-2xl bg-card p-6 rounded-lg border">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="language-select" className="text-sm font-medium">Langue de l'application</Label>
+                                        <p className="text-xs text-muted-foreground">Choisissez la langue d'affichage de l'interface et de l'assistant.</p>
+                                    </div>
+                                    <Select value={language} onValueChange={handleSaveLanguage}>
+                                        <SelectTrigger id="language-select" className="w-full">
+                                            <SelectValue placeholder="Choisir une langue" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="system">
+                                                Système (Détecté: {
+                                                    detectedLanguage === 'fr' ? 'Français' :
+                                                        detectedLanguage === 'en' ? 'English' :
+                                                            detectedLanguage === 'de' ? 'Deutsch' :
+                                                                detectedLanguage === 'it' ? 'Italiano' :
+                                                                    detectedLanguage === 'es' ? 'Español' :
+                                                                        detectedLanguage === 'pt' ? 'Português' : detectedLanguage
+                                                })
+                                            </SelectItem>
+                                            <SelectItem value="fr">Français (France)</SelectItem>
+                                            <SelectItem value="en">English (US)</SelectItem>
+                                            <SelectItem value="de">Deutsch</SelectItem>
+                                            <SelectItem value="it">Italiano</SelectItem>
+                                            <SelectItem value="es">Español</SelectItem>
+                                            <SelectItem value="pt">Português</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* DANGER SECTION */}
+                        <section className="space-y-6 pt-10 border-t">
+                            <div className="flex items-center gap-2">
+                                <Trash2 className="h-4 w-4 text-destructive/60" />
+                                <h2 className="text-sm font-semibold text-destructive/60">Zone de danger</h2>
+                            </div>
+
+                            <div className="flex items-center justify-between p-6 bg-destructive/5 border border-destructive/10 rounded-lg">
+                                <div className="space-y-1">
+                                    <p className="text-sm font-bold text-destructive/80">Supprimer le compte</p>
+                                    <p className="text-xs text-destructive/60">Cette action est irréversible et effacera toutes vos données.</p>
+                                </div>
+
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" className="h-8 text-xs font-bold text-destructive hover:bg-destructive/10">
+                                            Supprimer définitivement
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="rounded-lg">
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Cela supprimera définitivement votre compte et retirera vos données de nos serveurs.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel className="h-9 text-xs rounded">Annuler</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleDeleteAccount} className="h-9 text-xs rounded bg-destructive hover:bg-destructive/90">
+                                                Supprimer mon compte
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </section>
                     </div>
-                </SidebarInset>
-            </SidebarProvider>
-        </div>
+                </main>
+            </SidebarInset>
+        </SidebarProvider>
     );
 }

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, Timestamp, getDocs, writeBatch } from 'firebase/firestore';
 import type { UserProfile, Meal } from '@/lib/types';
 import { Button } from '@/components/ui/button';

@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Loader2, Sparkles, Target, User, Activity, Calendar, Refrigerator, BarChart2, Star, History, ShoppingCart, MessageSquare, Bot, Save, LayoutDashboard, Trophy, ChefHat, Shield, UtensilsCrossed, Gem, Edit, Package } from 'lucide-react';
+import { Lightbulb, Loader2, Sparkles, Target, User, Activity, Calendar, Refrigerator, BarChart2, Star, History, ShoppingCart, MessageSquare, Bot, Save, LayoutDashboard, Trophy, ChefHat, Shield, UtensilsCrossed, Gem, Edit, Package, Library } from 'lucide-react';
 import type { Meal } from '@/lib/types';
 import { getTipsAction } from '@/app/actions';
 import { useState, useEffect } from 'react';
@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter, usePathname } from 'next/navigation';
 import { ButtonWithLoading } from '../ui/button-with-loading';
 import { Progress } from '../ui/progress';
-import { SidebarContent } from '../ui/sidebar';
+import { SidebarContent, useSidebar } from '../ui/sidebar';
 import { ScrollArea } from '../ui/scroll-area';
 import { doc } from 'firebase/firestore';
 import { useLoading } from '@/contexts/loading-context';
@@ -32,7 +32,7 @@ export const mainNavLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="h-5 w-5" /> },
   { href: '/cuisine', label: 'Cuisine', icon: <ChefHat className="h-5 w-5" /> },
   { href: '/boxe', label: <span className="flex items-center gap-2">Ma Boxe <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-primary/10 text-primary border-none">Nouveau</Badge></span>, icon: <Package className="h-5 w-5" /> },
-  { href: '/atelier', label: <span className="flex items-center gap-2">Atelier du Chef <Gem className="h-3 w-3 text-primary" /></span>, icon: <UtensilsCrossed className="h-5 w-5" /> },
+  { href: '/atelier', label: <span className="flex items-center gap-2">Atelier du Chef <Gem className="h-3 w-3 text-primary" /></span>, icon: <Library className="h-5 w-5" /> },
   { href: '/calendar', label: 'Calendrier', icon: <Calendar className="h-5 w-5" /> },
   { href: '/my-flex-ai', label: 'Assistant Personnel', icon: <Bot className="h-5 w-5" /> },
   { href: '/fridge', label: <span className="flex items-center gap-2">Frigo <Gem className="h-3 w-3 text-primary" /></span>, icon: <Refrigerator className="h-5 w-5" /> },
@@ -73,6 +73,8 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
   const router = useRouter();
   const pathname = usePathname();
   const { showLoading } = useLoading();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -226,9 +228,9 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
   }
 
   return (
-    <SidebarContent className="p-2 bg-sidebar border-r">
-      <div className="mb-2 px-2 py-2">
-        <Logo />
+    <SidebarContent className={cn("p-2 bg-sidebar border-r flex flex-col h-full", isCollapsed && "p-1 items-center")}>
+      <div className={cn("mb-2 px-2 py-2 flex items-center justify-center", !isCollapsed && "justify-start")}>
+        <Logo showText={!isCollapsed} />
       </div>
 
       <nav className="flex flex-col flex-1 overflow-hidden">
@@ -237,9 +239,11 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
             <Link
               key={link.href}
               href={link.href}
+              title={isCollapsed ? (typeof link.label === 'string' ? link.label : 'Navigation') : undefined}
               onClick={(e) => handleNavClick(e, link.href)}
               className={cn(
-                "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors text-sm font-medium group",
+                "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all text-sm font-medium group relative",
+                isCollapsed ? "justify-center px-0 w-10 h-10 mx-auto" : "px-2",
                 pathname === link.href ? "bg-accent/80 text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
               )}
             >
@@ -249,7 +253,10 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
               )}>
                 {link.icon}
               </span>
-              {link.label}
+              {!isCollapsed && link.label}
+              {isCollapsed && pathname === link.href && (
+                <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
+              )}
             </Link>
           ))}
         </div>
@@ -264,9 +271,11 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
             <Link
               key={link.href}
               href={link.href}
+              title={isCollapsed ? link.label : undefined}
               onClick={(e) => handleNavClick(e, link.href)}
               className={cn(
-                "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors text-sm font-medium group",
+                "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all text-sm font-medium group",
+                isCollapsed ? "justify-center px-0 w-10 h-10 mx-auto" : "px-2",
                 pathname === link.href ? "bg-accent/80 text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
               )}
             >
@@ -276,36 +285,36 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
               )}>
                 {link.icon}
               </span>
-              {link.label}
+              {!isCollapsed && link.label}
             </Link>
           ))}
         </div>
       </nav>
 
       <div className="mt-auto flex flex-col pt-2 bg-sidebar/50">
-        <div className="space-y-0.5 px-1">
-          {accountNavLinks.map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={(e) => handleNavClick(e, link.href)}
-              className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:bg-accent/40 px-2 py-1.5 rounded-md transition-colors text-sm font-medium"
-            >
-              <span className="text-muted-foreground/70">{link.icon}</span>
-              {link.label}
-            </Link>
-          ))}
-        </div>
-        <Separator className="my-2 opacity-50" />
-        <div className="flex items-center gap-2.5 px-2 py-2 hover:bg-accent/40 rounded-md transition-colors cursor-pointer group">
+        {!isCollapsed && accountNavLinks.map(link => (
+          <Link
+            key={link.href}
+            href={link.href}
+            onClick={(e) => handleNavClick(e, link.href)}
+            className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:bg-accent/40 px-3 py-1.5 rounded-md transition-colors text-sm font-medium"
+          >
+            <span className="text-muted-foreground/70">{link.icon}</span>
+            {link.label}
+          </Link>
+        ))}
+        {!isCollapsed && <Separator className="my-2 opacity-50" />}
+        <div className={cn("flex items-center gap-2.5 px-2 py-2 hover:bg-accent/40 rounded-md transition-colors cursor-pointer group", isCollapsed && "justify-center px-0")}>
           <Avatar className="h-6 w-6 rounded-sm">
             <AvatarImage src={userProfile?.avatarUrl ?? user?.photoURL ?? undefined} alt="Utilisateur" />
             <AvatarFallback className="text-[10px] font-bold bg-muted">{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col overflow-hidden">
-            <p className="text-xs font-semibold truncate text-foreground/80 group-hover:text-foreground">{userProfile?.name || user?.displayName || 'Utilisateur'}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
-          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col overflow-hidden">
+              <p className="text-xs font-semibold truncate text-foreground/80 group-hover:text-foreground">{userProfile?.name || user?.displayName || 'Utilisateur'}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+            </div>
+          )}
         </div>
       </div>
     </SidebarContent>

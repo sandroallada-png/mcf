@@ -100,5 +100,38 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
       allow read, list, update, delete: if isAdmin();
     }
+
+    // Atelier Books: Lecture publique, écriture réservée à l'admin.
+    match /atelierBooks/{bookId} {
+      allow read, list: if true;
+      allow write: if isAdmin();
+    }
+
+    // Root Notifications: Used by admin for tracking
+    match /notifications/{notificationId} {
+      allow read, write: if isAdmin();
+    }
+    match /notifications {
+      allow list: if isAdmin();
+    }
+
+    // Root Messages: Used by admin for support
+    match /messages/{messageId} {
+      allow read, write: if isAdmin();
+    }
+    match /messages {
+      allow list: if isAdmin();
+    }
+
+    // Missing Meals: Users submit, Admin reads/manages
+    match /missingMeals/{mealId} {
+      allow create: if request.auth != null;
+      allow read, write: if isAdmin();
+    }
+    match /missingMeals {
+      allow list: if isAdmin();
+    }
   }
 }
+
+

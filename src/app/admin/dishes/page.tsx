@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser, useFirebase, useCollection, useMemoFirebase, type WithId } from '@/firebase';
+import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc, type WithId } from '@/firebase';
 import { collection, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { AppHeader } from '@/components/layout/app-header';
 import { Sidebar } from '@/components/dashboard/sidebar';
@@ -72,6 +72,26 @@ export default function AdminDishesPage() {
     const { data: missingMeals, isLoading: isLoadingMissing } = useCollection<WithId<MissingMeal>>(missingMealsQuery);
 
     const [missingToUpdate, setMissingToUpdate] = useState<string | null>(null);
+
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [user, firestore]);
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+
+    // --- Sidebar Data ---
+    const goalsCollectionRef = useMemoFirebase(
+        () => (user ? collection(firestore, 'users', user.uid, 'goals') : null),
+        [user, firestore]
+    );
+    const { data: goalsData } = useCollection<{ description: string }>(goalsCollectionRef);
+
+    const effectiveChefId = userProfile?.chefId || user?.uid;
+    const allMealsCollectionRef = useMemoFirebase(
+        () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
+        [effectiveChefId, firestore]
+    );
+    const { data: allMeals } = useCollection<any>(allMealsCollectionRef);
 
     const handleEdit = (dish: Dish) => {
         setEditingDish(dish);
@@ -168,9 +188,9 @@ export default function AdminDishesPage() {
     }
 
     const sidebarProps = {
-        goals: "Admin Goals",
+        goals: goalsData?.[0]?.description || "Manger équilibré",
         setGoals: () => { },
-        meals: [],
+        meals: allMeals ?? [],
     };
 
     return (

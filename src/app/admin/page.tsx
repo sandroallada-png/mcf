@@ -4,19 +4,15 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { SidebarProvider, Sidebar as AppSidebar, SidebarInset } from "@/components/ui/sidebar";
-import { useUser, useDoc, useMemoFirebase } from "@/firebase";
-import { LayoutDashboard, Loader2, Users, FileText, Ticket, GalleryHorizontal, ShoppingCart, Shield, Utensils, Bell, MessageSquare, Star, Activity } from "lucide-react";
+import { useFirebase, useUser, useDoc, useMemoFirebase, useCollection } from "@/firebase";
+import { collection, doc, query, where, Timestamp } from "firebase/firestore";
+import { LayoutDashboard, Loader2, Users, FileText, Ticket, GalleryHorizontal, ShoppingCart, Shield, Utensils, Bell, MessageSquare, Star, Activity, Library } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from 'next/link';
-
-interface UserProfile {
-    role?: 'user' | 'admin';
-}
+import { UserProfile } from "@/lib/types";
 
 export default function AdminPage() {
     const { user, isUserLoading } = useUser();
@@ -29,8 +25,49 @@ export default function AdminPage() {
     }, [user, firestore]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
+    // --- Sidebar Data ---
+    const goalsCollectionRef = useMemoFirebase(
+        () => (user ? collection(firestore, 'users', user.uid, 'goals') : null),
+        [user, firestore]
+    );
+    const { data: goalsData } = useCollection<{ description: string }>(goalsCollectionRef);
+
+    const effectiveChefId = userProfile?.chefId || user?.uid;
+    const allMealsCollectionRef = useMemoFirebase(
+        () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
+        [effectiveChefId, firestore]
+    );
+    const { data: allMeals } = useCollection<any>(allMealsCollectionRef);
+
+    // --- Admin Stats Data ---
+    const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const { data: users } = useCollection(usersQuery);
+
+    const promosQuery = useMemoFirebase(() => collection(firestore, 'promotions'), [firestore]);
+    const { data: promos } = useCollection(promosQuery);
+
+    const publicationsQuery = useMemoFirebase(() => collection(firestore, 'publications'), [firestore]);
+    const { data: publications } = useCollection(publicationsQuery);
+
+    const carouselQuery = useMemoFirebase(() => collection(firestore, 'carouselItems'), [firestore]);
+    const { data: carouselItems } = useCollection(carouselQuery);
+
+    const dishesQuery = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
+    const { data: dishes } = useCollection(dishesQuery);
+
+    const feedbacksQuery = useMemoFirebase(() => collection(firestore, 'feedbacks'), [firestore]);
+    const { data: feedbacks } = useCollection(feedbacksQuery);
+
+    const notificationsQuery = useMemoFirebase(() => collection(firestore, 'notifications'), [firestore]);
+    const { data: notifications } = useCollection(notificationsQuery);
+
+    const messagesQuery = useMemoFirebase(() => collection(firestore, 'messages'), [firestore]);
+    const { data: messages } = useCollection(messagesQuery);
+
+    const atelierQuery = useMemoFirebase(() => collection(firestore, 'atelierBooks'), [firestore]);
+    const { data: atelierBooks } = useCollection(atelierQuery);
+
     useEffect(() => {
-        // If profile is loaded and user is not an admin, redirect them.
         if (!isProfileLoading && userProfile?.role !== 'admin') {
             router.replace('/dashboard');
         }
@@ -45,12 +82,10 @@ export default function AdminPage() {
         );
     }
 
-    // This is a placeholder for sidebar props.
-    // In a real app, you'd fetch the necessary data.
     const sidebarProps = {
-        goals: "Admin Goals",
-        setGoals: () => {},
-        meals: [],
+        goals: goalsData?.[0]?.description || "Manger équilibré",
+        setGoals: () => { },
+        meals: allMeals ?? [],
     };
 
     return (
@@ -76,7 +111,7 @@ export default function AdminPage() {
                                             Liste des Utilisateurs
                                         </CardTitle>
                                         <CardDescription>
-                                            Voir, modifier ou supprimer des utilisateurs.
+                                            {users?.length || 0} utilisateurs enregistrés dans l'application.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -85,14 +120,14 @@ export default function AdminPage() {
                                         </Button>
                                     </CardContent>
                                 </Card>
-                                 <Card>
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <Ticket className="h-5 w-5 text-primary" />
                                             Gestion des Promotions
                                         </CardTitle>
                                         <CardDescription>
-                                            Créer et gérer les offres promotionnelles.
+                                            {promos?.length || 0} offres promotionnelles actives ou passées.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -108,7 +143,7 @@ export default function AdminPage() {
                                             Gestion des Publications
                                         </CardTitle>
                                         <CardDescription>
-                                            Modérer les recettes et guides partagés.
+                                            {publications?.filter(p => p.status === 'pending').length || 0} publications en attente de modération.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -117,14 +152,14 @@ export default function AdminPage() {
                                         </Button>
                                     </CardContent>
                                 </Card>
-                                 <Card>
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <GalleryHorizontal className="h-5 w-5 text-primary" />
                                             Gestion du Carrousel
                                         </CardTitle>
                                         <CardDescription>
-                                            Modifier les images et textes du carrousel.
+                                            {carouselItems?.length || 0} éléments affichés sur le tableau de bord.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -133,7 +168,7 @@ export default function AdminPage() {
                                         </Button>
                                     </CardContent>
                                 </Card>
-                                 <Card>
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <ShoppingCart className="h-5 w-5 text-primary" />
@@ -149,7 +184,7 @@ export default function AdminPage() {
                                         </Button>
                                     </CardContent>
                                 </Card>
-                                 <Card>
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <Shield className="h-5 w-5 text-primary" />
@@ -172,7 +207,7 @@ export default function AdminPage() {
                                             Gestion des Repas
                                         </CardTitle>
                                         <CardDescription>
-                                            Ajouter ou modifier les plats disponibles dans l'application.
+                                            {dishes?.length || 0} plats référencés dans la base.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -184,11 +219,27 @@ export default function AdminPage() {
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
+                                            <Library className="h-5 w-5 text-primary" />
+                                            Atelier du Chef
+                                        </CardTitle>
+                                        <CardDescription>
+                                            {atelierBooks?.length || 0} livres et guides disponibles dans l'Atelier.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Button className="w-full" asChild>
+                                            <Link href="/admin/atelier">Gérer l'Atelier</Link>
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
                                             <Bell className="h-5 w-5 text-primary" />
                                             Gestion des Notifications
                                         </CardTitle>
                                         <CardDescription>
-                                            Envoyer des notifications aux utilisateurs.
+                                            {notifications?.length || 0} notifications envoyées aux utilisateurs.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -204,7 +255,7 @@ export default function AdminPage() {
                                             Gestion des Messages
                                         </CardTitle>
                                         <CardDescription>
-                                            Modérer et répondre aux messages du support.
+                                            {messages?.length || 0} messages reçus dans le support.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -213,14 +264,14 @@ export default function AdminPage() {
                                         </Button>
                                     </CardContent>
                                 </Card>
-                                 <Card>
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <Star className="h-5 w-5 text-primary" />
                                             Gestion des Feedbacks
                                         </CardTitle>
                                         <CardDescription>
-                                            Consulter les retours et avis des utilisateurs.
+                                            {feedbacks?.filter(f => f.status === 'new').length || 0} nouveaux retours à lire.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>

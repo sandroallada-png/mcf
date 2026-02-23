@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { AppHeader } from '@/components/layout/app-header';
 import { Sidebar } from '@/components/dashboard/sidebar';
@@ -53,11 +53,31 @@ export default function AdminCarouselPage() {
   const carouselCollectionRef = useMemoFirebase(() => collection(firestore, 'carouselItems'), [firestore]);
   const { data: carouselItems, isLoading: isLoadingItems } = useCollection<CarouselItem>(carouselCollectionRef);
 
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+  const { data: userProfile } = useDoc<any>(userProfileRef);
+
+  // --- Sidebar Data ---
+  const goalsCollectionRef = useMemoFirebase(
+    () => (user ? collection(firestore, 'users', user.uid, 'goals') : null),
+    [user, firestore]
+  );
+  const { data: goalsData } = useCollection<{ description: string }>(goalsCollectionRef);
+
+  const effectiveChefId = userProfile?.chefId || user?.uid;
+  const allMealsCollectionRef = useMemoFirebase(
+    () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
+    [effectiveChefId, firestore]
+  );
+  const { data: allMeals } = useCollection<any>(allMealsCollectionRef);
+
   const handleEdit = (item: CarouselItem) => {
     setEditingItem(item);
     setFormOpen(true);
   };
-  
+
   const handleAddNew = () => {
     setEditingItem(null);
     setFormOpen(true);
@@ -78,7 +98,7 @@ export default function AdminCarouselPage() {
     setFormOpen(false);
     setEditingItem(null);
   };
-  
+
   const handleDelete = (itemId: string) => {
     const itemDocRef = doc(firestore, 'carouselItems', itemId);
     deleteDocumentNonBlocking(itemDocRef);
@@ -94,9 +114,9 @@ export default function AdminCarouselPage() {
   }
 
   const sidebarProps = {
-    goals: "Admin Goals",
-    setGoals: () => {},
-    meals: [],
+    goals: goalsData?.[0]?.description || "Manger équilibré",
+    setGoals: () => { },
+    meals: allMeals ?? [],
   };
 
   return (
@@ -125,7 +145,7 @@ export default function AdminCarouselPage() {
                     setFormOpen(isOpen);
                   }}>
                     <DialogTrigger asChild>
-                       <Button onClick={handleAddNew}>
+                      <Button onClick={handleAddNew}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Ajouter
                       </Button>
@@ -134,7 +154,7 @@ export default function AdminCarouselPage() {
                       <DialogHeader>
                         <DialogTitle>{editingItem ? 'Modifier l\'élément' : 'Nouvel élément'}</DialogTitle>
                         <DialogDescription>
-                            Remplissez les informations ci-dessous.
+                          Remplissez les informations ci-dessous.
                         </DialogDescription>
                       </DialogHeader>
                       <CarouselItemForm
@@ -150,6 +170,7 @@ export default function AdminCarouselPage() {
                       <TableRow>
                         <TableHead className="w-[80px]">Image</TableHead>
                         <TableHead>Titre</TableHead>
+                        <TableHead>Sous-titre</TableHead>
                         <TableHead>Lien</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -162,6 +183,7 @@ export default function AdminCarouselPage() {
                               <Image src={item.imageUrl} alt={item.title || 'Carousel image'} width={64} height={64} className="rounded-md object-cover aspect-square" />
                             </TableCell>
                             <TableCell className="font-medium">{item.title}</TableCell>
+                            <TableCell>{item.subtitle}</TableCell>
                             <TableCell className="text-muted-foreground max-w-xs truncate">{item.link}</TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
@@ -169,7 +191,7 @@ export default function AdminCarouselPage() {
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                   <Button variant="ghost" size="icon" className="text-destructive">
+                                  <Button variant="ghost" size="icon" className="text-destructive">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </AlertDialogTrigger>

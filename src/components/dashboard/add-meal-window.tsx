@@ -17,7 +17,8 @@ import {
     PlusCircle,
     HelpCircle,
     Flame,
-    CheckCircle2
+    CheckCircle2,
+    X
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ImageZoomLightbox } from '../shared/image-zoom-lightbox';
 
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit, getDocs, deleteDoc } from 'firebase/firestore';
@@ -46,6 +48,7 @@ const mealFormSchema = z.object({
     cookedBy: z.string().optional(),
     date: z.date().optional(),
     calories: z.number().optional(),
+    imageUrl: z.string().optional(),
 });
 
 type MealFormValues = z.infer<typeof mealFormSchema>;
@@ -53,12 +56,13 @@ type MealFormValues = z.infer<typeof mealFormSchema>;
 interface AddMealWindowProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: { name: string; type: Meal['type']; cookedBy?: string; calories?: number; date?: Date }) => Promise<void>;
+    onSubmit: (data: { name: string; type: Meal['type']; cookedBy?: string; calories?: number; date?: Date; imageUrl?: string }) => Promise<void>;
     household?: string[];
     userId?: string;
+    defaultType?: Meal['type'];
 }
 
-export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userId }: AddMealWindowProps) {
+export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userId, defaultType }: AddMealWindowProps) {
     const { firestore } = useFirebase();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<'today' | 'later'>('today');
@@ -66,6 +70,8 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [sentMissingMeal, setSentMissingMeal] = useState(false);
+    const [selectedMealInfo, setSelectedMealInfo] = useState<{ name: string; imageUrl?: string } | null>(null);
+    const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
 
     // Fetch dishes for search
     const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
@@ -122,10 +128,10 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
 
     useEffect(() => {
         if (isOpen) {
-            form.setValue('type', getDefaultMealType());
+            form.setValue('type', defaultType ?? getDefaultMealType());
             form.setValue('date', new Date());
         }
-    }, [isOpen, form]);
+    }, [isOpen]); // Only reset when opening/closing
 
     // Filter dishes based on search term (client-side for responsiveness on small dataset)
     const filteredDishes = useMemo(() => {
@@ -137,11 +143,9 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const handleSelectDish = (dish: Dish) => {
         setSelectedDish(dish);
         form.setValue('name', dish.name);
-        // Rough calorie estimation based on dish type if not present (although dish usually has no calories field in types.ts? Wait, Dish schema has no calories, only user meal logs have. 
-        // Actually Dish schema in types.ts doesn't have calories. So we still need estimation or fetch from somewhere else. 
-        // But the user prompt implies "repas disponible avec/sans recette".
-        // I'll leave calories undefined to let the main onSubmit handle estimation, or I could try to fetch a "Recipe" if linked.
-        // For now, just set name.
+        form.setValue('imageUrl', dish.imageUrl);
+        setSelectedMealInfo({ name: dish.name, imageUrl: dish.imageUrl });
+        setSearchTerm('');
     };
 
     const [pendingSubmission, setPendingSubmission] = useState<{ values: MealFormValues; type: 'today' | 'later' } | null>(null);
@@ -269,6 +273,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                     calories: 0,
                     cookingTime: 'Unknown',
                     imageHint: values.name,
+                    imageUrl: values.imageUrl || '',
                     createdAt: Timestamp.now(),
                     plannedFor: Timestamp.fromDate(plannedDate),
                     recipe: selectedDish?.recipe,
@@ -384,7 +389,8 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
         if (suggestedAlternative) {
             form.setValue('name', suggestedAlternative.name);
             form.setValue('type', suggestedAlternative.type as any);
-            // We set the search term to empty to close the suggestions dropdown
+            form.setValue('imageUrl', suggestedAlternative.imageUrl);
+            setSelectedMealInfo({ name: suggestedAlternative.name, imageUrl: suggestedAlternative.imageUrl });
             setSearchTerm('');
             toast({ title: "Alternative sélectionnée", description: "Bon appétit !" });
             setSuggestedAlternative(null);
@@ -392,7 +398,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     };
 
     return (
-        <DialogContent className="sm:max-w-[600px] sm:h-[600px] gap-0 p-0 overflow-hidden rounded-2xl border-2 flex flex-col">
+        <DialogContent className="sm:max-w-[600px] max-h-[95vh] h-full sm:h-[700px] gap-0 p-0 overflow-hidden rounded-2xl border-2 flex flex-col">
             <DialogHeader className="px-6 pt-6 pb-4 bg-muted/10 border-b">
                 <DialogTitle className="text-2xl font-black flex items-center gap-2">
                     🍽️ Ajouter ou Planifier un repas
@@ -401,7 +407,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                     Enregistrez ce que vous mangez pour suivre vos objectifs.
                 </DialogDescription>
             </DialogHeader>
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'today' | 'later')} className="w-full flex flex-col h-full">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'today' | 'later')} className="w-full h-full flex flex-col min-h-0">
 
                 <div className="px-6 py-2 bg-muted/5 border-b">
                     <TabsList className="grid w-full grid-cols-2 h-10">
@@ -423,7 +429,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                         <FormItem className="relative">
                                             <div className="flex items-center justify-between mb-2">
                                                 <FormLabel>Que mangez-vous ?</FormLabel>
-                                                {!selectedDish && !searchTerm && (
+                                                {!selectedMealInfo && !searchTerm && (
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
@@ -432,28 +438,90 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                         onClick={handleFindAlternative}
                                                         disabled={isSearchingAlternative}
                                                     >
-                                                        {isSearchingAlternative ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                                        Besoin d'une idée ?
+                                                        {isSearchingAlternative ? (
+                                                            <>
+                                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                                Génération...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Sparkles className="h-3 w-3" />
+                                                                Besoin d'une idée ?
+                                                            </>
+                                                        )}
                                                     </Button>
                                                 )}
                                             </div>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        placeholder="ex: Poulet Yassa, Ratatouille..."
-                                                        {...field}
-                                                        className="pl-9 h-12 rounded-xl focus-visible:ring-primary/20"
-                                                        autoComplete="off"
-                                                        onChange={(e) => {
-                                                            field.onChange(e);
-                                                            setSearchTerm(e.target.value);
-                                                            setSentMissingMeal(false); // Reset when user types
-                                                            if (e.target.value === '') setSelectedDish(null);
-                                                        }}
-                                                    />
+
+                                            {selectedMealInfo ? (
+                                                <div className="animate-in fade-in zoom-in-95 duration-300 relative">
+                                                    <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+                                                        <div className="h-16 w-16 rounded-xl bg-background flex items-center justify-center shrink-0 overflow-hidden border-2 border-primary/10 cursor-zoom-in" onClick={(e) => {
+                                                            if (selectedMealInfo.imageUrl) {
+                                                                e.stopPropagation();
+                                                                setZoomImageUrl(selectedMealInfo.imageUrl);
+                                                            }
+                                                        }}>
+                                                            {selectedMealInfo.imageUrl ? (
+                                                                <img src={selectedMealInfo.imageUrl} alt={selectedMealInfo.name} className="h-full w-full object-cover" />
+                                                            ) : (
+                                                                <UtensilsCrossed className="h-8 w-8 text-primary/20" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-0.5">Voici votre repas choisi</p>
+                                                            <p className="text-xl font-black text-foreground">{selectedMealInfo.name}</p>
+                                                            <Button
+                                                                type="button"
+                                                                variant="link"
+                                                                className="h-auto p-0 text-[11px] font-bold text-muted-foreground hover:text-primary transition-colors"
+                                                                onClick={() => {
+                                                                    setSelectedMealInfo(null);
+                                                                    setSelectedDish(null);
+                                                                    form.setValue('name', '');
+                                                                }}
+                                                            >
+                                                                Modifier mon choix
+                                                            </Button>
+                                                        </div>
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <CheckCircle2 className="h-6 w-6 text-primary" />
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 rounded-full border border-border/50 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all"
+                                                                onClick={() => {
+                                                                    setSelectedMealInfo(null);
+                                                                    setSelectedDish(null);
+                                                                    form.setValue('name', '');
+                                                                }}
+                                                                title="Annuler le choix"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </FormControl>
+                                            ) : (
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            placeholder="ex: Poulet Yassa, Ratatouille..."
+                                                            {...field}
+                                                            className="pl-9 h-12 rounded-xl focus-visible:ring-primary/20"
+                                                            autoComplete="off"
+                                                            onChange={(e) => {
+                                                                field.onChange(e);
+                                                                setSearchTerm(e.target.value);
+                                                                setSentMissingMeal(false);
+                                                                if (e.target.value === '') setSelectedDish(null);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </FormControl>
+                                            )}
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -494,7 +562,15 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                             className="flex items-center gap-4 p-4 rounded-2xl border-2 border-primary bg-primary/5 cursor-pointer hover:bg-primary/10 transition-all hover:scale-[1.02] shadow-sm group"
                                             onClick={handleSelectAlternative}
                                         >
-                                            <div className="h-16 w-16 rounded-xl bg-background flex items-center justify-center shrink-0 overflow-hidden border-2 border-primary/20 shadow-inner">
+                                            <div
+                                                className="h-16 w-16 rounded-xl bg-background flex items-center justify-center shrink-0 overflow-hidden border-2 border-primary/20 shadow-inner cursor-zoom-in"
+                                                onClick={(e) => {
+                                                    if (suggestedAlternative.imageUrl) {
+                                                        e.stopPropagation();
+                                                        setZoomImageUrl(suggestedAlternative.imageUrl);
+                                                    }
+                                                }}
+                                            >
                                                 {suggestedAlternative.imageUrl ? (
                                                     <img src={suggestedAlternative.imageUrl} alt={suggestedAlternative.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                 ) : (
@@ -537,10 +613,18 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                         className="flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-accent/50 hover:border-primary/30 cursor-pointer transition-all group"
                                                         onClick={() => handleSelectDish(dish)}
                                                     >
-                                                        <div className={cn(
-                                                            "h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden border transition-transform",
-                                                            index === 0 && "animate-wiggle ring-2 ring-primary/20 ring-offset-1"
-                                                        )}>
+                                                        <div
+                                                            className={cn(
+                                                                "h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden border transition-transform cursor-zoom-in",
+                                                                index === 0 && "animate-wiggle ring-2 ring-primary/20 ring-offset-1"
+                                                            )}
+                                                            onClick={(e) => {
+                                                                if (dish.imageUrl) {
+                                                                    e.stopPropagation();
+                                                                    setZoomImageUrl(dish.imageUrl);
+                                                                }
+                                                            }}
+                                                        >
                                                             {dish.imageUrl ? (
                                                                 <img src={dish.imageUrl} alt={dish.name} className="h-full w-full object-cover" />
                                                             ) : (
@@ -565,7 +649,15 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                         <div className="py-2 animate-in fade-in duration-300 space-y-3">
                                                             <div className="flex flex-col items-center gap-3">
                                                                 <div className="relative h-16 w-16 rounded-full border-2 border-primary/30 p-1">
-                                                                    <div className="h-full w-full rounded-full overflow-hidden relative">
+                                                                    <div
+                                                                        className="h-full w-full rounded-full overflow-hidden relative cursor-zoom-in"
+                                                                        onClick={(e) => {
+                                                                            if (displaySuggestions[carouselIndex]?.imageUrl) {
+                                                                                e.stopPropagation();
+                                                                                setZoomImageUrl(displaySuggestions[carouselIndex].imageUrl);
+                                                                            }
+                                                                        }}
+                                                                    >
                                                                         {displaySuggestions[carouselIndex]?.imageUrl ? (
                                                                             <img
                                                                                 key={carouselIndex}
@@ -788,6 +880,12 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                 </div>
             )}
 
+            {/* Image Zoom Lightbox */}
+            <ImageZoomLightbox
+                isOpen={!!zoomImageUrl}
+                imageUrl={zoomImageUrl}
+                onClose={() => setZoomImageUrl(null)}
+            />
         </DialogContent>
     );
 }

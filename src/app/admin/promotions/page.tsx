@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useUser, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { AppHeader } from '@/components/layout/app-header';
 import { Sidebar } from '@/components/dashboard/sidebar';
@@ -54,11 +54,31 @@ export default function AdminPromotionsPage() {
   const promotionsCollectionRef = useMemoFirebase(() => collection(firestore, 'promotions'), [firestore]);
   const { data: promotions, isLoading: isLoadingPromotions } = useCollection<Promotion>(promotionsCollectionRef);
 
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+  const { data: userProfile } = useDoc<any>(userProfileRef);
+
+  // --- Sidebar Data ---
+  const goalsCollectionRef = useMemoFirebase(
+    () => (user ? collection(firestore, 'users', user.uid, 'goals') : null),
+    [user, firestore]
+  );
+  const { data: goalsData } = useCollection<{ description: string }>(goalsCollectionRef);
+
+  const effectiveChefId = userProfile?.chefId || user?.uid;
+  const allMealsCollectionRef = useMemoFirebase(
+    () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
+    [effectiveChefId, firestore]
+  );
+  const { data: allMeals } = useCollection<any>(allMealsCollectionRef);
+
   const handleEdit = (promotion: Promotion) => {
     setEditingPromotion(promotion);
     setFormOpen(true);
   };
-  
+
   const handleAddNew = () => {
     setEditingPromotion(null);
     setFormOpen(true);
@@ -81,7 +101,7 @@ export default function AdminPromotionsPage() {
     setFormOpen(false);
     setEditingPromotion(null);
   };
-  
+
   const handleDelete = (promotionId: string) => {
     const promoDocRef = doc(firestore, 'promotions', promotionId);
     deleteDocumentNonBlocking(promoDocRef);
@@ -97,9 +117,9 @@ export default function AdminPromotionsPage() {
   }
 
   const sidebarProps = {
-    goals: "Admin Goals",
-    setGoals: () => {},
-    meals: [],
+    goals: goalsData?.[0]?.description || "Manger équilibré",
+    setGoals: () => { },
+    meals: allMeals ?? [],
   };
 
   return (
@@ -128,7 +148,7 @@ export default function AdminPromotionsPage() {
                     setFormOpen(isOpen);
                   }}>
                     <DialogTrigger asChild>
-                       <Button onClick={handleAddNew}>
+                      <Button onClick={handleAddNew}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Ajouter
                       </Button>
@@ -137,7 +157,7 @@ export default function AdminPromotionsPage() {
                       <DialogHeader>
                         <DialogTitle>{editingPromotion ? 'Modifier la promotion' : 'Nouvelle promotion'}</DialogTitle>
                         <DialogDescription>
-                            Remplissez les informations ci-dessous pour {editingPromotion ? 'mettre à jour' : 'créer'} une promotion.
+                          Remplissez les informations ci-dessous pour {editingPromotion ? 'mettre à jour' : 'créer'} une promotion.
                         </DialogDescription>
                       </DialogHeader>
                       <PromotionForm
@@ -178,7 +198,7 @@ export default function AdminPromotionsPage() {
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                   <Button variant="ghost" size="icon" className="text-destructive">
+                                  <Button variant="ghost" size="icon" className="text-destructive">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </AlertDialogTrigger>

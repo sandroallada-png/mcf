@@ -88,23 +88,21 @@ export default function FridgePage() {
   };
 
   return (
-    <div className="h-screen w-full bg-background font-body">
-      <SidebarProvider>
-        <AppSidebar collapsible="icon" className="w-80 peer hidden md:block" variant="sidebar">
-          <Sidebar {...sidebarProps} />
-        </AppSidebar>
-        <SidebarInset>
-          <div className="flex h-full flex-1 flex-col">
-            <AppHeader
-              title="Mon Frigo"
-              icon={<Refrigerator className="h-6 w-6" />}
-              user={user}
-              sidebarProps={sidebarProps}
-            />
-            <MainPanel />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    </div>
+    <SidebarProvider defaultOpen={true}>
+      <AppSidebar collapsible="icon" className="w-80 peer hidden md:block" variant="sidebar">
+        <Sidebar {...sidebarProps} />
+      </AppSidebar>
+      <SidebarInset className="bg-background flex flex-col h-screen">
+        <AppHeader
+          title="Mon Frigo"
+          icon={<Refrigerator className="h-6 w-6" />}
+          user={user}
+          sidebarProps={sidebarProps}
+        />
+        <div className="flex-1 overflow-y-auto w-full">
+          <MainPanel />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

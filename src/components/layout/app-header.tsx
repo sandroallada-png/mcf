@@ -16,6 +16,7 @@ import type { Meal, UserProfile } from '@/lib/types';
 import { NotificationBell } from './notification-bell';
 import { doc } from 'firebase/firestore';
 import { LogoIcon } from '../icons';
+import { cn } from '@/lib/utils';
 
 interface AppHeaderProps {
     title: string;
@@ -25,10 +26,11 @@ interface AppHeaderProps {
         goals: string;
         setGoals: (goals: string) => void;
         meals: Meal[];
-    }
+    };
+    className?: string;
 }
 
-export function AppHeader({ title, icon, user, sidebarProps }: AppHeaderProps) {
+export function AppHeader({ title, icon, user, sidebarProps, className }: AppHeaderProps) {
     const { auth, firestore } = useFirebase();
     const router = useRouter();
     const { toast } = useToast();
@@ -47,7 +49,7 @@ export function AppHeader({ title, icon, user, sidebarProps }: AppHeaderProps) {
     };
 
     return (
-        <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-xl border-border/50">
+        <header className={cn("sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-xl border-border/50", className)}>
             <div className="flex h-14 items-center justify-between px-4 md:px-6">
 
                 {/* Left Side: Menu (Mobile) & Brand (Desktop) */}
@@ -72,7 +74,6 @@ export function AppHeader({ title, icon, user, sidebarProps }: AppHeaderProps) {
                         <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                             <LogoIcon className="h-5 w-5" />
                         </div>
-                        <span className="font-black text-sm tracking-tight text-foreground/80 group-hover:text-foreground transition-colors uppercase">My Cook Flex</span>
                     </Link>
                 </div>
 

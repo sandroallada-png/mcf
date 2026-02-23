@@ -23,18 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-interface UserProfile {
-    role?: 'user' | 'admin';
-}
-
-interface UserData {
-    name: string;
-    email: string;
-    photoURL?: string;
-    createdAt?: { seconds: number, nanoseconds: number };
-    subscriptionStatus: 'free' | 'welcome' | 'eco' | 'premium';
-    referralSource?: string;
-}
+import { UserProfile, UserData } from "@/lib/types";
 
 export default function AdminUsersPage() {
     const { user, isUserLoading } = useUser();
@@ -51,7 +40,21 @@ export default function AdminUsersPage() {
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-    
+
+    // --- Sidebar Data ---
+    const goalsCollectionRef = useMemoFirebase(
+        () => (user ? collection(firestore, 'users', user.uid, 'goals') : null),
+        [user, firestore]
+    );
+    const { data: goalsData } = useCollection<{ description: string }>(goalsCollectionRef);
+
+    const effectiveChefId = userProfile?.chefId || user?.uid;
+    const allMealsCollectionRef = useMemoFirebase(
+        () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
+        [effectiveChefId, firestore]
+    );
+    const { data: allMeals } = useCollection<any>(allMealsCollectionRef);
+
     const usersCollectionRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
     const { data: users, isLoading: isLoadingUsers } = useCollection<UserData>(usersCollectionRef);
 
@@ -72,7 +75,7 @@ export default function AdminUsersPage() {
             router.replace('/dashboard');
         }
     }, [isProfileLoading, userProfile, router]);
-    
+
 
     if (isUserLoading || isProfileLoading || isLoadingUsers || !user) {
         return (
@@ -81,11 +84,11 @@ export default function AdminUsersPage() {
             </div>
         );
     }
-    
+
     const sidebarProps = {
-        goals: "Admin Goals",
-        setGoals: () => {},
-        meals: [],
+        goals: goalsData?.[0]?.description || "Manger équilibré",
+        setGoals: () => { },
+        meals: allMeals ?? [],
     };
 
     return (
@@ -112,7 +115,7 @@ export default function AdminUsersPage() {
                                     <div className="flex flex-col sm:flex-row gap-2 pt-4">
                                         <div className="relative flex-1">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input 
+                                            <Input
                                                 placeholder="Rechercher par nom ou email..."
                                                 className="pl-9"
                                                 value={searchTerm}
@@ -131,7 +134,7 @@ export default function AdminUsersPage() {
                                                 <SelectItem value="premium">Premium</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                         <Popover>
+                                        <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button
                                                     variant={"outline"}
@@ -194,12 +197,12 @@ export default function AdminUsersPage() {
                                                     </TableCell>
                                                     <TableCell className="hidden lg:table-cell text-muted-foreground">
                                                         <div className="flex items-center gap-2">
-                                                           <Info className="h-4 w-4" />
-                                                           <span>{u.referralSource || 'Non spécifié'}</span>
+                                                            <Info className="h-4 w-4" />
+                                                            <span>{u.referralSource || 'Non spécifié'}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => toast({ title: 'Bientôt disponible', description: "L'envoi de notifications sera bientôt implémenté."})}>
+                                                        <Button variant="ghost" size="icon" onClick={() => toast({ title: 'Bientôt disponible', description: "L'envoi de notifications sera bientôt implémenté." })}>
                                                             <Bell className="h-4 w-4" />
                                                         </Button>
                                                     </TableCell>
