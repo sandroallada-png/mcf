@@ -8,6 +8,26 @@ import { useLoading } from '@/contexts/loading-context';
 import { setDoc, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
 
+const AUTH_COOKIE = 'mcf_auth';
+const ADMIN_EMAIL = 'maxyculture11@gmail.com';
+
+// Routes publiques (pas de redirection vers login)
+const PUBLIC_ROUTES = [
+  '/', '/login', '/register', '/forgot-password', '/reset-password',
+  '/about', '/support', '/market', '/forum', '/terms', '/privacy',
+  '/join-family', '/offline',
+];
+
+function setAuthCookie(role: 'admin' | 'user') {
+  // Cookie accessible par le middleware Edge (pas httpOnly)
+  const maxAge = 60 * 60 * 24 * 7; // 7 jours
+  document.cookie = `${AUTH_COOKIE}=${role}; path=/; max-age=${maxAge}; SameSite=Strict`;
+}
+
+function deleteAuthCookie() {
+  document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0; SameSite=Strict`;
+}
+
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
@@ -42,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const ADMIN_EMAIL = 'emapms@gmail.com';
+  const ADMIN_EMAIL_LOCAL = ADMIN_EMAIL;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -52,9 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserDataState(null);
         setIsFullySetup(false);
         setLoading(false);
+        deleteAuthCookie(); // ← supprimer le cookie dès la déconnexion
 
         const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password') || pathname.startsWith('/join-family');
-        const isProtectedRoute = !['/', '/about', '/support', '/market', '/forum', '/terms', '/privacy'].includes(pathname) && !isAuthRoute;
+        const isProtectedRoute = !PUBLIC_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/')) && !isAuthRoute;
 
         if (isProtectedRoute) {
           router.replace('/login');
@@ -63,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // User logged in
-      const isAdmin = u.email === ADMIN_EMAIL;
+      const isAdmin = u.email === ADMIN_EMAIL_LOCAL;
       const userDocRef = doc(firestore, 'users', u.uid);
       const userDocSnap = await getDoc(userDocRef);
       let data;
@@ -91,6 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setUserDataState(data);
+
+      // ← Écrire le cookie IMMÉDIATEMENT après avoir déterminé le rôle
+      setAuthCookie(isAdmin ? 'admin' : 'user');
 
       const hasBasicProfile = !!(data?.age && data?.country && data?.referralSource);
       const hasPersonalization = !!data?.theme;
@@ -135,7 +159,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, [pathname, firestore, router]);
 
-  if (loading) return null;
+  if (loading) {
+    // Pendant le chargement de l'auth, bloquer le rendu des routes sensibles
+    // pour éviter tout flash de contenu non autorisé
+    const isSensitiveRoute =
+      pathname.startsWith('/admin') ||
+      (pathname.startsWith('/dashboard') ||
+        pathname.startsWith('/cuisine') ||
+        pathname.startsWith('/fridge') ||
+        pathname.startsWith('/calendar') ||
+        pathname.startsWith('/settings') ||
+        pathname.startsWith('/mon-niveau') ||
+        pathname.startsWith('/courses') ||
+        pathname.startsWith('/atelier') ||
+        pathname.startsWith('/ma-boxe') ||
+        pathname.startsWith('/personalization') ||
+        pathname.startsWith('/preferences') ||
+        pathname.startsWith('/pricing') ||
+        pathname.startsWith('/avatar-selection') ||
+        pathname.startsWith('/foyer'));
+
+    if (isSensitiveRoute) return null; // ← Rien ne s'affiche jusqu'à confirmation
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, userData, isFullySetup }}>
