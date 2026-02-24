@@ -287,17 +287,17 @@ export default function LoginPage() {
             </form>
 
             <div className="pt-8 border-t border-muted/50 text-center space-y-4">
-              <div className="pt-8 border-t border-muted/50 text-center space-y-4">
-                <p className="text-sm font-bold text-muted-foreground">Pas encore membre ?</p>
-                <div className="p-4 rounded-2xl bg-primary/5 border-2 border-primary/10">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-3">Accès Sécurisé</p>
-                  <p className="text-xs font-medium text-muted-foreground/80 mb-4">
-                    Si un membre de votre famille vous a envoyé un lien d'invitation, utilisez-le pour configurer votre accès. Une fois votre compte créé, vous pourrez vous connecter simplement avec votre numéro de téléphone.
-                  </p>
-                  <p className="text-[9px] font-bold italic text-muted-foreground flex items-center justify-center gap-2">
-                    <Users className="h-3 w-3" /> Rejoignez la cuisine familiale en un clic.
-                  </p>
-                </div>
+              <p className="text-sm font-bold text-muted-foreground">
+                Pas encore membre ? <Link href="/register" className="text-primary hover:underline transition-all">Créer un compte</Link>
+              </p>
+              <div className="p-4 rounded-2xl bg-primary/5 border-2 border-primary/10">
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-3">Accès Sécurisé</p>
+                <p className="text-xs font-medium text-muted-foreground/80 mb-4">
+                  Si un membre de votre famille vous a envoyé un lien d'invitation, utilisez-le pour configurer votre accès. Une fois votre compte créé, vous pourrez vous connecter simplement avec votre numéro de téléphone.
+                </p>
+                <p className="text-[9px] font-bold italic text-muted-foreground flex items-center justify-center gap-2">
+                  <Users className="h-3 w-3" /> Rejoignez la cuisine familiale en un clic.
+                </p>
               </div>
             </div>
           </div>
