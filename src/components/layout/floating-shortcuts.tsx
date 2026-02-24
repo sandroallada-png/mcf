@@ -22,6 +22,9 @@ export function FloatingShortcuts() {
     const { isFullySetup, user } = useAuthContext();
     const [showTutorial, setShowTutorial] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const isAuthPage = pathname === '/login' || pathname === '/register';
+    const isRestrictedByAuth = isAuthPage && !user;
+    const showWarning = showOnboardingWarning || (isRestrictedByAuth && mode === 'menu');
 
     useEffect(() => {
         setMounted(true);
@@ -403,7 +406,7 @@ export function FloatingShortcuts() {
                             right: mode === 'menu' ? '0' : 'max(1rem, env(safe-area-inset-right, 1rem))',
                             left: 'auto',
                         }),
-                        width: mode === 'menu' ? (showOnboardingWarning ? '20rem' : '4rem') : 'min(20rem, calc(100vw - 2rem))',
+                        width: mode === 'menu' ? (showWarning ? '20rem' : '4rem') : 'min(20rem, calc(100vw - 2rem))',
                         maxWidth: 'calc(100vw - 1rem)',
                         transform: !position ? 'translateY(-50%)' : 'none',
                         animation: !position && !isDragging ? 'slideInFromRightSmooth 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
@@ -416,7 +419,7 @@ export function FloatingShortcuts() {
                     <CardHeader
                         className={cn(
                             "p-2 bg-gradient-to-r from-background to-secondary/20 cursor-move select-none active:cursor-grabbing border-b transition-all duration-300",
-                            (mode === 'menu' && !showOnboardingWarning) ? "justify-center" : "justify-between"
+                            (mode === 'menu' && !showWarning) ? "justify-center" : "justify-between"
                         )}
                         style={{ touchAction: 'none' }}
                         onMouseDown={handleDragStart}
@@ -447,17 +450,20 @@ export function FloatingShortcuts() {
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
-                        ) : showOnboardingWarning ? (
+                        ) : showWarning ? (
                             <div className="flex justify-between items-center w-full">
                                 <CardTitle className="text-sm font-black flex items-center gap-2 text-primary uppercase tracking-tighter">
                                     <Sparkles className="h-4 w-4" />
-                                    Accès Restreint
+                                    {isRestrictedByAuth ? 'Espace Membre' : 'Accès Restreint'}
                                 </CardTitle>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => setShowOnboardingWarning(false)}
+                                    className="h-6 w-6 pointer-events-auto"
+                                    onClick={() => {
+                                        if (isRestrictedByAuth) setIsOpen(false);
+                                        else setShowOnboardingWarning(false);
+                                    }}
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -499,7 +505,7 @@ export function FloatingShortcuts() {
                         className={cn("p-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", mode === 'menu' ? "p-1" : "p-4")}
                     >
                         <AnimatePresence mode="wait">
-                            {showOnboardingWarning ? (
+                            {showWarning ? (
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
@@ -510,16 +516,24 @@ export function FloatingShortcuts() {
                                         <Lock className="h-8 w-8 text-primary" />
                                     </div>
                                     <div className="space-y-2">
-                                        <p className="font-black text-lg leading-tight uppercase tracking-tight">Presque là !</p>
-                                        <p className="text-xs text-muted-foreground leading-relaxed italic">
-                                            "Ne vous inquiétez pas, vous y êtes presque ! Finalisez votre profil pour débloquer tout votre univers culinaire."
+                                        <p className="font-black text-lg leading-tight uppercase tracking-tight">
+                                            {isRestrictedByAuth ? 'Bientôt disponible' : 'Presque là !'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed italic px-2">
+                                            {isRestrictedByAuth
+                                                ? "Ne vous inquiétez pas, après la création de votre compte, vous pourrez accéder à tous vos outils intelligents ici !"
+                                                : "Ne vous inquiétez pas, vous y êtes presque ! Finalisez votre profil pour débloquer tout votre univers culinaire."
+                                            }
                                         </p>
                                     </div>
                                     <Button
                                         className="w-full h-11 rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-primary/20"
-                                        onClick={() => setShowOnboardingWarning(false)}
+                                        onClick={() => {
+                                            if (isRestrictedByAuth) setIsOpen(false);
+                                            else setShowOnboardingWarning(false);
+                                        }}
                                     >
-                                        Continuer l'inscription
+                                        {isRestrictedByAuth ? 'D\'accord' : 'Continuer l\'inscription'}
                                     </Button>
                                 </motion.div>
                             ) : mode === 'menu' ? (

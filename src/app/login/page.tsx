@@ -279,10 +279,16 @@ export default function LoginPage() {
                 </Button>
               </div>
 
-              <Button type="submit" className="w-full h-16 text-lg font-black shadow-2xl shadow-primary/30 rounded-2xl group relative overflow-hidden text-primary border-2 border-primary/20 bg-primary/5 hover:bg-primary hover:text-white-force">
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full h-16 text-lg font-black shadow-2xl shadow-primary/30 rounded-2xl group relative overflow-hidden text-primary border-2 border-primary/20 bg-primary/5 hover:bg-primary hover:!text-white transition-all duration-300"
+              >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                {loginMode === 'email' ? 'Se connecter' : 'Accéder au foyer'}
-                <ArrowLeft className="ml-3 h-5 w-5 rotate-180 group-hover:translate-x-2 transition-transform" />
+                <span className="relative z-10 flex items-center justify-center">
+                  {loginMode === 'email' ? 'Se connecter' : 'Accéder au foyer'}
+                  <ArrowLeft className="ml-3 h-5 w-5 rotate-180 group-hover:translate-x-2 transition-transform" />
+                </span>
               </Button>
             </form>
 
