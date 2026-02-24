@@ -8,9 +8,7 @@ import { doc, getDoc, updateDoc, setDoc, Timestamp } from 'firebase/firestore';
 import {
     createUserWithEmailAndPassword,
     updateProfile,
-    signOut,
-    signInWithPopup,
-    GoogleAuthProvider
+    signOut
 } from 'firebase/auth';
 import {
     Users,
@@ -22,8 +20,7 @@ import {
     ArrowRight,
     Loader2,
     CheckCircle2,
-    Lock,
-    Globe
+    Lock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -121,21 +118,7 @@ export default function JoinFamilyPage() {
         }
     };
 
-    const handleGoogleJoin = async () => {
-        if (!invite) return;
-        setIsJoining(true);
-        try {
-            const provider = new GoogleAuthProvider();
-            const userCredential = await signInWithPopup(auth, provider);
-            const user = userCredential.user;
-            await finishJoin(user, user.email || '', user.displayName || name);
-        } catch (error: any) {
-            console.error(error);
-            toast({ variant: "destructive", title: "Échec Google", description: "Impossible de se connecter avec Google." });
-        } finally {
-            setIsJoining(false);
-        }
-    };
+
 
     const finishJoin = async (user: any, email: string, displayName: string) => {
         // 3. Create/Update User Profile in Firestore
@@ -297,25 +280,6 @@ export default function JoinFamilyPage() {
                             )}
                         </Button>
 
-                        <div className="relative py-2">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-white/5"></div>
-                            </div>
-                            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest">
-                                <span className="bg-black px-4 text-white/20">Ou</span>
-                            </div>
-                        </div>
-
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleGoogleJoin}
-                            className="w-full h-14 rounded-2xl border-white/10 bg-white/5 text-white font-bold hover:bg-white/10 transition-all flex gap-3"
-                            disabled={isJoining}
-                        >
-                            <Globe className="h-5 w-5 text-blue-400" />
-                            Continuer avec Google
-                        </Button>
                     </form>
                 </CardContent>
 

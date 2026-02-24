@@ -26,7 +26,8 @@ import { SidebarContent, useSidebar } from '../ui/sidebar';
 import { ScrollArea } from '../ui/scroll-area';
 import { doc } from 'firebase/firestore';
 import { useLoading } from '@/contexts/loading-context';
-import { cn } from '@/lib/utils';
+import { cn, formatUserIdentifier } from '@/lib/utils';
+import { useReadOnly } from '@/contexts/read-only-context';
 
 export const mainNavLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="h-5 w-5" /> },
@@ -75,6 +76,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
   const { showLoading } = useLoading();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { isReadOnly, chefName, triggerBlock } = useReadOnly();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -181,8 +183,8 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
                   <Target className="h-5 w-5 text-primary" />
                   <CardTitle className="text-base">Vos Objectifs</CardTitle>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link href="/settings"><Edit className="h-4 w-4" /></Link>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild={!isReadOnly} onClick={isReadOnly ? () => triggerBlock() : undefined}>
+                  {isReadOnly ? <Edit className="h-4 w-4" /> : <Link href="/settings"><Edit className="h-4 w-4" /></Link>}
                 </Button>
               </CardHeader>
               <CardContent className="p-3 pt-0">
@@ -291,6 +293,24 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
         </div>
       </nav>
 
+      {/* Badge Mode Observateur */}
+      {isReadOnly && !isCollapsed && (
+        <div className="mx-2 mb-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="flex items-center gap-2">
+            <Shield className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">Mode Observateur</p>
+              {chefName && <p className="text-[10px] text-muted-foreground truncate">Chef&nbsp;: {chefName}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+      {isReadOnly && isCollapsed && (
+        <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center" title="Mode Observateur">
+          <Shield className="h-3.5 w-3.5 text-amber-500" />
+        </div>
+      )}
+
       <div className="mt-auto flex flex-col pt-2 bg-sidebar/50">
         {!isCollapsed && accountNavLinks.map(link => (
           <Link
@@ -312,7 +332,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden">
               <p className="text-xs font-semibold truncate text-foreground/80 group-hover:text-foreground">{userProfile?.name || user?.displayName || 'Utilisateur'}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{formatUserIdentifier(user?.email)}</p>
             </div>
           )}
         </div>

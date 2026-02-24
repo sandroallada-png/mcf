@@ -28,6 +28,7 @@ import ReactMarkdown from 'react-markdown';
 import { format, isPast, startOfToday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { WhoIsCooking } from '@/components/cuisine/who-is-cooking';
+import { useReadOnly } from '@/contexts/read-only-context';
 
 type TimeOfDay = 'matin' | 'midi' | 'soir' | 'dessert';
 
@@ -101,6 +102,7 @@ export default function CuisinePage() {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
     const { toast } = useToast();
+    const { isReadOnly, triggerBlock } = useReadOnly();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -339,6 +341,7 @@ export default function CuisinePage() {
     };
 
     const handleAcceptSuggestion = async (meal: SingleMealSuggestion, date: Date, recipe: string) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user || !userProfileRef) return;
 
         const XP_PER_LEVEL = 500;
@@ -417,6 +420,7 @@ export default function CuisinePage() {
     }
 
     const handleDeletePendingItem = (itemId: string) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!effectiveChefId) return;
         const itemRef = doc(firestore, 'users', effectiveChefId, 'pendingCookings', itemId);
         deleteDocumentNonBlocking(itemRef);
@@ -428,6 +432,7 @@ export default function CuisinePage() {
     };
 
     const handleToggleFavorite = async (meal: any) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user) return;
         const recipeId = meal.id || meal.name.replace(/\s/g, '_').toLowerCase();
         const favRef = doc(firestore, 'users', user.uid, 'favoriteRecipes', recipeId);
@@ -485,13 +490,13 @@ export default function CuisinePage() {
                         setSelectedCookingItem(null);
                         setActiveTab(value as TabValue);
                     }} className="flex-1 flex flex-col">
-                        <div className="max-w-6xl mx-auto w-full px-6 md:px-12 py-10 space-y-10">
+                        <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
 
                             {/* Header Section */}
                             <div className="space-y-6">
                                 <div className="space-y-2">
                                     <div className="text-5xl mb-4">🍳</div>
-                                    <h1 className="text-4xl font-bold tracking-tight">Espace Cuisine</h1>
+                                    <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Espace Cuisine</h1>
                                     <p className="text-muted-foreground text-sm max-w-2xl">
                                         Planifiez vos repas, explorez de nouvelles recettes et suivez votre historique culinaire. {contextualMessage}
                                     </p>
@@ -513,7 +518,7 @@ export default function CuisinePage() {
 
                                     {activeTab === 'suggestions' && (
                                         <Button
-                                            onClick={() => handleGetSuggestion()}
+                                            onClick={() => isReadOnly ? triggerBlock() : handleGetSuggestion()}
                                             disabled={isSuggesting}
                                             className="h-9 px-4 text-xs font-bold rounded shadow-sm"
                                         >

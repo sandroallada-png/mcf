@@ -22,12 +22,14 @@ import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useReadOnly } from '@/contexts/read-only-context';
 
 export default function CoursesPage() {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
     const { toast } = useToast();
 
+    const { isReadOnly, triggerBlock } = useReadOnly();
     const [isGenerating, setIsGenerating] = useState(false);
     const [shoppingList, setShoppingList] = useState<GenerateShoppingListOutput | null>(null);
     const [checkedItems, setCheckedItems] = useState<string[]>([]);
@@ -62,6 +64,7 @@ export default function CoursesPage() {
     }, [goalsData]);
 
     const handleGenerateList = async () => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user) return;
         setIsGenerating(true);
         setShoppingList(null);
@@ -127,6 +130,7 @@ export default function CoursesPage() {
     };
 
     const toggleItem = (itemName: string) => {
+        // Les membres de famille peuvent cocher/décocher (liste locale, pas d'écriture DB)
         setCheckedItems(prev =>
             prev.includes(itemName)
                 ? prev.filter(i => i !== itemName)
@@ -182,12 +186,12 @@ export default function CoursesPage() {
                             sidebarProps={sidebarProps}
                         />
                         <main className="flex-1 flex flex-col overflow-y-auto bg-background">
-                            <div className="max-w-6xl mx-auto w-full px-6 md:px-12 py-10 space-y-10">
+                            <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
                                 {/* Header Section */}
                                 <div className="space-y-6">
                                     <div className="space-y-2">
                                         <div className="text-5xl mb-4">🛒</div>
-                                        <h1 className="text-4xl font-bold tracking-tight">Ma Liste de Courses</h1>
+                                        <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Ma Liste de Courses</h1>
                                         <p className="text-muted-foreground text-sm max-w-2xl">
                                             Notre outil analyse vos goûts ({userProfile?.origin || 'non spécifié'}), votre frigo et vos objectifs pour vous créer la liste parfaite.
                                         </p>
@@ -361,7 +365,7 @@ export default function CoursesPage() {
                                 )}
 
                                 {!shoppingList && !isGenerating && (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-10 border-t">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 pt-10 border-t">
                                         <div className="flex flex-col items-center text-center p-6 space-y-3 bg-accent/5 rounded-2xl">
                                             <Refrigerator className="h-8 w-8 text-primary/40" />
                                             <h4 className="font-bold text-sm">Analyse du Frigo</h4>

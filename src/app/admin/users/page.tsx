@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, formatUserIdentifier } from "@/lib/utils";
 
 import { UserProfile, UserData } from "@/lib/types";
 
@@ -183,7 +183,7 @@ export default function AdminUsersPage() {
                                                             </Avatar>
                                                             <div>
                                                                 <p className="font-medium">{u.name}</p>
-                                                                <p className="text-xs text-muted-foreground">{u.email}</p>
+                                                                <p className="text-xs text-muted-foreground">{formatUserIdentifier(u.email)}</p>
                                                             </div>
                                                         </div>
                                                     </TableCell>

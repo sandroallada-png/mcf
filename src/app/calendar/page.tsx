@@ -36,11 +36,13 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useReadOnly } from '@/contexts/read-only-context';
 
 export default function CalendarPage() {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
     const { toast } = useToast();
+    const { isReadOnly, triggerBlock } = useReadOnly();
 
     const [date, setDate] = useState<Date | undefined>(new Date());
     const [suggestedMeals, setSuggestedMeals] = useState<SuggestedMeal[]>([]);
@@ -183,6 +185,7 @@ export default function CalendarPage() {
     }, [goals, userProfile, isLoadingGoals, isLoadingAllMeals, user]);
 
     const handleAddMealFromSuggestion = () => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user || !selectedMealForPlanning || !planningDate) return;
 
         const mealData = {
@@ -202,6 +205,7 @@ export default function CalendarPage() {
     };
 
     const openPlanningDialog = (meal: SuggestedMeal) => {
+        if (isReadOnly) { triggerBlock(); return; }
         setSelectedMealForPlanning(meal);
         setPlanningDate(new Date());
         setPlanningType(meal.type);
@@ -209,6 +213,7 @@ export default function CalendarPage() {
     };
 
     const handleRemoveMeal = (mealId: string) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user) return;
         deleteDocumentNonBlocking(doc(firestore, 'users', user.uid, 'foodLogs', mealId));
         toast({
@@ -380,7 +385,7 @@ export default function CalendarPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+                                <div className="flex-1 overflow-y-auto px-3 md:px-8 pb-6 md:pb-8">
                                     <TabsContent value="planning" className="mt-6 md:mt-8 space-y-8 focus-visible:ring-0 outline-none">
                                         <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 min-h-[500px]">
                                             <Card className="lg:col-span-3 rounded-3xl border-2 bg-background/50 backdrop-blur-sm overflow-hidden flex flex-col">
@@ -390,12 +395,12 @@ export default function CalendarPage() {
                                                         Sélecteur Temporel
                                                     </h3>
                                                 </div>
-                                                <div className="flex-1 flex items-center justify-center p-4">
+                                                <div className="flex-1 flex items-center justify-center p-2 md:p-4 overflow-x-auto">
                                                     <Calendar
                                                         mode="single"
                                                         selected={date}
                                                         onSelect={setDate}
-                                                        className="scale-110 md:scale-125"
+                                                        className="w-full"
                                                         locale={fr}
                                                     />
                                                 </div>

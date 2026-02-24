@@ -16,7 +16,7 @@ import type { Meal, UserProfile } from '@/lib/types';
 import { NotificationBell } from './notification-bell';
 import { doc } from 'firebase/firestore';
 import { LogoIcon } from '../icons';
-import { cn } from '@/lib/utils';
+import { cn, formatUserIdentifier } from '@/lib/utils';
 
 interface AppHeaderProps {
     title: string;
@@ -115,7 +115,7 @@ export function AppHeader({ title, icon, user, sidebarProps, className }: AppHea
                                 <div className="flex flex-col gap-1">
                                     <p className="text-xs font-black uppercase tracking-widest leading-none">{userProfile?.name || user?.displayName || 'Utilisateur'}</p>
                                     <p className="text-[10px] font-medium text-muted-foreground mt-1 truncate">
-                                        {user?.email}
+                                        {formatUserIdentifier(user?.email)}
                                     </p>
                                 </div>
                             </DropdownMenuLabel>

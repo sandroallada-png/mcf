@@ -8,7 +8,9 @@ import { LoadingOverlay } from '@/components/ui/loading-overlay';
 import { AccentThemeProvider } from '@/contexts/accent-theme-context';
 import { FeedbackButton } from '@/components/layout/feedback-button';
 import { FloatingShortcuts } from '@/components/layout/floating-shortcuts';
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
+import { ReadOnlyProvider } from '@/contexts/read-only-context';
+import { FamilyMemberGuardModal } from '@/components/shared/family-member-guard';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -22,11 +24,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AccentThemeProvider>
           <LoadingProvider>
             <AuthProvider>
-              {children}
-              <FeedbackButton />
-              <FloatingShortcuts />
-              <LoadingOverlay />
-              <Toaster />
+              <ReadOnlyProvider>
+                {children}
+                <FamilyMemberGuardModal />
+                <FeedbackButton />
+                <FloatingShortcuts />
+                <LoadingOverlay />
+                <Toaster />
+              </ReadOnlyProvider>
             </AuthProvider>
           </LoadingProvider>
         </AccentThemeProvider>

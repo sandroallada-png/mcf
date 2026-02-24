@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatUserIdentifier } from '@/lib/utils';
 
 import {
     Select,
@@ -372,7 +373,7 @@ export default function FoyerControlPage() {
                                                             <div>
                                                                 <p className="font-black text-lg">{member.name}</p>
                                                                 <div className="flex flex-col gap-0.5">
-                                                                    <span className="text-[10px] text-muted-foreground font-bold">{member.email}</span>
+                                                                    <span className="text-[10px] text-muted-foreground font-bold">{formatUserIdentifier(member.email)}</span>
                                                                     <span className="text-[10px] text-primary/70 font-black uppercase tracking-tighter">Niveau {member.level} • {member.xp} XP</span>
                                                                 </div>
                                                             </div>

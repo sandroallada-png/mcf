@@ -4,7 +4,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { chatAction, generateTitleAction } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { Send, Loader2, BotMessageSquare, User, ThumbsUp, ThumbsDown } from 'lucide-react';
@@ -253,13 +252,14 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
     const isDataLoading = isLoadingConversation || isLoadingProfile || isLoadingHistory || isLoadingFridge || isLoadingPlannedMeals || isLoadingTodaysMeals;
 
     return (
-        <div className="flex h-full flex-col bg-transparent">
-            <ScrollArea className="flex-1" ref={scrollAreaRef}>
-                <div className="p-4 md:p-8 space-y-8" ref={viewportRef}>
+        <div className="flex h-full flex-col bg-transparent min-h-0">
+            {/* Zone scrollable des messages - remplit tout l'espace disponible */}
+            <div className="flex-1 overflow-y-auto min-h-0" ref={scrollAreaRef}>
+                <div className="p-3 md:p-6 space-y-6" ref={viewportRef}>
                     {(isDataLoading && conversationId) ? (
                         <div className="flex flex-col items-center justify-center h-full py-20 gap-4">
                             <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Synchronisation Neuronale...</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Synchronisation...</p>
                         </div>
                     ) : (
                         <>
@@ -269,22 +269,22 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
 
                                 return (
                                     <div key={index} className={cn(
-                                        "group flex items-start gap-4 w-full animate-in fade-in slide-in-from-bottom-4 duration-500",
+                                        "group flex items-start gap-2 md:gap-4 w-full animate-in fade-in slide-in-from-bottom-4 duration-500",
                                         !isAiMessage && "justify-end"
                                     )}>
                                         {isAiMessage && (
-                                            <div className="h-10 w-10 rounded-2xl bg-primary/10 border-2 border-primary/10 flex items-center justify-center shrink-0 shadow-lg shadow-primary/5">
-                                                <BotMessageSquare className="h-5 w-5 text-primary" />
+                                            <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl md:rounded-2xl bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0 shadow-lg shadow-primary/5 mt-0.5">
+                                                <BotMessageSquare className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                                             </div>
                                         )}
 
-                                        <div className={cn("flex flex-col gap-3 max-w-[85%] sm:max-w-xl", isAiMessage ? "items-start" : "items-end")}>
+                                        <div className={cn("flex flex-col gap-2 max-w-[85%] sm:max-w-xl", isAiMessage ? "items-start" : "items-end")}>
                                             <div
                                                 className={cn(
-                                                    "rounded-2xl p-4 text-sm font-medium leading-relaxed transition-all duration-300",
+                                                    "rounded-2xl p-3 md:p-4 text-sm font-medium leading-relaxed transition-all duration-300",
                                                     !isAiMessage
                                                         ? 'bg-primary text-white shadow-xl shadow-primary/20 rounded-tr-none'
-                                                        : 'bg-muted/50 backdrop-blur-sm border-2 border-primary/5 text-foreground rounded-tl-none hover:border-primary/20'
+                                                        : 'bg-muted/50 backdrop-blur-sm border border-primary/5 text-foreground rounded-tl-none hover:border-primary/20'
                                                 )}
                                             >
                                                 <ReactMarkdown
@@ -304,43 +304,43 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
 
                                             {isAiMessage && !isLoading && index > 0 && (
                                                 <div className={cn(
-                                                    "flex items-center gap-2 transition-all duration-300",
+                                                    "flex items-center gap-1.5 transition-all duration-300",
                                                     feedbackSent[index] ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                                                 )}>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
                                                         className={cn(
-                                                            "h-8 w-8 rounded-xl text-muted-foreground/40 hover:text-green-500 hover:bg-green-500/10 transition-colors",
+                                                            "h-7 w-7 rounded-xl text-muted-foreground/40 hover:text-green-500 hover:bg-green-500/10 transition-colors",
                                                             feedbackSent[index] === true && "text-green-500 bg-green-500/10"
                                                         )}
                                                         onClick={() => handleFeedback(index, 1)}
                                                         disabled={feedbackSent[index]}
                                                     >
-                                                        <ThumbsUp className="h-4 w-4" />
+                                                        <ThumbsUp className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
                                                         className={cn(
-                                                            "h-8 w-8 rounded-xl text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-colors",
+                                                            "h-7 w-7 rounded-xl text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-colors",
                                                             feedbackSent[index] === true && "text-red-500 bg-red-500/10"
                                                         )}
                                                         onClick={() => handleFeedback(index, -1)}
                                                         disabled={feedbackSent[index]}
                                                     >
-                                                        <ThumbsDown className="h-4 w-4" />
+                                                        <ThumbsDown className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
                                             )}
                                         </div>
 
                                         {!isAiMessage && (
-                                            <div className="h-10 w-10 rounded-2xl bg-muted border-2 border-primary/5 flex items-center justify-center shrink-0 overflow-hidden shadow-lg">
+                                            <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl md:rounded-2xl bg-muted border border-primary/5 flex items-center justify-center shrink-0 overflow-hidden shadow-lg mt-0.5">
                                                 {user?.photoURL ? (
                                                     <img src={user.photoURL} alt="User" className="h-full w-full object-cover" />
                                                 ) : (
-                                                    <span className="font-black text-xs text-muted-foreground">{user?.email?.charAt(0).toUpperCase()}</span>
+                                                    <span className="font-black text-xs text-muted-foreground">{(userProfile?.name || user?.displayName || user?.email || '?').charAt(0).toUpperCase()}</span>
                                                 )}
                                             </div>
                                         )}
@@ -348,11 +348,11 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
                                 );
                             })}
                             {isLoading && (
-                                <div className="flex items-start gap-4">
-                                    <div className="h-10 w-10 rounded-2xl bg-primary/10 border-2 border-primary/10 flex items-center justify-center shrink-0">
-                                        <BotMessageSquare className="h-5 w-5 text-primary animate-pulse" />
+                                <div className="flex items-start gap-2 md:gap-4">
+                                    <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl md:rounded-2xl bg-primary/10 border border-primary/10 flex items-center justify-center shrink-0">
+                                        <BotMessageSquare className="h-4 w-4 md:h-5 md:w-5 text-primary animate-pulse" />
                                     </div>
-                                    <div className="max-w-xl rounded-2xl rounded-tl-none p-4 bg-muted/30 backdrop-blur-sm border-2 border-primary/5 flex items-center gap-3 shadow-sm">
+                                    <div className="rounded-2xl rounded-tl-none p-3 md:p-4 bg-muted/30 backdrop-blur-sm border border-primary/5 flex items-center gap-3 shadow-sm">
                                         <div className="flex gap-1">
                                             <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
                                             <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -364,17 +364,17 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
                         </>
                     )}
                 </div>
-            </ScrollArea>
+            </div>
 
-            <div className="flex-shrink-0 p-4 md:p-6 bg-gradient-to-t from-background via-background/80 to-transparent">
-                <form onSubmit={handleSendMessage} className="relative max-w-4xl mx-auto group">
-                    <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-3xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
-                    <div className="relative flex items-center gap-3 p-2 rounded-[2rem] bg-muted/30 backdrop-blur-xl border-2 border-primary/5 focus-within:border-primary/20 transition-all shadow-2xl">
+            {/* Barre de saisie - toujours visible, collée en bas */}
+            <div className="shrink-0 p-2 md:p-4 border-t border-primary/5 bg-background/80 backdrop-blur-sm">
+                <form onSubmit={handleSendMessage} className="relative max-w-4xl mx-auto">
+                    <div className="flex items-center gap-2 p-1.5 md:p-2 rounded-2xl bg-muted/30 backdrop-blur-xl border border-primary/10 focus-within:border-primary/30 transition-all shadow-lg">
                         <Input
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
-                            placeholder="Posez votre question à My Flex AI..."
-                            className="flex-1 bg-transparent border-none focus-visible:ring-0 h-10 md:h-12 px-4 font-bold placeholder:text-muted-foreground/50 placeholder:font-medium"
+                            placeholder="Posez votre question..."
+                            className="flex-1 bg-transparent border-none focus-visible:ring-0 h-9 md:h-11 px-3 font-medium text-sm placeholder:text-muted-foreground/50"
                             disabled={isLoading || isDataLoading}
                             autoComplete="off"
                         />
@@ -382,9 +382,9 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
                             type="submit"
                             size="icon"
                             disabled={!inputValue.trim() || isLoading || isDataLoading}
-                            className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                            className="h-9 w-9 md:h-11 md:w-11 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all shrink-0"
                         >
-                            <Send className="h-5 w-5" />
+                            <Send className="h-4 w-4 md:h-5 md:w-5" />
                             <span className="sr-only">Envoyer</span>
                         </Button>
                     </div>
@@ -393,3 +393,4 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
         </div>
     );
 }
+

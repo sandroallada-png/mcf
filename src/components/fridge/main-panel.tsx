@@ -20,6 +20,7 @@ import { getRecipesFromIngredientsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { useReadOnly } from '@/contexts/read-only-context';
 
 interface FridgeItem {
     id: string;
@@ -46,6 +47,7 @@ export function MainPanel() {
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [isSendingToKitchen, setIsSendingToKitchen] = useState<string | null>(null);
     const { toast } = useToast();
+    const { isReadOnly, guardAction, triggerBlock } = useReadOnly();
 
     const fridgeCollectionRef = useMemoFirebase(
         () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'fridge') : null),
@@ -59,7 +61,7 @@ export function MainPanel() {
 
     const { data: ingredients, isLoading: isLoadingIngredients } = useCollection<FridgeItem>(fridgeQuery);
 
-    const handleAddItem = (e: FormEvent) => {
+    const handleAddItem = guardAction((e: FormEvent) => {
         e.preventDefault();
         if (!newItem.trim() || !fridgeCollectionRef || !user) return;
         addDocumentNonBlocking(fridgeCollectionRef, {
@@ -68,13 +70,13 @@ export function MainPanel() {
             createdAt: serverTimestamp(),
         });
         setNewItem('');
-    };
+    });
 
-    const handleRemoveItem = (itemId: string) => {
+    const handleRemoveItem = guardAction((itemId: string) => {
         if (!effectiveChefId) return;
         const itemRef = doc(firestore, 'users', effectiveChefId, 'fridge', itemId);
         deleteDocumentNonBlocking(itemRef);
-    };
+    });
 
     const handleGetSuggestions = async () => {
         if (!ingredients || ingredients.length === 0) return;
@@ -92,6 +94,7 @@ export function MainPanel() {
     };
 
     const handleSendToKitchen = async (recipe: RecipeSuggestion) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!effectiveChefId) return;
         setIsSendingToKitchen(recipe.name);
         try {
@@ -161,10 +164,13 @@ export function MainPanel() {
 
                         <form onSubmit={handleAddItem} className="space-y-4">
                             <Input
-                                placeholder="Ajouter un ingrédient..."
-                                className="h-9 text-sm rounded border-muted/20 focus:border-primary/50 transition-all font-medium"
+                                placeholder={isReadOnly ? "Consultation uniquement..." : "Ajouter un ingrédient..."}
+                                className="h-9 text-sm rounded border-muted/20 focus:border-primary/50 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                 value={newItem}
                                 onChange={e => setNewItem(e.target.value)}
+                                disabled={isReadOnly}
+                                onClick={isReadOnly ? () => triggerBlock() : undefined}
+                                readOnly={isReadOnly}
                             />
                         </form>
 

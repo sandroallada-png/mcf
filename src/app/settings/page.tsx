@@ -29,7 +29,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, formatUserIdentifier } from '@/lib/utils';
+import { useReadOnly } from '@/contexts/read-only-context';
 
 
 const mainObjectives = [
@@ -57,6 +58,7 @@ export default function SettingsPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { theme: activeAccentTheme, setTheme: setAccentTheme } = useAccentTheme();
+    const { isReadOnly, triggerBlock } = useReadOnly();
 
     // Helper function to get supported language
     const getSupportedLanguage = (lang: string) => {
@@ -145,6 +147,7 @@ export default function SettingsPage() {
     }
 
     const handleSaveProfile = async () => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user || !auth.currentUser) return;
         if (!userProfileRef) return;
 
@@ -175,6 +178,7 @@ export default function SettingsPage() {
     }
 
     const handleSaveAppearance = (newTheme: Theme) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user) return;
         const userRef = doc(firestore, 'users', user.uid);
         setAccentTheme(newTheme);
@@ -186,6 +190,7 @@ export default function SettingsPage() {
     }
 
     const handleToggleTraining = async (enabled: boolean) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!userProfileRef) return;
         try {
             await setDoc(userProfileRef, { isAITrainingEnabled: enabled }, { merge: true });
@@ -203,6 +208,7 @@ export default function SettingsPage() {
     };
 
     const handleSaveAISettings = async () => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user || !userProfileRef) return;
         setIsSaving(true);
         try {
@@ -227,6 +233,7 @@ export default function SettingsPage() {
     };
 
     const handleSaveLanguage = async (value: string) => {
+        if (isReadOnly) { triggerBlock(); return; }
         if (!user || !userProfileRef) return;
         setLanguage(value);
         try {
@@ -286,7 +293,7 @@ export default function SettingsPage() {
                     sidebarProps={sidebarProps}
                 />
 
-                <main className="flex-1 max-w-4xl mx-auto w-full px-6 md:px-12 py-10 space-y-12">
+                <main className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-10 md:space-y-12">
 
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
@@ -331,7 +338,7 @@ export default function SettingsPage() {
                                     <div className="space-y-1.5">
                                         <Label htmlFor="email" className="text-xs font-medium">Adresse e-mail</Label>
                                         <div className="flex items-center gap-2 max-w-md">
-                                            <Input id="email" value={user.email || ''} readOnly disabled className="h-9 text-sm rounded bg-accent/30 opacity-70" />
+                                            <Input id="email" value={formatUserIdentifier(user.email) || ''} readOnly disabled className="h-9 text-sm rounded bg-accent/30 opacity-70" />
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -532,7 +539,7 @@ export default function SettingsPage() {
                                 <h2 className="text-sm font-semibold text-destructive/60">Zone de danger</h2>
                             </div>
 
-                            <div className="flex items-center justify-between p-6 bg-destructive/5 border border-destructive/10 rounded-lg">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 sm:p-6 bg-destructive/5 border border-destructive/10 rounded-lg">
                                 <div className="space-y-1">
                                     <p className="text-sm font-bold text-destructive/80">Supprimer le compte</p>
                                     <p className="text-xs text-destructive/60">Cette action est irréversible et effacera toutes vos données.</p>

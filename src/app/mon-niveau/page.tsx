@@ -8,10 +8,10 @@ import {
 } from '@/components/ui/sidebar';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, limit, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, limit, updateDoc, where } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Meal, UserProfile } from '@/lib/types';
-import { Loader2, Trophy, Star, ShieldCheck, Percent, BookOpen, Target, Flame, Lightbulb, BadgeCheck } from 'lucide-react';
+import { Loader2, Trophy, Star, ShieldCheck, Percent, BookOpen, Target, Flame, Lightbulb, BadgeCheck, Users } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { LevelBadge } from '@/components/my-level/level-badge';
@@ -29,14 +29,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-const XP_PER_LEVEL = 500;
+const BASE_XP_PER_LEVEL = 500;
 
 // Generic rewards for upcoming levels
 const futureRewards = [
   { name: 'Nouveau Badge de Profil', icon: <BadgeCheck /> },
   { name: 'Accès à de nouveaux objectifs', icon: <Target /> },
   { name: 'Bonus d\'XP de Série Amélioré', icon: <Flame /> },
-  { name: 'Personnalisation de l\'IA Avancée', icon: <Lightbulb /> },
+  { name: 'Personnalisation de l\'outil Avancée', icon: <Lightbulb /> },
 ];
 
 export default function MyLevelPage() {
@@ -71,6 +71,32 @@ export default function MyLevelPage() {
   )
   const { data: goalsData, isLoading: isLoadingGoals } = useCollection<{ description: string }>(singleGoalQuery);
 
+  // --- Data fetching for household members ---
+  const spaceId = userProfile?.chefId || (user ? user.uid : null);
+  const householdMembersQuery = useMemoFirebase(
+    () => (spaceId ? query(collection(firestore, 'users'), where('chefId', '==', spaceId)) : null),
+    [spaceId, firestore]
+  );
+  const { data: householdMembers, isLoading: isLoadingHousehold } = useCollection<UserProfile>(householdMembersQuery);
+
+  const memberCount = useMemo(() => {
+    if (!householdMembers) return 1;
+    // If I'm a member, I'm already in the list. If I'm the chef, I'm not.
+    const isMember = userProfile?.chefId ? true : false;
+    return householdMembers.length + (isMember ? 0 : 1);
+  }, [householdMembers, userProfile]);
+
+  const totalXP = useMemo(() => {
+    if (!householdMembers) return userProfile?.xp ?? 0;
+    const membersSum = householdMembers.reduce((sum, m) => sum + (m.xp || 0), 0);
+    // If I'm the chef, I need to add my own XP too
+    const isMember = userProfile?.chefId ? true : false;
+    return membersSum + (isMember ? 0 : (userProfile?.xp ?? 0));
+  }, [householdMembers, userProfile]);
+
+  const isSharedLevel = memberCount > 1;
+  const XP_PER_LEVEL = BASE_XP_PER_LEVEL * memberCount;
+
   const [goals, setGoals] = useState('Perdre du poids, manger plus sainement et réduire ma consommation de sucre.');
   const [goalId, setGoalId] = useState<string | null>(null);
 
@@ -100,8 +126,8 @@ export default function MyLevelPage() {
   }
 
   // --- XP & Level Calculation ---
-  const currentXP = userProfile?.xp ?? 0;
-  const currentLevel = userProfile?.level ?? 1;
+  const currentXP = isSharedLevel ? totalXP : (userProfile?.xp ?? 0);
+  const currentLevel = userProfile?.level ?? 1; // Assuming level is synced or we take current user's level as base
   const xpForCurrentLevel = currentXP % XP_PER_LEVEL;
   const progressPercentage = (xpForCurrentLevel / XP_PER_LEVEL) * 100;
   const currentStreak = userProfile?.streak ?? 0;
@@ -143,7 +169,7 @@ export default function MyLevelPage() {
     return "Légende Culinaire";
   }, [currentLevel]);
 
-  if (isUserLoading || isLoadingAllMeals || isLoadingGoals || isLoadingProfile || !user) {
+  if (isUserLoading || isLoadingAllMeals || isLoadingGoals || isLoadingProfile || isLoadingHousehold || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -172,44 +198,65 @@ export default function MyLevelPage() {
               sidebarProps={sidebarProps}
             />
 
-            <main className="flex-1 max-w-5xl mx-auto w-full px-6 md:px-12 py-10 space-y-12">
+            <main className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-8 md:space-y-12">
 
               {/* Header section */}
               <div className="space-y-6">
                 <div className="space-y-2">
                   <div className="text-5xl mb-4">🏆</div>
-                  <h1 className="text-4xl font-bold tracking-tight">Progression & Succès</h1>
+                  <h1 className="text-2xl md:text-4xl font-bold tracking-tight">
+                    {isSharedLevel ? "Notre Niveau & Progression" : "Mon Niveau & Progression"}
+                  </h1>
                   <p className="text-muted-foreground text-sm max-w-2xl">
-                    Suivez votre évolution, gagnez des récompenses et restez motivé tout au long de votre parcours culinaire.
+                    {isSharedLevel
+                      ? "Votre foyer progresse ensemble ! Chaque membre contribue à l'XP collective pour débloquer de nouveaux succès."
+                      : "Suivez votre évolution, gagnez des récompenses et restez motivé tout au long de votre parcours culinaire."}
                   </p>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleGetMotivation}
-                    disabled={isGettingMotivation}
-                    variant="outline"
-                    className="h-9 px-4 text-xs font-semibold rounded border shadow-sm hover:bg-accent transition-colors"
-                  >
-                    <Lightbulb className="mr-2 h-3.5 w-3.5" />
-                    Obtenir un conseil IA
-                  </Button>
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleGetMotivation}
+                      disabled={isGettingMotivation}
+                      variant="outline"
+                      className="h-9 px-4 text-xs font-semibold rounded border shadow-sm hover:bg-accent transition-colors"
+                    >
+                      <Lightbulb className="mr-2 h-3.5 w-3.5" />
+                      Obtenir un conseil de notre outil
+                    </Button>
+                  </div>
+
+                  {isSharedLevel && (
+                    <Alert className="bg-primary/5 border-primary/20 max-w-2xl">
+                      <Users className="h-4 w-4 text-primary" />
+                      <AlertTitle className="text-xs font-bold uppercase tracking-tight">Espace Partagé ({memberCount} membres)</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        Le seuil de progression est de {XP_PER_LEVEL} XP par niveau ({BASE_XP_PER_LEVEL} XP x {memberCount} personnes).
+                        L'XP affichée est la somme des efforts de tous les membres !
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-10">
                 {/* Level Summary */}
                 <div className="md:col-span-4 space-y-6">
                   <div className="p-8 rounded-lg border bg-accent/10 flex flex-col items-center text-center space-y-4">
                     <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 shadow-sm relative">
                       <span className="text-3xl font-bold text-primary">{currentLevel}</span>
                       <div className="absolute -bottom-1 bg-background px-2 py-0.5 border rounded-full">
-                        <span className="text-[10px] font-bold uppercase tracking-tight">Niveau</span>
+                        <span className="text-[10px] font-bold uppercase tracking-tight">
+                          {isSharedLevel ? "Notre Niveau" : "Niveau"}
+                        </span>
                       </div>
                     </div>
 
                     <div className="space-y-1">
-                      <h2 className="text-xl font-bold">{user.displayName || 'Utilisateur'}</h2>
+                      <h2 className="text-xl font-bold">
+                        {isSharedLevel ? "La Famille" : (user.displayName || 'Utilisateur')}
+                      </h2>
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
                         {rankTitle}
                       </p>
@@ -297,7 +344,7 @@ export default function MyLevelPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-primary" />
-              <span>Conseil personnalisé IA</span>
+              <span>Conseil personnalisé de notre outil</span>
             </DialogTitle>
             <DialogDescription>
               Voici une recommandation basée sur votre profil actuel.

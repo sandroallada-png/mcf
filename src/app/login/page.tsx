@@ -188,24 +188,6 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-8">
-            <div className="grid gap-4">
-              <Button
-                variant="outline"
-                className="h-14 text-base font-bold border-2 hover:bg-muted relative overflow-hidden group transition-all hover:scale-[1.02] active:scale-95"
-                onClick={handleGoogleSignIn}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-red-500/5 to-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <GoogleIcon className="mr-3 h-5 w-5" />
-                Continuer avec Google
-              </Button>
-
-              <div className="relative py-4 flex items-center gap-4">
-                <div className="flex-1 h-px bg-muted-foreground/20" />
-                <span className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground">Ou</span>
-                <div className="flex-1 h-px bg-muted-foreground/20" />
-              </div>
-            </div>
-
             {/* Mode Selector Tabs */}
             <div className="flex p-1 bg-muted rounded-2xl border-2">
               <button
@@ -277,6 +259,26 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              <div className="space-y-4">
+                <div className="relative py-2 flex items-center gap-4">
+                  <div className="flex-1 h-px bg-muted-foreground/20" />
+                  <span className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground">Ou</span>
+                  <div className="flex-1 h-px bg-muted-foreground/20" />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-14 text-base font-bold border-2 hover:bg-muted relative overflow-hidden group transition-all hover:scale-[1.02] active:scale-95"
+                  onClick={handleGoogleSignIn}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-red-500/5 to-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <GoogleIcon className="mr-3 h-5 w-5" />
+                  Continuer avec Google
+                </Button>
+              </div>
+
               <Button type="submit" className="w-full h-16 text-lg font-black shadow-2xl shadow-primary/30 rounded-2xl group relative overflow-hidden text-primary border-2 border-primary/20 bg-primary/5 hover:bg-primary hover:text-white-force">
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 {loginMode === 'email' ? 'Se connecter' : 'Accéder au foyer'}
