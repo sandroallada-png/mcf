@@ -7,7 +7,8 @@ import { collection, doc, serverTimestamp, query, orderBy } from 'firebase/fires
 import { AppHeader } from '@/components/layout/app-header';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { SidebarProvider, Sidebar as AppSidebar, SidebarInset } from '@/components/ui/sidebar';
-import { Loader2, Utensils, PlusCircle, Edit, Trash2, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { Loader2, Utensils, PlusCircle, Edit, Trash2, CheckCircle, XCircle, Upload, CheckCircle2, AlertCircle, Clock, Flame } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -134,8 +135,11 @@ export default function AdminDishesPage() {
             updateDocumentNonBlocking(dishDocRef, values);
             toast({ title: "Plat modifié", description: "Le plat a été mis à jour." });
         } else {
-            addDocumentNonBlocking(dishesCollectionRef, { ...values });
-            toast({ title: "Plat ajouté", description: "Le nouveau plat a été ajouté." });
+            addDocumentNonBlocking(dishesCollectionRef, {
+                ...values,
+                isVerified: false
+            });
+            toast({ title: "Plat ajouté", description: "Le nouveau plat a été ajouté (en attente de vérification)." });
             // Update status if coming from suggestion
             if (contributionToUpdate) {
                 handleContributionStatusUpdate(contributionToUpdate, 'approved');
@@ -171,6 +175,15 @@ export default function AdminDishesPage() {
         const contributionRef = doc(firestore, 'userContributions', contributionId);
         updateDocumentNonBlocking(contributionRef, { status });
         toast({ title: 'Statut mis à jour', description: `La contribution a été ${status === 'approved' ? 'approuvée' : 'rejetée'}.` });
+    };
+
+    const handleToggleVerify = (dishId: string, currentStatus: boolean) => {
+        const dishDocRef = doc(firestore, 'dishes', dishId);
+        updateDocumentNonBlocking(dishDocRef, { isVerified: !currentStatus });
+        toast({
+            title: !currentStatus ? "Plat vérifié" : "Plat non vérifié",
+            description: `Le statut du plat a été mis à jour.`
+        });
     };
 
     const handleMissingStatusUpdate = (missingId: string, status: 'added' | 'rejected') => {
@@ -226,105 +239,160 @@ export default function AdminDishesPage() {
                                     {/* Tab for application's official dishes */}
                                     <TabsContent value="app_dishes">
                                         <Card>
-                                            <CardHeader className="flex flex-row items-center justify-between">
+                                            <CardHeader className="flex flex-row items-center justify-between pb-2">
                                                 <div>
-                                                    <CardTitle>Liste des plats</CardTitle>
-                                                    <CardDescription>Ajoutez, modifiez ou supprimez les plats de l'application.</CardDescription>
+                                                    <CardTitle>Catalogue MyFlex</CardTitle>
+                                                    <CardDescription>Gérez l'ensemble des plats disponibles dans l'application.</CardDescription>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <Dialog open={isImportOpen} onOpenChange={setImportOpen}>
                                                         <DialogTrigger asChild>
-                                                            <Button variant="outline">
+                                                            <Button variant="outline" size="sm">
                                                                 <Upload className="mr-2 h-4 w-4" />
-                                                                Importer en masse
+                                                                Import CSV/JSON
                                                             </Button>
                                                         </DialogTrigger>
                                                         <DialogContent className="max-w-2xl">
                                                             <DialogHeader>
-                                                                <DialogTitle>Importer des plats en masse</DialogTitle>
+                                                                <DialogTitle>Importation en masse</DialogTitle>
                                                                 <DialogDescription>
-                                                                    Chargez un fichier JSON contenant un tableau de plats. Chaque plat doit avoir au minimum une clé "name".
+                                                                    Chargez vos plats par lot. Ils seront ajoutés comme "non vérifiés".
                                                                 </DialogDescription>
                                                             </DialogHeader>
                                                             <BulkDishImporter onImportComplete={() => setImportOpen(false)} />
                                                         </DialogContent>
                                                     </Dialog>
                                                     <DialogTrigger asChild>
-                                                        <Button onClick={handleAddNew}>
+                                                        <Button onClick={handleAddNew} size="sm" className="bg-primary hover:bg-primary/90">
                                                             <PlusCircle className="mr-2 h-4 w-4" />
-                                                            Ajouter
+                                                            Nouveau plat
                                                         </Button>
                                                     </DialogTrigger>
                                                 </div>
                                             </CardHeader>
                                             <CardContent>
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow>
-                                                            <TableHead className="w-[80px]">Image</TableHead>
-                                                            <TableHead>Nom</TableHead>
-                                                            <TableHead>Type</TableHead>
-                                                            <TableHead>Catégorie</TableHead>
-                                                            <TableHead>Pays</TableHead>
-                                                            <TableHead>Temps</TableHead>
-                                                            <TableHead className="text-right">Actions</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {dishes && dishes.length > 0 ? (
-                                                            dishes.map((dish) => (
-                                                                <TableRow key={dish.id}>
-                                                                    <TableCell>
-                                                                        {dish.imageUrl ? (
-                                                                            <Image src={dish.imageUrl} alt={dish.name} width={64} height={64} className="rounded-md object-cover aspect-square" />
+                                                <Tabs defaultValue="unverified" className="w-full">
+                                                    <TabsList className="mb-4 bg-muted/30 p-1 h-auto">
+                                                        <TabsTrigger value="unverified" className="py-2 px-4 data-[state=active]:bg-background data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-primary rounded-none">
+                                                            <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
+                                                            À vérifier
+                                                            <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">
+                                                                {dishes?.filter(d => !d.isVerified).length || 0}
+                                                            </Badge>
+                                                        </TabsTrigger>
+                                                        <TabsTrigger value="verified" className="py-2 px-4 data-[state=active]:bg-background data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-primary rounded-none">
+                                                            <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" />
+                                                            Vérifiés
+                                                            <Badge variant="secondary" className="ml-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none">
+                                                                {dishes?.filter(d => d.isVerified).length || 0}
+                                                            </Badge>
+                                                        </TabsTrigger>
+                                                    </TabsList>
+
+                                                    {['unverified', 'verified'].map((status) => (
+                                                        <TabsContent key={status} value={status} className="mt-0">
+                                                            <div className="rounded-md border">
+                                                                <Table>
+                                                                    <TableHeader className="bg-muted/30">
+                                                                        <TableRow>
+                                                                            <TableHead className="w-[80px]">Image</TableHead>
+                                                                            <TableHead>Nom</TableHead>
+                                                                            <TableHead>Détails</TableHead>
+                                                                            <TableHead>Infos</TableHead>
+                                                                            <TableHead>Calories</TableHead>
+                                                                            <TableHead className="text-center">Vérifié</TableHead>
+                                                                            <TableHead className="text-right">Actions</TableHead>
+                                                                        </TableRow>
+                                                                    </TableHeader>
+                                                                    <TableBody>
+                                                                        {dishes && dishes.filter(d => status === 'verified' ? d.isVerified : !d.isVerified).length > 0 ? (
+                                                                            dishes.filter(d => status === 'verified' ? d.isVerified : !d.isVerified).map((dish) => (
+                                                                                <TableRow key={dish.id} className="group hover:bg-muted/20 transition-colors">
+                                                                                    <TableCell>
+                                                                                        <div className="relative h-12 w-12 overflow-hidden rounded-lg shadow-sm border">
+                                                                                            {dish.imageUrl ? (
+                                                                                                <Image src={dish.imageUrl} alt={dish.name} fill className="object-cover" />
+                                                                                            ) : (
+                                                                                                <div className="h-full w-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground uppercase font-black">
+                                                                                                    NO IMG
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                    <TableCell>
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className="font-bold text-sm leading-tight">{dish.name}</span>
+                                                                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{dish.origin}</span>
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                    <TableCell>
+                                                                                        <div className="flex flex-wrap gap-1">
+                                                                                            <Badge variant="outline" className="text-[10px] py-0">{dish.category}</Badge>
+                                                                                            {dish.type && <Badge variant="secondary" className="text-[10px] py-0">{dish.type}</Badge>}
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                    <TableCell>
+                                                                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                                                            <Clock className="h-3 w-3" />
+                                                                                            {dish.cookingTime}
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                    <TableCell>
+                                                                                        <div className="flex items-center gap-1 text-xs font-black text-amber-600">
+                                                                                            <Flame className="h-3 w-3" />
+                                                                                            {dish.calories || '--'}
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                    <TableCell className="text-center">
+                                                                                        <Switch
+                                                                                            checked={!!dish.isVerified}
+                                                                                            onCheckedChange={() => handleToggleVerify(dish.id, !!dish.isVerified)}
+                                                                                        />
+                                                                                    </TableCell>
+                                                                                    <TableCell className="text-right">
+                                                                                        <div className="flex justify-end gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(dish)}>
+                                                                                                <Edit className="h-4 w-4" />
+                                                                                            </Button>
+                                                                                            <AlertDialog>
+                                                                                                <AlertDialogTrigger asChild>
+                                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                                                                        <Trash2 className="h-4 w-4" />
+                                                                                                    </Button>
+                                                                                                </AlertDialogTrigger>
+                                                                                                <AlertDialogContent>
+                                                                                                    <AlertDialogHeader>
+                                                                                                        <AlertDialogTitle>Supprimer définitivement ?</AlertDialogTitle>
+                                                                                                        <AlertDialogDescription>
+                                                                                                            Le plat "{dish.name}" sera retiré du catalogue. Cette action est irréversible.
+                                                                                                        </AlertDialogDescription>
+                                                                                                    </AlertDialogHeader>
+                                                                                                    <AlertDialogFooter>
+                                                                                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                                                                        <AlertDialogAction onClick={() => handleDelete(dish.id)} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                                                                                                    </AlertDialogFooter>
+                                                                                                </AlertDialogContent>
+                                                                                            </AlertDialog>
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                </TableRow>
+                                                                            ))
                                                                         ) : (
-                                                                            <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center text-xs text-muted-foreground">
-                                                                                N/A
-                                                                            </div>
+                                                                            <TableRow>
+                                                                                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic bg-muted/5">
+                                                                                    <div className="flex flex-col items-center justify-center gap-2">
+                                                                                        <Utensils className="h-8 w-8 opacity-20" />
+                                                                                        <span>Aucun plat {status === 'verified' ? 'vérifié' : 'en attente'} pour le moment.</span>
+                                                                                    </div>
+                                                                                </TableCell>
+                                                                            </TableRow>
                                                                         )}
-                                                                    </TableCell>
-                                                                    <TableCell className="font-medium">{dish.name}</TableCell>
-                                                                    <TableCell>
-                                                                        {dish.type && <Badge variant="outline">{dish.type}</Badge>}
-                                                                    </TableCell>
-                                                                    <TableCell><Badge variant="secondary">{dish.category}</Badge></TableCell>
-                                                                    <TableCell className="text-muted-foreground">{dish.origin}</TableCell>
-                                                                    <TableCell className="text-muted-foreground">{dish.cookingTime}</TableCell>
-                                                                    <TableCell className="text-right">
-                                                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(dish)}>
-                                                                            <Edit className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <AlertDialog>
-                                                                            <AlertDialogTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" className="text-destructive">
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                </Button>
-                                                                            </AlertDialogTrigger>
-                                                                            <AlertDialogContent>
-                                                                                <AlertDialogHeader>
-                                                                                    <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-                                                                                    <AlertDialogDescription>
-                                                                                        Cette action est irréversible et supprimera le plat définitivement.
-                                                                                    </AlertDialogDescription>
-                                                                                </AlertDialogHeader>
-                                                                                <AlertDialogFooter>
-                                                                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                                                    <AlertDialogAction onClick={() => handleDelete(dish.id)} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                                                                                </AlertDialogFooter>
-                                                                            </AlertDialogContent>
-                                                                        </AlertDialog>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ))
-                                                        ) : (
-                                                            <TableRow>
-                                                                <TableCell colSpan={7} className="h-24 text-center">
-                                                                    Aucun plat dans la base de données.
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        )}
-                                                    </TableBody>
-                                                </Table>
+                                                                    </TableBody>
+                                                                </Table>
+                                                            </div>
+                                                        </TabsContent>
+                                                    ))}
+                                                </Tabs>
                                             </CardContent>
                                         </Card>
                                     </TabsContent>

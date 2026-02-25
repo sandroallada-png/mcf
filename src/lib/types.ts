@@ -21,9 +21,10 @@ export const CookingSchema = z.object({
   type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']),
   recipe: z.string().optional(),
   imageHint: z.string(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
   createdAt: z.any(), // Firestore Timestamp
   plannedFor: z.any(), // Firestore Timestamp for the planned date
+  isDone: z.boolean().optional(),
 });
 export type Cooking = z.infer<typeof CookingSchema>;
 
@@ -76,6 +77,8 @@ export const UserProfileSchema = z.object({
   allergies: z.string().optional(),
   preferences: z.string().optional(),
   chefId: z.string().optional().describe('The UID of the household chef/owner if this user is a member.'),
+  targetCalories: z.number().optional().default(2000),
+  targetMeals: z.number().optional().default(4),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 
@@ -133,10 +136,12 @@ export const DishSchema = z.object({
   category: z.string(),
   origin: z.string(),
   cookingTime: z.string(),
-  imageUrl: z.string().url().optional(),
+  calories: z.number().optional(),
+  imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
   type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert', '']).optional(),
   recipe: z.string().optional(),
   imageHint: z.string().optional(),
+  isVerified: z.boolean().optional(),
 });
 export type Dish = z.infer<typeof DishSchema>;
 
@@ -337,7 +342,7 @@ export const MealSuggestionSchema = z.object({
   calories: z.number().describe('Estimated calorie count for the meal.'),
   cookingTime: z.string().describe('Estimated cooking time (e.g., "20 min").'),
   imageHint: z.string().describe('Two or three English keywords for a stock photo search (e.g., "grilled salmon").'),
-  imageUrl: z.string().url().optional().describe('The URL for the meal image.'),
+  imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
   type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']).describe('The type of meal.'),
   recipe: z.string().optional(),
 });
@@ -392,7 +397,7 @@ export const SingleMealSuggestionSchema = z.object({
   cookingTime: z.string().describe("Temps de cuisson estimé (ex: '20 min')."),
   type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']).describe("Le type de repas."),
   imageHint: z.string().describe("Deux ou trois mots-clés pour une recherche d'image (ex: 'salade saine')."),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
   recipe: z.string().optional().describe("La recette détaillée du plat au format Markdown."),
   description: z.string().optional().describe("Un court résumé ou une description du plat."),
   message: z.string().optional().describe("Un message amical de l'IA expliquant pourquoi elle suggère ce repas."),
@@ -467,7 +472,7 @@ export const DayPlanMealSchema = z.object({
   type: z.enum(['breakfast', 'lunch', 'dinner']),
   calories: z.number(),
   cookedBy: z.string().optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
 });
 export type DayPlanMeal = z.infer<typeof DayPlanMealSchema>;
 

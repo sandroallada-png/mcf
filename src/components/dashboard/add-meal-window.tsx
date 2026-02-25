@@ -59,11 +59,12 @@ interface AddMealWindowProps {
     onSubmit: (data: { name: string; type: Meal['type']; cookedBy?: string; calories?: number; date?: Date; imageUrl?: string }) => Promise<void>;
     household?: string[];
     userId?: string;
+    chefId?: string;
     defaultType?: Meal['type'];
 }
 
-export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userId, defaultType }: AddMealWindowProps) {
-    const { firestore } = useFirebase();
+export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userId, chefId, defaultType }: AddMealWindowProps) {
+    const { firestore, user } = useFirebase();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<'today' | 'later'>('today');
     const [searchTerm, setSearchTerm] = useState('');
@@ -153,7 +154,8 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const [conflictMessage, setConflictMessage] = useState('');
 
     const checkForConflict = async (date: Date, type: Meal['type']) => {
-        if (!userId) return false;
+        const effectiveId = chefId || userId;
+        if (!effectiveId) return false;
 
         // Define range for the day
         const startOfDay = new Date(date);
@@ -162,23 +164,29 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
         endOfDay.setHours(23, 59, 59, 999);
 
         // Check in 'cooking' collection (planned meals)
-        const cookingRef = collection(firestore, 'users', userId, 'cooking');
-        const q = query(
+        const cookingRef = collection(firestore, 'users', effectiveId, 'cooking');
+        const qCooking = query(
             cookingRef,
             where('plannedFor', '>=', Timestamp.fromDate(startOfDay)),
             where('plannedFor', '<=', Timestamp.fromDate(endOfDay)),
-            where('type', '==', type) // Assuming we only care about same meal type conflict
+            where('type', '==', type)
         );
 
-        // Also check in 'meals' collection (logged meals) if it's for today/past? 
-        // User said "si un repas est programmer". 
-        // So we mainly check future planned meals.
+        // Check in 'foodLogs' collection (logged meals)
+        const foodLogsRef = collection(firestore, 'users', effectiveId, 'foodLogs');
+        const qLogs = query(
+            foodLogsRef,
+            where('date', '>=', Timestamp.fromDate(startOfDay)),
+            where('date', '<=', Timestamp.fromDate(endOfDay)),
+            where('type', '==', type)
+        );
 
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            return true;
-        }
-        return false;
+        const [cookingSnap, logsSnap] = await Promise.all([
+            getDocs(qCooking),
+            getDocs(qLogs)
+        ]);
+
+        return !cookingSnap.empty || !logsSnap.empty;
     };
 
 
@@ -233,41 +241,46 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const procceedSubmission = async (values: MealFormValues, tab: 'today' | 'later') => {
         try {
             if (tab === 'later' && values.date) {
-                const plannedDate = values.date;
-                if (!userId) throw new Error("User ID missing");
-
-                // Start: Remove existing conflict if any?
-                // The prompt says "Do you want to change it?". This implies we overwrite or just add?
-                // "Change it" usually means replace.
-                // To replace, we should find the old one and delete it, or just add new one.
-                // If we really want to replace, we need to delete the old one.
-                // For simplicity, let's just add the new one. The user can have multiple if they want, but the warning is good.
-                // Wait, "Voulez-vous le changer?" implies replacement. 
-                // Implementing replacement would require finding the ID of the conflicting document.
-                // Let's do that optimization if I have time. For now, just proceeding to add is "changing the plan" in a loose sense.
-                // Actually, let's try to delete the conflicting one if we found it.
-                // I'll need to re-query to get the ID.
+                const effectiveId = chefId || userId;
+                if (!effectiveId) throw new Error("User ID missing");
 
                 // Re-query for conflict to delete it (simple overwrite)
                 const startOfDay = new Date(plannedDate);
                 startOfDay.setHours(0, 0, 0, 0);
                 const endOfDay = new Date(plannedDate);
                 endOfDay.setHours(23, 59, 59, 999);
-                const cookingRef = collection(firestore, 'users', userId, 'cooking');
-                const q = query(
+
+                // Delete from cooking
+                const cookingRef = collection(firestore, 'users', effectiveId, 'cooking');
+                const qCooking = query(
                     cookingRef,
                     where('plannedFor', '>=', Timestamp.fromDate(startOfDay)),
                     where('plannedFor', '<=', Timestamp.fromDate(endOfDay)),
                     where('type', '==', values.type)
                 );
-                const snapshot = await getDocs(q);
-                snapshot.forEach(async (doc) => {
-                    await deleteDoc(doc.ref);
-                });
+
+                // Delete from foodLogs
+                const foodLogsRef = collection(firestore, 'users', effectiveId, 'foodLogs');
+                const qLogs = query(
+                    foodLogsRef,
+                    where('date', '>=', Timestamp.fromDate(startOfDay)),
+                    where('date', '<=', Timestamp.fromDate(endOfDay)),
+                    where('type', '==', values.type)
+                );
+
+                const [cookingSnap, logsSnap] = await Promise.all([
+                    getDocs(qCooking),
+                    getDocs(qLogs)
+                ]);
+
+                const deletePromises: Promise<void>[] = [];
+                cookingSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
+                logsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
+                await Promise.all(deletePromises);
 
 
                 const cookingData = {
-                    userId,
+                    userId: userId,
                     name: values.name,
                     type: values.type,
                     calories: 0,
@@ -279,37 +292,55 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                     recipe: selectedDish?.recipe,
                 };
 
-                await addDocumentNonBlocking(collection(firestore, 'users', userId, 'cooking'), cookingData);
+                await addDocumentNonBlocking(collection(firestore, 'users', effectiveId, 'cooking'), cookingData);
                 toast({ title: "Repas programmé", description: `Le repas ${values.name} a été programmé pour le ${format(plannedDate, 'dd/MM/yyyy')}.` });
                 onClose();
 
             } else {
                 // Today
-                // If conflict found for today (in planned meals), we should probably delete the planned meal and add the real log.
-                // Or just add the log.
-                if (userId) {
+                const effectiveId = chefId || userId;
+                if (effectiveId) {
                     const todayDate = new Date();
                     const startOfDay = new Date(todayDate);
                     startOfDay.setHours(0, 0, 0, 0);
                     const endOfDay = new Date(todayDate);
                     endOfDay.setHours(23, 59, 59, 999);
-                    const cookingRef = collection(firestore, 'users', userId, 'cooking');
-                    const q = query(
+
+                    // Delete from cooking
+                    const cookingRef = collection(firestore, 'users', effectiveId, 'cooking');
+                    const qCooking = query(
                         cookingRef,
                         where('plannedFor', '>=', Timestamp.fromDate(startOfDay)),
                         where('plannedFor', '<=', Timestamp.fromDate(endOfDay)),
                         where('type', '==', values.type)
                     );
-                    const snapshot = await getDocs(q);
-                    snapshot.forEach(async (doc) => {
-                        await deleteDoc(doc.ref);
-                    });
+
+                    // Delete from foodLogs
+                    const foodLogsRef = collection(firestore, 'users', effectiveId, 'foodLogs');
+                    const qLogs = query(
+                        foodLogsRef,
+                        where('date', '>=', Timestamp.fromDate(startOfDay)),
+                        where('date', '<=', Timestamp.fromDate(endOfDay)),
+                        where('type', '==', values.type)
+                    );
+
+                    const [cookingSnap, logsSnap] = await Promise.all([
+                        getDocs(qCooking),
+                        getDocs(qLogs)
+                    ]);
+
+                    const deletePromises: Promise<void>[] = [];
+                    cookingSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
+                    logsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
+                    await Promise.all(deletePromises);
                 }
 
                 await onSubmit({
                     name: values.name,
                     type: values.type,
                     cookedBy: values.cookedBy,
+                    calories: values.calories,
+                    imageUrl: values.imageUrl,
                 });
                 onClose();
             }

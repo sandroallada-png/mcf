@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     SidebarProvider,
     Sidebar as AppSidebar,
@@ -8,10 +8,10 @@ import {
 } from '@/components/ui/sidebar';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, limit, updateDoc, Timestamp, orderBy, getDoc, increment, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, query, limit, updateDoc, Timestamp, orderBy, getDoc, increment, setDoc, serverTimestamp, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Meal, AIPersonality, SingleMealSuggestion, Dish, Cooking, PendingCooking, UserProfile, SuggestSingleMealInput } from '@/lib/types';
-import { Loader2, ChefHat, Search, Clock as ClockIcon, MapPin, AlarmClock, Bot, PlusCircle, Sprout, Calendar, History, Hourglass, Sparkles, X, UtensilsCrossed, CookingPot, BookOpen, ZoomIn, Heart, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Trash2, Loader2, ChefHat, Search, Clock as ClockIcon, MapPin, AlarmClock, Bot, PlusCircle, Sprout, Calendar, Calendar as CalendarIcon, History, Hourglass, Sparkles, X, UtensilsCrossed, CookingPot, BookOpen, ZoomIn, Heart, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,9 +23,11 @@ import { getSingleMealSuggestionAction, getRecommendedDishesAction, trackInterac
 import { useToast } from '@/hooks/use-toast';
 import { ImageZoomLightbox } from '@/components/shared/image-zoom-lightbox';
 import { SuggestionDialog } from '@/components/cuisine/suggestion-dialog';
+import { CookingMode } from '@/components/cuisine/cooking-mode';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import ReactMarkdown from 'react-markdown';
-import { format, isPast, startOfToday } from 'date-fns';
+import { format, isPast, startOfToday, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { WhoIsCooking } from '@/components/cuisine/who-is-cooking';
 import { useReadOnly } from '@/contexts/read-only-context';
@@ -91,7 +93,7 @@ const getContextualInfo = (hour: number): { message: string, image: string, time
 
 const tabDetails = {
     suggestions: { title: 'Inspiration', icon: <Sparkles className="h-4 w-4" /> },
-    pending: { title: 'Derniers repas', icon: <Hourglass className="h-4 w-4" /> },
+    pending: { title: 'En attente', icon: <Hourglass className="h-4 w-4" /> },
     in_progress: { title: 'En cuisine', icon: <CookingPot className="h-4 w-4" /> },
     history: { title: 'Archives', icon: <History className="h-4 w-4" /> },
 };
@@ -117,9 +119,14 @@ export default function CuisinePage() {
     const [recommendations, setRecommendations] = useState<(Dish & { matchReason?: string })[]>([]);
     const [isLoadingRecs, setIsLoadingRecs] = useState(false);
     const [zoomImage, setZoomImage] = useState<string | null>(null);
+    const [cookingModeItem, setCookingModeItem] = useState<Cooking | null>(null);
+    const [pendingActionItem, setPendingActionItem] = useState<PendingCooking | null>(null);
+    const [tabFlash, setTabFlash] = useState(false);
+    const [dismissingId, setDismissingId] = useState<string | null>(null);
+    const [dismissingCookingId, setDismissingCookingId] = useState<string | null>(null);
 
     // --- Data Fetching from Firestore ---
-    const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
+    const dishesCollectionRef = useMemoFirebase(() => query(collection(firestore, 'dishes'), where('isVerified', '==', true)), [firestore]);
     const { data: dishes, isLoading: isLoadingDishes } = useCollection<Dish>(dishesCollectionRef);
 
     // --- User Profile ---
@@ -136,6 +143,7 @@ export default function CuisinePage() {
     const cookingQuery = useMemoFirebase(() => (cookingCollectionRef ? query(cookingCollectionRef, orderBy('plannedFor', 'desc')) : null), [cookingCollectionRef]);
     const { data: cookingItems, isLoading: isLoadingCookingItems } = useCollection<Cooking>(cookingQuery);
     const [selectedCookingItem, setSelectedCookingItem] = useState<Cooking | null>(null);
+    const [isViewOnlySuggestion, setIsViewOnlySuggestion] = useState(false);
 
     const pendingCookingCollectionRef = useMemoFirebase(() => (effectiveChefId ? collection(firestore, `users/${effectiveChefId}/pendingCookings`) : null), [effectiveChefId, firestore]);
     const pendingCookingQuery = useMemoFirebase(() => (pendingCookingCollectionRef ? query(pendingCookingCollectionRef, orderBy('createdAt', 'desc')) : null), [pendingCookingCollectionRef]);
@@ -156,7 +164,9 @@ export default function CuisinePage() {
             const plannedDate = item.plannedFor?.toDate();
             if (!plannedDate) return;
 
-            if (isPast(plannedDate) && !format(plannedDate, 'yyyy-MM-dd').includes(format(today, 'yyyy-MM-dd'))) {
+            const isDayPast = isPast(plannedDate) && !format(plannedDate, 'yyyy-MM-dd').includes(format(today, 'yyyy-MM-dd'));
+
+            if (item.isDone || isDayPast) {
                 past.push(item);
             } else {
                 inProgress.push(item);
@@ -191,7 +201,7 @@ export default function CuisinePage() {
         return result;
     }, [dishes, searchTerm, selectedCategory]);
 
-    const { message: contextualMessage, timeOfDay } = currentTime ? getContextualInfo(currentTime.getHours()) : { message: 'Chargement...', image: "/soir.png", timeOfDay: 'soir' };
+    const { message: contextualMessage, image: contextualImage, timeOfDay } = currentTime ? getContextualInfo(currentTime.getHours()) : { message: 'Chargement...', image: "/soir.png", timeOfDay: 'soir' as TimeOfDay };
 
     useEffect(() => {
         setCurrentTime(new Date());
@@ -205,10 +215,15 @@ export default function CuisinePage() {
         const fetchRecs = async () => {
             if (!user) return;
             setIsLoadingRecs(true);
+            const mappedTimeOfDay =
+                timeOfDay === 'matin' ? 'breakfast' :
+                    timeOfDay === 'midi' ? 'lunch' :
+                        timeOfDay === 'soir' ? 'dinner' : 'dessert';
+
             const { recommendations: recs, error } = await getRecommendedDishesAction({
                 userId: user.uid,
                 count: 6,
-                timeOfDay: timeOfDay as any
+                timeOfDay: mappedTimeOfDay as any
             });
             if (recs) setRecommendations(recs as any);
             setIsLoadingRecs(false);
@@ -272,6 +287,8 @@ export default function CuisinePage() {
     const handleGetSuggestion = async (pendingItem?: PendingCooking) => {
         setIsSuggesting(true);
         setSuggestion(null);
+        setPendingItemToCook(null);
+        setIsViewOnlySuggestion(false);
 
         const mealName = pendingItem?.name;
         const imageHint = pendingItem?.imageHint;
@@ -333,6 +350,8 @@ export default function CuisinePage() {
             imageUrl: dish.imageUrl,
             recipe: dish.recipe,
         });
+        setPendingItemToCook(null);
+        setIsViewOnlySuggestion(false);
         setIsDialogOpen(true);
 
         if (user) {
@@ -358,7 +377,25 @@ export default function CuisinePage() {
             );
         }
 
-        addDocumentNonBlocking(collection(firestore, 'users', effectiveChefId!, 'foodLogs'), {
+        // Conflict prevention: remove existing meal of same type for the same day
+        const dayStart = startOfDay(date);
+        const dayEnd = endOfDay(date);
+
+        const mealsRef = collection(firestore, 'users', effectiveChefId!, 'foodLogs');
+        const cookingRef = collection(firestore, 'users', effectiveChefId!, 'cooking');
+
+        const qMeals = query(mealsRef, where('date', '>=', Timestamp.fromDate(dayStart)), where('date', '<=', Timestamp.fromDate(dayEnd)), where('type', '==', meal.type));
+        const qCooking = query(cookingRef, where('plannedFor', '>=', Timestamp.fromDate(dayStart)), where('plannedFor', '<=', Timestamp.fromDate(dayEnd)), where('type', '==', meal.type));
+
+        const [mSnap, cSnap] = await Promise.all([getDocs(qMeals), getDocs(qCooking)]);
+
+        // Execute deletions
+        const deletePromises: Promise<void>[] = [];
+        mSnap.forEach(d => deletePromises.push(deleteDoc(d.ref)));
+        cSnap.forEach(d => deletePromises.push(deleteDoc(d.ref)));
+        await Promise.all(deletePromises);
+
+        addDocumentNonBlocking(mealsRef, {
             userId: user.uid,
             name: meal.name,
             calories: meal.calories,
@@ -367,7 +404,7 @@ export default function CuisinePage() {
             date: Timestamp.fromDate(date)
         });
 
-        addDocumentNonBlocking(collection(firestore, `users/${effectiveChefId}/cooking`), {
+        addDocumentNonBlocking(cookingRef, {
             userId: user.uid,
             name: meal.name,
             calories: meal.calories,
@@ -419,16 +456,148 @@ export default function CuisinePage() {
         }
     }
 
+    const animateAndRemovePending = (itemId: string, afterAnim: () => void) => {
+        setDismissingId(itemId);
+        setTimeout(() => {
+            afterAnim();
+            setDismissingId(null);
+        }, 420);
+    };
+
+    const handleCookingItemDone = (item: Cooking) => {
+        // Animate card out then MARK AS DONE in Firestore to move it to Archives
+        setDismissingCookingId(item.id);
+        setTimeout(() => {
+            if (effectiveChefId) {
+                const ref = doc(firestore, 'users', effectiveChefId, 'cooking', item.id);
+                updateDoc(ref, { isDone: true }).catch(console.error);
+            }
+            setDismissingCookingId(null);
+            setCookingModeItem(null);
+        }, 450);
+    };
+
+    const handleDeleteCookingItem = (item: Cooking) => {
+        if (isReadOnly) { triggerBlock(); return; }
+        if (!effectiveChefId) return;
+
+        setDismissingCookingId(item.id);
+        setTimeout(() => {
+            const ref = doc(firestore, 'users', effectiveChefId, 'cooking', item.id);
+            deleteDocumentNonBlocking(ref);
+            setDismissingCookingId(null);
+            toast({
+                title: "Repas retiré",
+                description: `${item.name} a été retiré de la cuisine.`,
+            });
+        }, 450);
+    };
+
     const handleDeletePendingItem = (itemId: string) => {
         if (isReadOnly) { triggerBlock(); return; }
         if (!effectiveChefId) return;
-        const itemRef = doc(firestore, 'users', effectiveChefId, 'pendingCookings', itemId);
-        deleteDocumentNonBlocking(itemRef);
-        toast({
-            variant: "destructive",
-            title: "Repas retiré",
-            description: "Le repas a été retiré de la liste d'attente.",
+        animateAndRemovePending(itemId, () => {
+            const itemRef = doc(firestore, 'users', effectiveChefId, 'pendingCookings', itemId);
+            deleteDocumentNonBlocking(itemRef);
+            toast({
+                variant: "destructive",
+                title: "Repas retiré",
+                description: "Le repas a été retiré de la liste d'attente.",
+            });
         });
+    };
+
+    const handlePreviewPendingItem = async (item: PendingCooking, viewOnly: boolean = false) => {
+        // Find the dish in the master list if possible to get more details (robust search)
+        const masterDish = dishes?.find(d =>
+            d.name.toLowerCase().trim() === item.name.toLowerCase().trim()
+        );
+
+        setSuggestion({
+            id: masterDish?.id || item.id,
+            name: item.name,
+            calories: masterDish?.calories || 450,
+            cookingTime: masterDish?.cookingTime || '30 min',
+            type: (masterDish?.type?.toLowerCase() || 'lunch') as SingleMealSuggestion['type'],
+            imageHint: masterDish?.imageHint || item.imageHint || item.name,
+            imageUrl: masterDish?.imageUrl || '',
+            recipe: masterDish?.recipe || '',
+        });
+        setPendingItemToCook(item);
+        setIsViewOnlySuggestion(viewOnly);
+        setIsDialogOpen(true);
+    };
+
+    const handlePreviewCookingItem = (item: Cooking) => {
+        setSuggestion({
+            id: item.id,
+            name: item.name,
+            calories: item.calories,
+            cookingTime: item.cookingTime,
+            type: item.type as any,
+            imageHint: item.imageHint,
+            imageUrl: item.imageUrl || '',
+            recipe: item.recipe || '',
+        });
+        setPendingItemToCook(null);
+        setIsViewOnlySuggestion(true);
+        setIsDialogOpen(true);
+    };
+
+    const handleCookNow = async (item: PendingCooking) => {
+        if (isReadOnly) { triggerBlock(); return; }
+        if (!user || !effectiveChefId) return;
+
+        // Find master dish for more info (robust search)
+        const masterDish = dishes?.find(d =>
+            d.name.toLowerCase().trim() === item.name.toLowerCase().trim()
+        );
+
+        try {
+            await addDocumentNonBlocking(collection(firestore, 'users', effectiveChefId, 'cooking'), {
+                userId: user.uid,
+                name: item.name,
+                calories: masterDish?.calories || 0,
+                cookingTime: masterDish?.cookingTime || '',
+                type: masterDish?.type || 'lunch',
+                recipe: masterDish?.recipe || '',
+                imageHint: item.imageHint || item.name,
+                imageUrl: masterDish?.imageUrl || '',
+                createdAt: serverTimestamp(),
+                plannedFor: Timestamp.fromDate(new Date()),
+            });
+            // Delete from pending with animation
+            animateAndRemovePending(item.id, () => {
+                const pendingRef = doc(firestore, 'users', effectiveChefId, 'pendingCookings', item.id);
+                deleteDocumentNonBlocking(pendingRef);
+            });
+
+            setPendingActionItem(null);
+            toast({ title: "🍳 Envoyé en cuisine !", description: `${item.name} est maintenant dans votre cuisine.` });
+
+            // Flash animation then switch tab
+            setTabFlash(true);
+
+            // Track interaction
+            if (user) {
+                const masterDish = dishes?.find(d => d.name === item.name);
+                trackInteractionAction(
+                    user.uid,
+                    item.name,
+                    masterDish?.origin || 'Inconnue',
+                    masterDish?.category || 'Inconnue',
+                    'cook_start'
+                );
+            }
+
+            setTimeout(() => {
+                setActiveTab('in_progress');
+                setTabFlash(false);
+            }, 800);
+        } catch (error) {
+            console.error('Error cooking now:', error);
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible d\'envoyer en cuisine.' });
+        }
     };
 
     const handleToggleFavorite = async (meal: any) => {
@@ -456,6 +625,101 @@ export default function CuisinePage() {
             console.error("Error toggling favorite:", error);
         }
     };
+
+    const handleAddToPendingDish = async (meal: SingleMealSuggestion) => {
+        if (isReadOnly) { triggerBlock(); return; }
+        if (!user || !effectiveChefId) return;
+
+        try {
+            await addDocumentNonBlocking(collection(firestore, 'users', effectiveChefId, 'pendingCookings'), {
+                userId: user.uid,
+                name: meal.name,
+                imageHint: meal.imageHint,
+                createdAt: serverTimestamp(),
+            });
+
+            // Track interaction
+            if (user) {
+                const masterDish = dishes?.find(d => d.name === meal.name);
+                trackInteractionAction(
+                    user.uid,
+                    meal.name,
+                    masterDish?.origin || meal.origin || 'Inconnue',
+                    masterDish?.category || meal.category || 'Inconnue',
+                    'view' // Add to pending is a high interest view
+                );
+            }
+
+            toast({
+                title: "Mis en attente",
+                description: `${meal.name} est maintenant dans votre liste d'attente.`,
+            });
+            setIsDialogOpen(false);
+        } catch (error) {
+            console.error("Error adding to pending:", error);
+            toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre le plat en attente." });
+        }
+    };
+
+    const handlePlanDish = async (meal: SingleMealSuggestion, date: Date, slot: 'breakfast' | 'lunch' | 'dinner' | 'dessert') => {
+        if (isReadOnly) { triggerBlock(); return; }
+        if (!user || !effectiveChefId) return;
+
+        try {
+            // Check and remove existing meal for this slot if it exists (the dialog already asked for confirmation)
+            const conflict = cookingItems?.find(c => {
+                const cDate = c.plannedFor?.toDate ? c.plannedFor.toDate() : new Date(c.plannedFor);
+                return format(cDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') && c.type === slot;
+            });
+
+            if (conflict) {
+                await deleteDoc(doc(firestore, 'users', effectiveChefId, 'cooking', conflict.id));
+            }
+
+            await addDocumentNonBlocking(collection(firestore, 'users', effectiveChefId, 'cooking'), {
+                userId: user.uid,
+                name: meal.name,
+                calories: meal.calories || 0,
+                cookingTime: meal.cookingTime || '30 min',
+                type: slot,
+                imageHint: meal.imageHint || meal.name,
+                imageUrl: meal.imageUrl || '',
+                recipe: meal.recipe || '',
+                plannedFor: Timestamp.fromDate(date),
+                createdAt: serverTimestamp(),
+            });
+
+            // Track interaction
+            if (user) {
+                const masterDish = dishes?.find(d => d.name === meal.name);
+                trackInteractionAction(
+                    user.uid,
+                    meal.name,
+                    masterDish?.origin || meal.origin || 'Inconnue',
+                    masterDish?.category || meal.category || 'Inconnue',
+                    'cook_start'
+                );
+            }
+
+            // If we came from pending, remove it
+            if (pendingItemToCook) {
+                const pendingRef = doc(firestore, 'users', effectiveChefId, 'pendingCookings', pendingItemToCook.id);
+                deleteDocumentNonBlocking(pendingRef);
+                setPendingItemToCook(null);
+            }
+
+            toast({
+                title: conflict ? "Repas remplacé" : "Repas programmé",
+                description: `${meal.name} est maintenant prévu pour le ${format(date, 'd MMMM', { locale: fr })} (${slot}).`,
+            });
+            setIsDialogOpen(false);
+        } catch (error) {
+            console.error("Error planning dish:", error);
+            toast({ variant: "destructive", title: "Erreur", description: "Impossible de programmer le repas." });
+        }
+    };
+
+    const tabsRef = useRef<HTMLDivElement>(null);
 
     const isLoading = isUserLoading || isLoadingAllMeals || isLoadingGoals || isLoadingProfile || isLoadingDishes || isLoadingCookingItems || isLoadingPendingItems;
 
@@ -495,10 +759,18 @@ export default function CuisinePage() {
                             {/* Header Section */}
                             <div className="space-y-6">
                                 <div className="space-y-2">
-                                    <div className="text-5xl mb-4">🍳</div>
+                                    <div className="relative w-20 h-20 mb-4 select-none">
+                                        <Image
+                                            src={contextualImage}
+                                            alt="Context Icon"
+                                            fill
+                                            className="object-contain"
+                                            priority
+                                        />
+                                    </div>
                                     <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Espace Cuisine</h1>
                                     <p className="text-muted-foreground text-sm max-w-2xl">
-                                        Planifiez vos repas, explorez de nouvelles recettes et suivez votre historique culinaire. {contextualMessage}
+                                        Planifiez vos repas, explorez de nouveaux plats et suivez votre historique culinaire. {contextualMessage}
                                     </p>
                                 </div>
 
@@ -606,8 +878,8 @@ export default function CuisinePage() {
                                     <div className="space-y-8">
                                         <div className="flex flex-col md:flex-row items-end justify-between gap-6 border-b pb-4">
                                             <div className="space-y-1">
-                                                <h3 className="text-xl font-bold">Explorer les recettes</h3>
-                                                <p className="text-xs text-muted-foreground">Découvrez notre catalogue de plats équilibrés.</p>
+                                                <h3 className="text-xl font-bold">Explorer les plats</h3>
+                                                <p className="text-xs text-muted-foreground">Découvrez notre catalogue de repas équilibrés.</p>
                                             </div>
                                             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                                                 <div className="relative group">
@@ -671,7 +943,7 @@ export default function CuisinePage() {
                                                 ))
                                             ) : (
                                                 <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
-                                                    <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Aucune recette trouvée</h3>
+                                                    <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Aucun plat trouvé</h3>
                                                 </div>
                                             )}
                                         </div>
@@ -681,37 +953,57 @@ export default function CuisinePage() {
                                 <TabsContent value="pending" className="m-0 focus-visible:ring-0 outline-none">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                                         {pendingCookingItems && pendingCookingItems.length > 0 ? pendingCookingItems.map(item => (
-                                            <Card key={item.id} className="flex flex-col rounded-lg border shadow-sm hover:border-primary/20 transition-all">
-                                                <CardHeader className="p-5 pb-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="text-[10px] font-bold uppercase tracking-widest text-primary/60">
-                                                            En attente
+                                            <div
+                                                key={item.id}
+                                                style={{
+                                                    transition: 'transform 0.42s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.42s ease',
+                                                    transform: dismissingId === item.id ? 'translateY(120%) rotate(3deg) scale(0.8)' : 'translateY(0) rotate(0deg) scale(1)',
+                                                    opacity: dismissingId === item.id ? 0 : 1,
+                                                    pointerEvents: dismissingId === item.id ? 'none' : 'auto',
+                                                }}
+                                            >
+                                                <Card className="flex flex-col rounded-lg border shadow-sm hover:border-primary/20 transition-colors">
+                                                    <CardHeader className="p-5 pb-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="text-[10px] font-bold uppercase tracking-widest text-primary/60">
+                                                                En attente
+                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10"
+                                                                onClick={() => handleDeletePendingItem(item.id)}
+                                                            >
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </Button>
                                                         </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10"
-                                                            onClick={() => handleDeletePendingItem(item.id)}
-                                                        >
-                                                            <X className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                    <CardTitle className="text-lg font-bold truncate mt-1">{item.name}</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="p-5 pt-2 flex-grow space-y-4">
-                                                    <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                                        <Calendar className="h-3 w-3" />
-                                                        <span>Ajouté le {item.createdAt ? format(item.createdAt.toDate(), 'd MMM', { locale: fr }) : ''}</span>
-                                                    </div>
-                                                    <Button
-                                                        onClick={() => handleGetSuggestion(item)}
-                                                        className="w-full h-9 text-xs font-bold rounded shadow-sm"
-                                                    >
-                                                        <CookingPot className="mr-2 h-3.5 w-3.5" />
-                                                        Démarrer la préparation
-                                                    </Button>
-                                                </CardContent>
-                                            </Card>
+                                                        <CardTitle className="text-lg font-bold truncate mt-1">{item.name}</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="p-5 pt-2 flex-grow space-y-4">
+                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                            <Calendar className="h-3 w-3" />
+                                                            <span>Ajouté le {item.createdAt ? format(item.createdAt.toDate(), 'd MMM', { locale: fr }) : ''}</span>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2 mt-auto">
+                                                            <Button
+                                                                variant="outline"
+                                                                onClick={() => handlePreviewPendingItem(item, true)}
+                                                                className="h-9 text-[10px] font-black uppercase tracking-widest rounded border-muted/20 hover:bg-accent/50 group/btn"
+                                                            >
+                                                                <Search className="mr-2 h-3.5 w-3.5 opacity-50 group-hover/btn:text-primary transition-colors" />
+                                                                Voir
+                                                            </Button>
+                                                            <Button
+                                                                onClick={() => setPendingActionItem(item)}
+                                                                className="h-9 text-[10px] font-black uppercase tracking-widest rounded shadow-sm bg-primary text-white hover:scale-105 transition-all"
+                                                            >
+                                                                <CookingPot className="mr-2 h-3.5 w-3.5" />
+                                                                Cuisiner
+                                                            </Button>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
                                         )) : (
                                             <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
                                                 <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">File d'attente vide</h3>
@@ -742,7 +1034,7 @@ export default function CuisinePage() {
                                                     </div>
                                                     <div className="prose prose-sm dark:prose-invert max-w-none pt-4 border-t">
                                                         <ReactMarkdown>
-                                                            {selectedCookingItem.recipe || "Recette en cours de chargement..."}
+                                                            {selectedCookingItem.recipe || "Chargement des instructions..."}
                                                         </ReactMarkdown>
                                                     </div>
                                                 </div>
@@ -765,38 +1057,71 @@ export default function CuisinePage() {
                                     ) : (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                                             {cookingInProgress && cookingInProgress.length > 0 ? cookingInProgress.map(item => (
-                                                <Card
+                                                <div
                                                     key={item.id}
-                                                    className="group flex flex-col rounded-lg border shadow-sm hover:border-primary/20 transition-all cursor-pointer"
-                                                    onClick={() => handleSelectCookingItem(item)}
+                                                    style={{
+                                                        transition: 'transform 0.45s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.45s ease',
+                                                        transform: dismissingCookingId === item.id ? 'translateY(130%) rotate(-4deg) scale(0.75)' : 'translateY(0) rotate(0deg) scale(1)',
+                                                        opacity: dismissingCookingId === item.id ? 0 : 1,
+                                                        pointerEvents: dismissingCookingId === item.id ? 'none' : 'auto',
+                                                    }}
                                                 >
-                                                    <div className="relative aspect-[16/10] bg-muted overflow-hidden">
-                                                        <Image
-                                                            src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
-                                                            alt={item.name}
-                                                            fill
-                                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                                        />
-                                                        <div className="absolute top-2 left-2">
-                                                            <Badge className="bg-background/90 text-[9px] font-bold text-foreground border-none px-2 py-0.5">
-                                                                En cuisine
-                                                            </Badge>
-                                                        </div>
-                                                    </div>
-                                                    <CardContent className="p-5 space-y-3">
-                                                        <h4 className="text-base font-bold group-hover:text-primary transition-colors">{item.name}</h4>
-                                                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                                            <div className="flex items-center gap-1.5 transition-colors">
-                                                                <ClockIcon className="h-3 w-3" />
-                                                                <span>{item.cookingTime || 'Prêt'}</span>
+                                                    <Card
+                                                        className="group flex flex-col rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-lg transition-all overflow-hidden"
+                                                    >
+                                                        <div
+                                                            className="relative aspect-[16/9] bg-muted overflow-hidden cursor-pointer"
+                                                            onClick={() => handleSelectCookingItem(item)}
+                                                        >
+                                                            <Image
+                                                                src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
+                                                                alt={item.name}
+                                                                fill
+                                                                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                                                sizes="(max-width: 640px) 100vw, 33vw"
+                                                            />
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                                            <div className="absolute top-2 left-2 flex items-center gap-2">
+                                                                <Badge className="bg-primary/90 text-white text-[8px] font-black uppercase tracking-widest border-none px-2 py-0.5 animate-pulse shadow-lg shadow-primary/30">
+                                                                    🍳 En cuisine
+                                                                </Badge>
                                                             </div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Calendar className="h-3 w-3" />
-                                                                <span>{item.plannedFor ? format(item.plannedFor.toDate(), 'd MMM', { locale: fr }) : 'Chef'}</span>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteCookingItem(item);
+                                                                }}
+                                                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 backdrop-blur-md text-white/70 hover:bg-rose-500 hover:text-white transition-all border border-white/10 z-10"
+                                                                title="Retirer ce repas"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <div className="absolute bottom-3 left-3">
+                                                                <p className="text-white font-black text-base leading-tight drop-shadow">{item.name}</p>
                                                             </div>
                                                         </div>
-                                                    </CardContent>
-                                                </Card>
+                                                        <CardContent className="p-4 space-y-3">
+                                                            <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <ClockIcon className="h-3 w-3" />
+                                                                    <span>{item.cookingTime || 'Prêt'}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Calendar className="h-3 w-3" />
+                                                                    <span>{item.plannedFor ? format(item.plannedFor.toDate(), 'd MMM', { locale: fr }) : 'Chef'}</span>
+                                                                </div>
+                                                            </div>
+                                                            {/* CTA PRINCIPAL */}
+                                                            <Button
+                                                                onClick={() => setCookingModeItem(item)}
+                                                                className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-primary text-white border border-primary shadow-lg hover:bg-primary/90 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                                            >
+                                                                <span className="text-lg mr-2">👨‍🍳</span>
+                                                                Cuisine moi !
+                                                            </Button>
+                                                        </CardContent>
+                                                    </Card>
+                                                </div>
                                             )) : (
                                                 <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
                                                     <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Rien en cours de préparation</h3>
@@ -823,7 +1148,7 @@ export default function CuisinePage() {
                                                     </div>
                                                     <div className="prose prose-sm dark:prose-invert max-w-none pt-4 border-t">
                                                         <ReactMarkdown>
-                                                            {selectedCookingItem.recipe || "Recette archivée."}
+                                                            {selectedCookingItem.recipe || "Détails du plat archivés."}
                                                         </ReactMarkdown>
                                                     </div>
                                                 </div>
@@ -855,13 +1180,25 @@ export default function CuisinePage() {
                                                             className="object-cover"
                                                         />
                                                     </div>
-                                                    <CardContent className="p-5 space-y-3">
-                                                        <h4 className="text-base font-bold group-hover:text-primary transition-colors">{item.name}</h4>
-                                                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                                            <div className="flex items-center gap-1.5">
+                                                    <CardContent className="p-5 space-y-4">
+                                                        <h4 className="text-base font-bold group-hover:text-primary transition-colors line-clamp-1">{item.name}</h4>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
                                                                 <History className="h-3 w-3" />
                                                                 <span>{format(item.plannedFor.toDate(), 'd MMM yyyy', { locale: fr })}</span>
                                                             </div>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 px-3 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-black text-[9px] uppercase tracking-widest transition-all"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handlePreviewCookingItem(item);
+                                                                }}
+                                                            >
+                                                                <BookOpen className="mr-1.5 h-3 w-3" />
+                                                                Voir
+                                                            </Button>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -881,12 +1218,84 @@ export default function CuisinePage() {
                     <SuggestionDialog
                         suggestion={suggestion}
                         isOpen={isDialogOpen}
-                        onClose={() => setIsDialogOpen(false)}
-                        onAccept={handleAcceptSuggestion}
+                        onClose={() => {
+                            setIsDialogOpen(false);
+                            // On ne vide plus les datas ici pour éviter le flash
+                        }}
+                        onAccept={isViewOnlySuggestion ? undefined : handleAcceptSuggestion}
+                        onAddToPending={(pendingItemToCook || isViewOnlySuggestion) ? undefined : handleAddToPendingDish}
+                        onPlan={isViewOnlySuggestion ? undefined : handlePlanDish}
+                        existingCookings={cookingItems}
                         isFavorite={favorites?.some(f => f.id === (suggestion?.id || suggestion?.name?.replace(/\s/g, '_').toLowerCase()))}
                         onToggleFavorite={handleToggleFavorite}
+                        mode="dish"
                     />
                 )}
+                {cookingModeItem && (
+                    <CookingMode
+                        meal={cookingModeItem}
+                        isOpen={true}
+                        onClose={() => setCookingModeItem(null)}
+                        onFinished={() => handleCookingItemDone(cookingModeItem)}
+                    />
+                )}
+
+                {/* Dialog: Planifier ou Cuisiner maintenant */}
+                <Dialog open={!!pendingActionItem} onOpenChange={(o) => !o && setPendingActionItem(null)}>
+                    <DialogContent className="max-w-sm rounded-2xl border-none bg-background/95 backdrop-blur-xl shadow-2xl p-0 overflow-hidden">
+                        <DialogHeader className="sr-only">
+                            <DialogTitle>Options de cuisine</DialogTitle>
+                            <DialogDescription>Choisissez quand cuisiner ce repas</DialogDescription>
+                        </DialogHeader>
+                        {pendingActionItem && (
+                            <div className="p-6 space-y-5">
+                                <div className="text-center space-y-1">
+                                    <span className="text-3xl">👨‍🍳</span>
+                                    <h3 className="font-black text-lg leading-tight mt-2">{pendingActionItem.name}</h3>
+                                    <p className="text-muted-foreground text-xs font-medium">Que souhaitez-vous faire ?</p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {/* Option 1: Cuisiner maintenant */}
+                                    <button
+                                        onClick={() => handleCookNow(pendingActionItem)}
+                                        className="w-full p-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white group text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-primary/10 group-hover:bg-white/20 flex items-center justify-center shrink-0 transition-colors">
+                                                <CookingPot className="h-5 w-5 text-primary group-hover:text-white transition-colors" />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-sm">Cuisiner maintenant</p>
+                                                <p className="text-[10px] font-medium text-muted-foreground group-hover:text-white/70 transition-colors">Envoyer directement en cuisine</p>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    {/* Option 2: Programmer */}
+                                    <button
+                                        onClick={() => {
+                                            setPendingActionItem(null);
+                                            // Ouvrir la preview avec planification (viewOnly = false)
+                                            handlePreviewPendingItem(pendingActionItem, false);
+                                        }}
+                                        className="w-full p-4 rounded-xl border border-border/50 bg-muted/20 hover:bg-accent/30 group text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                                <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-sm">Programmer</p>
+                                                <p className="text-[10px] font-medium text-muted-foreground">Choisir une date de préparation</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
             </SidebarInset>
             <ImageZoomLightbox
                 isOpen={!!zoomImage}

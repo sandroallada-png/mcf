@@ -8,7 +8,7 @@ import {
     Dish,
     UserProfile,
 } from '@/lib/types';
-import { collection, getDocs, getDoc, doc, updateDoc, increment, Firestore, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, updateDoc, increment, Firestore, serverTimestamp, query, where } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-init';
 import OpenAI from 'openai';
 
@@ -19,6 +19,15 @@ const openrouter = new OpenAI({
 
 async function getDishesFromFirestore(db: Firestore): Promise<Dish[]> {
     const dishesCol = collection(db, 'dishes');
+    // On privilégie les plats vérifiés
+    const qV = query(dishesCol, where('isVerified', '==', true));
+    const verifiedSnap = await getDocs(qV);
+
+    if (!verifiedSnap.empty) {
+        return verifiedSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
+    }
+
+    // Fallback si aucun plat n'est vérifié
     const dishSnapshot = await getDocs(dishesCol);
     return dishSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
 }
@@ -82,7 +91,7 @@ export async function suggestRecommendedDishes(
             .slice(0, input.count * 2);
 
         // USE AI TO FINALIZE AND ADD "MATCH REASONS"
-        const systemPrompt = `Tu es l'algorithme de recommandation MyFlex. Ton but est de choisir les ${input.count} meilleurs plats pour l'utilisateur.
+        const systemPrompt = `Tu es l'algorithme de recommandation MyFlex. Ton but est de choisir les ${input.count} meilleurs plats parmi les candidats fournis.
         
 PROFIL UTILISATEUR :
 - Origine : ${userProfile.origin || 'Inconnue'}
@@ -91,32 +100,38 @@ PROFIL UTILISATEUR :
 - Préférences : ${userProfile.preferences || 'Variées'}
 
 CANDIDATS :
-${candidates.map(c => `- ${c.name} (Origine: ${c.origin}, Catégorie: ${c.category}, ScoreAlgo: ${c.relevanceScore})`).join('\n')}
+${candidates.map((c, i) => `${i + 1}. ${c.name} (Origine: ${c.origin}, Catégorie: ${c.category})`).join('\n')}
 
 INSTRUCTIONS :
-- Sélectionne les ${input.count} plats les plus pertinents. 
-- Crée un "cocktail" équilibré : quelques plats de son origine, quelques plats de son pays actuel, et une "découverte" basée sur ses goûts.
-- Pour chaque plat, fournis un "matchReason" court et engageant en français (ex: "Un classique de votre pays d'accueil", "Inspiré de vos racines italiennes", "Parfait pour votre objectif de perte de poids").
+1. Sélectionne les ${input.count} plats les plus pertinents. 
+2. Crée un mix équilibré : plats de son origine, de son pays actuel, et des découvertes.
+3. Pour chaque plat, fournis un "matchReason" court et engageant en français.
+4. Réponds UNIQUEMENT avec un objet JSON contenant une clé "recommendations" qui est une liste d'objets.
 
-FORMAT DE SORTIE (JSON) :
-[
-  { "name": "Nom du plat", "matchReason": "Raison..." }
-]
+EXEMPLE DE SORTIE :
+{
+  "recommendations": [
+    { "name": "Nom exacte du candidat", "matchReason": "Raison personnalisée..." }
+  ]
+}
 `;
 
         const completion = await openrouter.chat.completions.create({
             model: 'openai/gpt-4o-mini',
             messages: [{ role: 'system', content: systemPrompt }],
             response_format: { type: 'json_object' },
-            temperature: 0.6,
+            temperature: 0.5,
         });
 
-        const aiRefinement = JSON.parse(completion.choices[0]?.message?.content || '{}');
-        const refinedList = Array.isArray(aiRefinement) ? aiRefinement : (aiRefinement.recommendations || aiRefinement.dishes || Object.values(aiRefinement)[0] || []);
+        const aiResponse = JSON.parse(completion.choices[0]?.message?.content || '{"recommendations":[]}');
+        const refinedList = aiResponse.recommendations || [];
 
-        // Map back to full dish objects
-        const results = (refinedList as any[]).map(item => {
-            const original = candidates.find(c => c.name === item.name) || candidates[0];
+        // Map back to full dish objects robustly
+        const results = refinedList.map((item: any) => {
+            // Flexible match: try exact name, then includes
+            const original = candidates.find(c => c.name === item.name)
+                || candidates.find(c => c.name.toLowerCase().includes(item.name.toLowerCase()))
+                || candidates[0];
             return {
                 ...original,
                 matchReason: item.matchReason

@@ -15,7 +15,7 @@ import {
   Dish,
   AIPersonality,
 } from '@/lib/types';
-import { collection, getDocs, Firestore } from 'firebase/firestore';
+import { collection, getDocs, Firestore, query, where } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-init';
 
 
@@ -26,16 +26,25 @@ const openrouter = new OpenAI({
 
 async function getDishesFromFirestore(db: Firestore): Promise<Dish[]> {
   const dishesCol = collection(db, 'dishes');
+  // On essaie d'abord les plats vérifiés
+  const qV = query(dishesCol, where('isVerified', '==', true));
+  const verifiedSnap = await getDocs(qV);
+
+  if (!verifiedSnap.empty) {
+    return verifiedSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
+  }
+
+  // Fallback sur tous les plats si aucun n'est vérifié (pour éviter de casser l'outil au début)
   const dishSnapshot = await getDocs(dishesCol);
   return dishSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
 }
 
-function mapTimeOfDayToMealType(timeOfDay: 'matin' | 'midi' | 'soir' | 'collation'): 'breakfast' | 'lunch' | 'dinner' | 'snack' {
+function mapTimeOfDayToMealType(timeOfDay: 'matin' | 'midi' | 'soir' | 'dessert'): 'breakfast' | 'lunch' | 'dinner' | 'dessert' {
   switch (timeOfDay) {
     case 'matin': return 'breakfast';
     case 'midi': return 'lunch';
     case 'soir': return 'dinner';
-    case 'collation': return 'snack';
+    case 'dessert': return 'dessert';
   }
 }
 
@@ -119,7 +128,7 @@ Your response MUST be a valid JSON object with the following structure:
     // Step 4: Construct the final output based on the (now guaranteed valid) dish data.
     return {
       name: chosenDish.name,
-      calories: Math.floor(Math.random() * 300) + 300, // Random calories as it's not in the model
+      calories: chosenDish.calories || Math.floor(Math.random() * 300) + 300,
       cookingTime: chosenDish.cookingTime,
       type: mapTimeOfDayToMealType(input.timeOfDay),
       imageHint: `${chosenDish.category.toLowerCase()} ${chosenDish.origin.toLowerCase()}`.substring(0, 50),
@@ -137,7 +146,7 @@ Your response MUST be a valid JSON object with the following structure:
       const randomDish = allDishes[Math.floor(Math.random() * allDishes.length)];
       return {
         name: randomDish.name,
-        calories: Math.floor(Math.random() * 300) + 300,
+        calories: randomDish.calories || Math.floor(Math.random() * 300) + 300,
         cookingTime: randomDish.cookingTime,
         type: mapTimeOfDayToMealType(input.timeOfDay),
         imageHint: `${randomDish.category.toLowerCase()} ${randomDish.origin.toLowerCase()}`.substring(0, 50),

@@ -12,7 +12,7 @@ import {
     type SuggestDayPlanOutput,
     Dish,
 } from '@/lib/types';
-import { collection, getDocs, Firestore } from 'firebase/firestore';
+import { collection, getDocs, Firestore, query, where } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-init';
 import OpenAI from 'openai';
 
@@ -23,6 +23,15 @@ const openrouter = new OpenAI({
 
 async function getDishesFromFirestore(db: Firestore): Promise<Dish[]> {
     const dishesCol = collection(db, 'dishes');
+    // On privilégie les plats vérifiés
+    const qV = query(dishesCol, where('isVerified', '==', true));
+    const verifiedSnap = await getDocs(qV);
+
+    if (!verifiedSnap.empty) {
+        return verifiedSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
+    }
+
+    // Fallback si aucun plat n'est vérifié
     const dishSnapshot = await getDocs(dishesCol);
     return dishSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Dish));
 }
@@ -74,7 +83,7 @@ export async function suggestDayPlan(
                 suggestions.push({
                     name: randomDish.name,
                     type: mealType,
-                    calories: Math.floor(Math.random() * 350) + 250, // Placeholder calories
+                    calories: randomDish.calories || Math.floor(Math.random() * 350) + 250,
                     cookedBy: getRandomCook(input.householdMembers || []),
                     imageUrl: randomDish.imageUrl,
                 });

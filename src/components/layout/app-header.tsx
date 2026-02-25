@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ShoppingCart, Menu, LogOut, Settings, LifeBuoy, ArrowUpRight } from 'lucide-react';
+import { Menu, LogOut, Settings, LifeBuoy, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -93,9 +93,6 @@ export function AppHeader({ title, icon, user, sidebarProps, className }: AppHea
                 <div className="flex items-center gap-1 md:gap-3">
                     <div className="flex items-center mr-1 md:mr-0">
                         <NotificationBell />
-                        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors hidden sm:flex">
-                            <ShoppingCart className="h-4 w-4" />
-                        </Button>
                         <ThemeToggle />
                     </div>
 

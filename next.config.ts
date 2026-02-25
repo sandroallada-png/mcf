@@ -1,5 +1,5 @@
 
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'picsum.photos',
         port: '',
-pathname: '/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
@@ -35,9 +35,15 @@ pathname: '/**',
         port: '',
         pathname: '/**',
       },
-       {
+      {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
         port: '',
         pathname: '/**',
       },
@@ -47,7 +53,7 @@ pathname: '/**',
     NEXT_PUBLIC_CLOUDINARY_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_NAME,
     NEXT_PUBLIC_CLOUDINARY_UNSIGNED_PRESET: process.env.NEXT_PUBLIC_CLOUDINARY_UNSIGNED_PRESET,
   },
-   webpack: (config, { isServer }) => {
+  webpack: (config, { isServer }) => {
     // For video files
     config.module.rules.push({
       test: /\.mp4$/,
@@ -80,7 +86,7 @@ pathname: '/**',
         })
       );
     }
-    
+
     return config;
   }
 };

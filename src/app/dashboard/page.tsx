@@ -187,10 +187,11 @@ export default function DashboardPage() {
     dessert: { translation: 'Dessert', className: "border-green-500/20 bg-green-500/5", icon: IceCream, glow: "shadow-green-500/20" },
   };
 
-  const mealTypeTranslations: Record<DayPlanMeal['type'], string> = {
+  const mealTypeTranslations: Record<string, string> = {
     breakfast: 'Petit-déjeuner',
     lunch: 'Déjeuner',
     dinner: 'Dîner',
+    dessert: 'Dessert',
   };
 
   useEffect(() => {
@@ -291,7 +292,7 @@ export default function DashboardPage() {
       imageUrl: (meal as any).imageUrl || '',
     });
     toast({
-      title: 'Repas ajouté au chariot',
+      title: 'Repas ajouté à la zone en attente ds la cuisine',
       description: `${meal.name} est prêt à être cuisiné depuis la page Cuisine.`,
     });
   }
@@ -309,7 +310,31 @@ export default function DashboardPage() {
     try {
       const batch = writeBatch(firestore);
       const mealsCollectionRef = collection(firestore, 'users', effectiveChefId, 'foodLogs');
+      const cookingCollectionRef = collection(firestore, 'users', effectiveChefId, 'cooking');
       const today = Timestamp.now();
+      const todayStart = startOfDay(new Date());
+      const todayEnd = endOfDay(new Date());
+
+      // Find existing meals for today to replace them
+      const existingMealsQuery = query(
+        mealsCollectionRef,
+        where('date', '>=', Timestamp.fromDate(todayStart)),
+        where('date', '<=', Timestamp.fromDate(todayEnd))
+      );
+      const existingCookingQuery = query(
+        cookingCollectionRef,
+        where('plannedFor', '>=', Timestamp.fromDate(todayStart)),
+        where('plannedFor', '<=', Timestamp.fromDate(todayEnd))
+      );
+
+      const [existingMealsSnap, existingCookingSnap] = await Promise.all([
+        getDocs(existingMealsQuery),
+        getDocs(existingCookingQuery)
+      ]);
+
+      // Map existing meals by type and delete them
+      existingMealsSnap.forEach(doc => batch.delete(doc.ref));
+      existingCookingSnap.forEach(doc => batch.delete(doc.ref));
 
       dayPlan.forEach(meal => {
         const newMealRef = doc(mealsCollectionRef);
@@ -445,6 +470,7 @@ export default function DashboardPage() {
                   onSubmit={addMeal}
                   household={userProfile?.household || []}
                   userId={user?.uid}
+                  chefId={effectiveChefId}
                   defaultType={defaultMealType}
                 />
               </Dialog>
@@ -512,16 +538,16 @@ export default function DashboardPage() {
                 {
                   label: 'REPAS',
                   value: displayMeals.length,
-                  unit: '/ 4',
+                  unit: `/ ${userProfile?.targetMeals || 4}`,
                   icon: UtensilsCrossed,
                   color: 'text-blue-500',
                   bg: 'bg-blue-500/10',
-                  progress: (displayMeals.length / 4) * 100
+                  progress: (displayMeals.length / (userProfile?.targetMeals || 4)) * 100
                 },
                 {
                   label: 'OBJECTIF',
                   value: userProfile?.targetCalories || 2000,
-                  unit: 'kcal',
+                  unit: 'kcal / jour',
                   icon: Target,
                   color: 'text-emerald-500',
                   bg: 'bg-emerald-500/10'
@@ -529,7 +555,7 @@ export default function DashboardPage() {
                 {
                   label: 'NIVEAU',
                   value: userProfile?.level || 1,
-                  unit: userProfile?.level && userProfile.level < 10 ? 'Novice' : userProfile?.level && userProfile.level < 20 ? 'Apprenti' : userProfile?.level && userProfile.level < 30 ? 'Cdt' : 'Expert',
+                  unit: userProfile?.level && userProfile.level < 10 ? 'Novice' : userProfile?.level && userProfile.level < 20 ? 'Apprenti' : userProfile?.level && userProfile.level < 30 ? 'Chef' : 'Maître',
                   icon: Award,
                   color: 'text-purple-500',
                   bg: 'bg-purple-500/10'
@@ -563,6 +589,41 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+
+          {/* Household Assignment Banner */}
+          {Object.keys(cooksForToday).length > 0 && (
+            <div className="bg-gradient-to-r from-primary/10 via-background to-primary/5 border border-primary/10 rounded-xl p-4 md:p-5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+                    <ChefHat className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/60 text-left">Organisation du foyer</h3>
+                    <p className="text-sm md:text-base font-black text-foreground text-left">
+                      {(() => {
+                        const uniqueCooks = Array.from(new Set(Object.values(cooksForToday)));
+                        if (uniqueCooks.length === 1) {
+                          return `C'est ${uniqueCooks[0]} qui cuisine aujourd'hui ! 🧑‍🍳`;
+                        }
+                        return Object.entries(cooksForToday)
+                          .map(([type, name]) => {
+                            const translation = mealTypeTranslations[type as keyof typeof mealTypeTranslations] || type;
+                            return `${translation} : ${name}`;
+                          })
+                          .join(' • ');
+                      })()}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border-primary/20 bg-primary/5 text-primary hover:bg-primary/10" asChild>
+                  <Link href="/cuisine">
+                    Détails de l'équipe
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-8 items-start">
             {/* Left Column: Journal du Jour (2/3) */}
@@ -634,7 +695,7 @@ export default function DashboardPage() {
                                       {meal.cookedBy && (
                                         <span className="flex items-center gap-1 text-[9px] font-bold text-primary/60 bg-primary/5 px-2 py-0.5 rounded-full">
                                           <ChefHat className="h-2 w-2" />
-                                          Chef: {meal.cookedBy}
+                                          Cuisinier: {meal.cookedBy}
                                         </span>
                                       )}
                                     </div>

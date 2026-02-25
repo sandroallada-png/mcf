@@ -152,7 +152,6 @@ export default function LoginPage() {
                   {/* Desktop View */}
                   <div className="hidden lg:block absolute inset-0">
                     <Image src={item.image} alt="Cuisine" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" priority={index === 0} />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
                   </div>
                 </CarouselItem>
               ))}

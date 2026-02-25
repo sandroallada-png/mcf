@@ -203,11 +203,6 @@ export default function RegisterPage() {
                 <CarouselItem key={index} className="pl-0 relative h-screen bg-[#347d1c] flex items-center justify-center lg:block text-white">
                   <div className="hidden lg:block absolute inset-0">
                     <Image src={item.image} alt="Cuisine" fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" priority={index === 0} />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
-                    <div className="absolute bottom-16 left-12 right-12 z-20 space-y-2">
-                      <h3 className="text-3xl font-black uppercase tracking-tighter">L'intelligence au service de la santé</h3>
-                      <p className="text-lg font-medium text-white/80">Automatisation et rappel intelligent</p>
-                    </div>
                   </div>
                   <div className="lg:hidden relative w-full h-full flex items-center justify-center p-6 sm:p-12">
                     <div className="absolute top-12 left-1/2 -translate-x-1/2 w-full h-full max-w-[500px] max-h-[500px] bg-white/5 blur-[120px] rounded-full" />

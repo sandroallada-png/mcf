@@ -685,6 +685,7 @@ export default function AtelierPage() {
                             onAccept={handleAcceptSuggestion}
                             isFavorite={favorites?.some(f => f.id === (selectedRecipe?.id || selectedRecipe?.name?.replace(/\s/g, '_').toLowerCase()))}
                             onToggleFavorite={handleToggleFavorite}
+                            mode="recipe"
                         />
                     )
                 }

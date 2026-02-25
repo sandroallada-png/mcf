@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calculator, X, Refrigerator, Calendar, ArrowLeft, Grip, Sparkles, ShoppingCart } from 'lucide-react';
+import { X, Refrigerator, Calendar, Grip, Sparkles, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -13,9 +13,6 @@ import { Lock } from 'lucide-react';
 
 export function FloatingShortcuts() {
     const [isOpen, setIsOpen] = useState(false);
-    const [display, setDisplay] = useState('0');
-    const [isResult, setIsResult] = useState(false);
-    const [mode, setMode] = useState<'menu' | 'calculator'>('menu');
     const [showOnboardingWarning, setShowOnboardingWarning] = useState(false);
     const router = useRouter();
     const pathname = usePathname();
@@ -23,14 +20,34 @@ export function FloatingShortcuts() {
     const [showTutorial, setShowTutorial] = useState(false);
     const [mounted, setMounted] = useState(false);
     const isAuthPage = pathname === '/login' || pathname === '/register';
+    const isRegistrationPath = pathname === '/register' ||
+        pathname === '/login' ||
+        pathname?.startsWith('/join-family') ||
+        pathname === '/personalization' ||
+        pathname === '/preferences' ||
+        pathname === '/pricing' ||
+        pathname === '/welcome';
+
     const isRestrictedByAuth = isAuthPage && !user;
-    const showWarning = showOnboardingWarning || (isRestrictedByAuth && mode === 'menu');
+    const showWarning = showOnboardingWarning || isRestrictedByAuth;
+
+    const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragOffset = React.useRef({ x: 0, y: 0 });
+    const cardRef = React.useRef<HTMLDivElement>(null);
+    const lastPositionRef = React.useRef<{ x: number; y: number } | null>(null);
+
+    // Handle Dragging
+    const hasMoved = React.useRef(false);
+    const [isOverDragTrash, setIsOverDragTrash] = useState(false);
+    const isOverTrashRef = React.useRef(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
     useEffect(() => {
+        if (!mounted || isRegistrationPath) return; // Hook logic skip
         if (isOpen) {
             const views = parseInt(localStorage.getItem('mcf-floating-tutorial-views') || '0', 10);
             if (views < 3) {
@@ -40,7 +57,7 @@ export function FloatingShortcuts() {
         } else {
             setShowTutorial(false);
         }
-    }, [isOpen]);
+    }, [isOpen, mounted, isRegistrationPath]);
 
     const dismissTutorial = (e?: React.MouseEvent) => {
         e?.stopPropagation();
@@ -48,20 +65,6 @@ export function FloatingShortcuts() {
         const currentViews = parseInt(localStorage.getItem('mcf-floating-tutorial-views') || '0', 10);
         localStorage.setItem('mcf-floating-tutorial-views', (currentViews + 1).toString());
     };
-
-    const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const dragOffset = React.useRef({ x: 0, y: 0 });
-    const cardRef = React.useRef<HTMLDivElement>(null);
-    const lastPositionRef = React.useRef<{ x: number; y: number } | null>(null);
-
-    // Reset mode when closing
-    useEffect(() => {
-        if (!isOpen) {
-            setMode('menu');
-            setShowOnboardingWarning(false);
-        }
-    }, [isOpen]);
 
     const handleNavigation = (path: string) => {
         const isAdmin = user?.email === 'emapms@gmail.com';
@@ -73,8 +76,16 @@ export function FloatingShortcuts() {
         router.push(path);
     };
 
-    // Ensure calculator stays within viewport when opened
+    // Reset warning when closing
     useEffect(() => {
+        if (!isOpen) {
+            setShowOnboardingWarning(false);
+        }
+    }, [isOpen]);
+
+    // Ensure menu stays within viewport
+    useEffect(() => {
+        if (!mounted || isRegistrationPath) return;
         if (isOpen && cardRef.current && !position) {
             const timer = setTimeout(() => {
                 const card = cardRef.current;
@@ -93,34 +104,7 @@ export function FloatingShortcuts() {
 
             return () => clearTimeout(timer);
         }
-    }, [isOpen, position]);
-
-    useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (!isOpen || mode !== 'calculator') return;
-            if (event.key >= '0' && event.key <= '9') {
-                handleDigitClick(event.key);
-            } else if (['+', '-', '*', '/'].includes(event.key)) {
-                handleOperatorClick(event.key);
-            } else if (event.key === 'Enter' || event.key === '=') {
-                event.preventDefault();
-                handleEqualClick();
-            } else if (event.key === 'Backspace') {
-                handleClearClick('backspace');
-            } else if (event.key === 'Escape') {
-                setIsOpen(false);
-            } else if (event.key === '.') {
-                handleDigitClick('.');
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, display, isResult, mode]);
-
-    // Handle Dragging
-    const hasMoved = React.useRef(false);
-    const [isOverDragTrash, setIsOverDragTrash] = useState(false);
-    const isOverTrashRef = React.useRef(false);
+    }, [isOpen, position, mounted, isRegistrationPath]);
 
     useEffect(() => {
         if (!isDragging) return;
@@ -188,7 +172,6 @@ export function FloatingShortcuts() {
                 setIsOverDragTrash(false);
                 isOverTrashRef.current = false;
                 setPosition(null);
-                setMode('menu');
             } else if (lastPositionRef.current) {
                 const screenWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
                 const offsetLeft = window.visualViewport ? window.visualViewport.offsetLeft : 0;
@@ -250,66 +233,7 @@ export function FloatingShortcuts() {
         setIsDragging(true);
     };
 
-    const safeCalculate = (expression: string) => {
-        try {
-            if (/[^0-9+\-*/().\s]/.test(expression)) return "Erreur";
-            // eslint-disable-next-line no-new-func
-            const result = new Function('return ' + expression)();
-            if (!isFinite(result) || isNaN(result)) return "Erreur";
-            return String(Math.round(result * 10000000) / 10000000);
-        } catch {
-            return "Erreur";
-        }
-    };
-
-    const handleDigitClick = (digit: string) => {
-        if (isResult) {
-            setDisplay(digit);
-            setIsResult(false);
-        } else {
-            setDisplay(prev => prev === '0' && digit !== '.' ? digit : prev + digit);
-        }
-    };
-
-    const handleOperatorClick = (op: string) => {
-        if (isResult) {
-            const parts = display.split('=');
-            const lastResult = parts[parts.length - 1].trim();
-            setDisplay(lastResult + op);
-            setIsResult(false);
-        } else {
-            setDisplay(prev => {
-                const trimmed = prev.trim();
-                if (['+', '-', '*', '/'].some(o => trimmed.endsWith(o))) {
-                    return trimmed.slice(0, -1) + op;
-                }
-                return prev + op;
-            });
-        }
-    };
-
-    const handleEqualClick = () => {
-        if (isResult) return;
-        const result = safeCalculate(display);
-        setDisplay(prev => `${prev} = ${result}`);
-        setIsResult(true);
-    };
-
-    const handleClearClick = (type: 'all' | 'backspace') => {
-        if (type === 'all') {
-            setDisplay('0');
-            setIsResult(false);
-        } else {
-            if (isResult) {
-                setDisplay('0');
-                setIsResult(false);
-            } else {
-                setDisplay(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
-            }
-        }
-    };
-
-    if (!mounted) return null;
+    if (!mounted || isRegistrationPath) return null;
 
     return createPortal(
         <>
@@ -390,11 +314,8 @@ export function FloatingShortcuts() {
                 <Card
                     ref={cardRef}
                     className={cn(
-                        'fixed z-[40] shadow-2xl floating-shortcuts-card transition-[width,height] ease-in-out',
-                        mode === 'menu' ? 'rounded-3xl' : 'rounded-xl',
-                        !position && (
-                            mode === 'menu' ? 'top-1/2 -translate-y-1/2 rounded-r-none rounded-l-3xl border-r-0' : 'top-1/2 -translate-y-1/2'
-                        )
+                        'fixed z-[40] shadow-2xl floating-shortcuts-card transition-[width,height] ease-in-out rounded-3xl',
+                        !position && 'top-1/2 -translate-y-1/2 rounded-r-none rounded-l-3xl border-r-0'
                     )}
                     style={{
                         ...(position ? {
@@ -403,10 +324,10 @@ export function FloatingShortcuts() {
                             margin: 0,
                         } : {
                             top: '50%',
-                            right: mode === 'menu' ? '0' : 'max(1rem, env(safe-area-inset-right, 1rem))',
+                            right: '0',
                             left: 'auto',
                         }),
-                        width: mode === 'menu' ? (showWarning ? '20rem' : '4rem') : 'min(20rem, calc(100vw - 2rem))',
+                        width: showWarning ? '20rem' : '4rem',
                         maxWidth: 'calc(100vw - 1rem)',
                         transform: !position ? 'translateY(-50%)' : 'none',
                         animation: !position && !isDragging ? 'slideInFromRightSmooth 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
@@ -419,38 +340,13 @@ export function FloatingShortcuts() {
                     <CardHeader
                         className={cn(
                             "p-2 bg-gradient-to-r from-background to-secondary/20 cursor-move select-none active:cursor-grabbing border-b transition-all duration-300",
-                            (mode === 'menu' && !showWarning) ? "justify-center" : "justify-between"
+                            !showWarning ? "justify-center" : "justify-between"
                         )}
                         style={{ touchAction: 'none' }}
                         onMouseDown={handleDragStart}
                         onTouchStart={handleDragStart}
                     >
-                        {mode === 'calculator' ? (
-                            <div className="flex justify-between items-center w-full pointer-events-none">
-                                <CardTitle className="text-base font-medium flex items-center gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 pointer-events-auto mr-1 -ml-1"
-                                        onClick={() => setMode('menu')}
-                                    >
-                                        <ArrowLeft className="h-4 w-4" />
-                                    </Button>
-                                    Calculatrice
-                                </CardTitle>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 pointer-events-auto hover:bg-destructive/10 hover:text-destructive"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setIsOpen(false);
-                                    }}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ) : showWarning ? (
+                        {showWarning ? (
                             <div className="flex justify-between items-center w-full">
                                 <CardTitle className="text-sm font-black flex items-center gap-2 text-primary uppercase tracking-tighter">
                                     <Sparkles className="h-4 w-4" />
@@ -502,7 +398,7 @@ export function FloatingShortcuts() {
                     </CardHeader>
 
                     <CardContent
-                        className={cn("p-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", mode === 'menu' ? "p-1" : "p-4")}
+                        className="p-1 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
                     >
                         <AnimatePresence mode="wait">
                             {showWarning ? (
@@ -536,18 +432,8 @@ export function FloatingShortcuts() {
                                         {isRestrictedByAuth ? 'D\'accord' : 'Continuer l\'inscription'}
                                     </Button>
                                 </motion.div>
-                            ) : mode === 'menu' ? (
+                            ) : (
                                 <div className="flex flex-col gap-4 items-center py-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400 hover:scale-110 transition-transform shadow-sm"
-                                        onClick={() => setMode('calculator')}
-                                        title="Calculatrice"
-                                    >
-                                        <Calculator className="h-5 w-5" />
-                                    </Button>
-
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -587,36 +473,6 @@ export function FloatingShortcuts() {
                                     >
                                         <Calendar className="h-5 w-5" />
                                     </Button>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="bg-muted text-right text-xl font-mono p-4 rounded-md mb-4 break-words min-h-[4rem] flex items-center justify-end shadow-inner">
-                                        {display}
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        <Button variant="outline" className="col-span-2 text-destructive hover:text-destructive/90 hover:bg-destructive/10" onClick={() => handleClearClick('all')}>AC</Button>
-                                        <Button variant="outline" onClick={() => handleClearClick('backspace')}>C</Button>
-                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('/')}>÷</Button>
-
-                                        <Button variant="outline" onClick={() => handleDigitClick('7')}>7</Button>
-                                        <Button variant="outline" onClick={() => handleDigitClick('8')}>8</Button>
-                                        <Button variant="outline" onClick={() => handleDigitClick('9')}>9</Button>
-                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('*')}>×</Button>
-
-                                        <Button variant="outline" onClick={() => handleDigitClick('4')}>4</Button>
-                                        <Button variant="outline" onClick={() => handleDigitClick('5')}>5</Button>
-                                        <Button variant="outline" onClick={() => handleDigitClick('6')}>6</Button>
-                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('-')}>-</Button>
-
-                                        <Button variant="outline" onClick={() => handleDigitClick('1')}>1</Button>
-                                        <Button variant="outline" onClick={() => handleDigitClick('2')}>2</Button>
-                                        <Button variant="outline" onClick={() => handleDigitClick('3')}>3</Button>
-                                        <Button variant="secondary" className="bg-secondary text-secondary-foreground" onClick={() => handleOperatorClick('+')}>+</Button>
-
-                                        <Button variant="outline" className="col-span-2" onClick={() => handleDigitClick('0')}>0</Button>
-                                        <Button variant="outline" onClick={() => handleDigitClick('.')}>.</Button>
-                                        <Button variant="default" className="bg-primary text-primary-foreground" onClick={handleEqualClick}>=</Button>
-                                    </div>
                                 </div>
                             )}
                         </AnimatePresence>

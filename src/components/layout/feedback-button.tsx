@@ -62,7 +62,15 @@ export function FeedbackButton() {
     }
   };
 
-  if (!user || pathname.startsWith('/admin')) {
+  const isRegistrationPath = pathname === '/register' ||
+    pathname === '/login' ||
+    pathname?.startsWith('/join-family') ||
+    pathname === '/personalization' ||
+    pathname === '/preferences' ||
+    pathname === '/pricing' ||
+    pathname === '/welcome';
+
+  if (!user || pathname.startsWith('/admin') || isRegistrationPath) {
     return null;
   }
 

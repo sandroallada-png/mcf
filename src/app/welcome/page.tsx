@@ -110,11 +110,6 @@ export default function WelcomePage() {
                             {carouselItems.map((item, index) => (
                                 <CarouselItem key={index} className="pl-0 relative h-screen bg-[#347d1c]">
                                     <Image src={item.image} alt="Cuisine" fill sizes="50vw" className="object-cover" priority={index === 0} />
-                                    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
-                                    <div className="absolute bottom-16 left-12 right-12 z-20 space-y-2">
-                                        <h3 className="text-3xl font-black uppercase tracking-tighter text-white">L'intelligence au service de la santé</h3>
-                                        <p className="text-lg font-medium text-white/80">Automatisation et rappel intelligent</p>
-                                    </div>
                                 </CarouselItem>
                             ))}
                         </CarouselContent>

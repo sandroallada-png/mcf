@@ -97,7 +97,6 @@ export default function PersonalizationPage() {
               {carouselItems.map((item, index) => (
                 <CarouselItem key={index} className="pl-0 relative h-screen">
                   <Image src={item.image} alt="Cuisine Inspiration" fill sizes="50vw" className="object-cover" priority={index === 0} />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
                 </CarouselItem>
               ))}
             </CarouselContent>

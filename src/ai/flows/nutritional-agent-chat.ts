@@ -5,7 +5,7 @@
 
 import OpenAI from 'openai';
 import type { NutritionalAgentChatInput, NutritionalAgentChatOutput, Dish } from '@/lib/types';
-import { collection, getDocs, Firestore } from 'firebase/firestore';
+import { collection, getDocs, Firestore, query, where } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-init';
 import fs from 'fs';
 import path from 'path';
@@ -17,28 +17,38 @@ const openrouter = new OpenAI({
 });
 
 async function getDishesFromFirestore(db: Firestore): Promise<string> {
-    const dishesCol = collection(db, 'dishes');
+  const dishesCol = collection(db, 'dishes');
+  // On essaie les plats vérifiés
+  const qV = query(dishesCol, where('isVerified', '==', true));
+  const verifiedSnap = await getDocs(qV);
+
+  let dishes: Dish[] = [];
+  if (!verifiedSnap.empty) {
+    dishes = verifiedSnap.docs.map(doc => doc.data() as Dish);
+  } else {
+    // Fallback
     const dishSnapshot = await getDocs(dishesCol);
-    const dishes = dishSnapshot.docs.map(doc => doc.data() as Dish);
-    
-    // Format the dish list with name and image URL if available
-    return dishes.map(d => {
-        let dishInfo = `- ${d.name}`;
-        if (d.imageUrl) {
-            dishInfo += ` (Image: ${d.imageUrl})`;
-        }
-        return dishInfo;
-    }).join('\n');
+    dishes = dishSnapshot.docs.map(doc => doc.data() as Dish);
+  }
+
+  // Format the dish list with name and image URL if available
+  return dishes.map(d => {
+    let dishInfo = `- ${d.name}`;
+    if (d.imageUrl) {
+      dishInfo += ` (Image: ${d.imageUrl})`;
+    }
+    return dishInfo;
+  }).join('\n');
 }
 
 function getAppDocumentation(): string {
-    try {
-        const docPath = path.join(process.cwd(), 'docs', 'user_manual.md');
-        return fs.readFileSync(docPath, 'utf-8');
-    } catch (error) {
-        console.error("Could not read app documentation:", error);
-        return "La documentation de l'application n'est pas disponible pour le moment.";
-    }
+  try {
+    const docPath = path.join(process.cwd(), 'docs', 'user_manual.md');
+    return fs.readFileSync(docPath, 'utf-8');
+  } catch (error) {
+    console.error("Could not read app documentation:", error);
+    return "La documentation de l'application n'est pas disponible pour le moment.";
+  }
 }
 
 export async function nutritionalAgentChat(
@@ -98,6 +108,27 @@ Example of a valid meal plan response:
 ]
 \`\`\`
 
+**KNOWLEDGE ZONE: FULL ACCESS**
+You have full access to the application's database and user context:
+1. **Catalog**: You know all available dishes in the "Cuisine" section.
+2. **User History**: You have access to the user's complete meal history to analyze patterns and suggest improvements.
+3. **Household context**: You know if the user is living alone or in a family (based on household members). If they are in a family, suggest collaborative cooking.
+4. **App structure**: You know every page of the app:
+    - **Dashboard**: Overview of the day, calorie counters, and quick logging.
+    - **Cuisine**: Catalog of recipes, AI suggestions based on time of day, and history of what needs to be cooked.
+    - **Calendar**: Weekly/monthly planning tool.
+    - **Frigo**: Inventory of ingredients with "Magic Suggestion" feature.
+    - **Mon Niveau**: Gamification system (XP/Levels) based on healthy actions.
+    - **Atelier**: Premium space for high-quality chef recipes and tutorials.
+
+**GUIDE & TUTOR ROLE**
+Beyond being a coach, you are a **Tutor**. Your mission is to guide the user through the app:
+- If a user seems lost or is a beginner, suggest specific features.
+- Explain "Mon Niveau" as a way to stay motivated through gamification.
+- Explain that the "Fridge" section helps reduce waste by suggesting recipes based on what they have.
+- Encourage them to use the "Calendar" for better organization.
+- Guidance should be friendly, like a "tour guide" or a helpful friend, never technical.
+
 **APP DOCUMENTATION**
 If the user asks a question about how the app works (e.g., "how do I use the calendar?", "what is 'Mon Niveau'?", "comment fonctionne le frigo ?"), you MUST use the following user manual to answer their question. Be helpful and summarize the relevant section.
 Do not mention that you are reading from a document, just answer the question.
@@ -117,7 +148,7 @@ ${appDocumentation}
   if (input.userLevel) {
     systemPrompt += `\n- User's current level is ${input.userLevel}. You can congratulate them on their progress!`;
   }
-  
+
   if (input.fridgeContents && input.fridgeContents.length > 0) {
     systemPrompt += `\n- The user's fridge contains: ${input.fridgeContents.join(', ')}. Prioritize suggesting recipes that use these ingredients.`;
   } else {
@@ -132,9 +163,11 @@ ${appDocumentation}
   if (input.mealHistory && input.mealHistory.length > 0) {
     systemPrompt += `\n- The user's recent meal history: ${input.mealHistory.join(', ')}. Use this to avoid suggesting the same meals too frequently and to better understand their habits.`;
   }
-  
+
   if (input.householdMembers && input.householdMembers.length > 0) {
-    systemPrompt += `\n- The user's household members are: ${input.householdMembers.join(', ')}. You can use this information to make suggestions about who should cook.`;
+    systemPrompt += `\n- The user is living in a family/household. Household members: ${input.householdMembers.join(', ')}. Suggest collaborative cooking and rotating chefs.`;
+  } else {
+    systemPrompt += `\n- The user is currently alone in their household. Tailor your suggestions for a single person (e.g., smaller portions, batch cooking).`;
   }
 
   if (input.todaysCooks && Object.keys(input.todaysCooks).length > 0) {
@@ -145,16 +178,16 @@ ${appDocumentation}
   if (input.personality) {
     systemPrompt += "\n- The user's AI personalization settings are:";
     if (input.personality.tone) {
-        systemPrompt += `\n  - Tone: ${input.personality.tone}.`;
+      systemPrompt += `\n  - Tone: ${input.personality.tone}.`;
     }
     if (input.personality.mainObjective) {
-        systemPrompt += `\n  - Main objective: ${input.personality.mainObjective}.`;
+      systemPrompt += `\n  - Main objective: ${input.personality.mainObjective}.`;
     }
     if (input.personality.allergies) {
-        systemPrompt += `\n  - Allergies/intolerances: ${input.personality.allergies}. Be very careful about these.`;
+      systemPrompt += `\n  - Allergies/intolerances: ${input.personality.allergies}. Be very careful about these.`;
     }
     if (input.personality.preferences) {
-        systemPrompt += `\n  - Food preferences: ${input.personality.preferences}.`;
+      systemPrompt += `\n  - Food preferences: ${input.personality.preferences}.`;
     }
   }
   // --- End of new context integration ---

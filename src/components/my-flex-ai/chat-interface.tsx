@@ -74,7 +74,7 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
 
     const mealHistoryQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/foodLogs`), orderBy('date', 'desc'), limit(15));
+        return query(collection(firestore, `users/${user.uid}/foodLogs`), orderBy('date', 'desc'), limit(50));
     }, [user, firestore]);
 
     const fridgeQuery = useMemoFirebase(() => {
