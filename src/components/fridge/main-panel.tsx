@@ -120,20 +120,20 @@ export function MainPanel() {
     };
 
     return (
-        <main className="flex-1 flex flex-col overflow-hidden bg-background">
-            <div className="max-w-6xl mx-auto w-full px-6 md:px-12 py-10 space-y-10">
+        <div className="flex-1 flex flex-col bg-background">
+            <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-10">
 
                 {/* Header Section */}
                 <div className="space-y-6">
                     <div className="space-y-2">
                         <div className="text-5xl mb-4">🧊</div>
-                        <h1 className="text-4xl font-bold tracking-tight">Mon Frigo</h1>
+                        <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Mon Frigo</h1>
                         <p className="text-muted-foreground text-sm max-w-2xl">
                             Gérez vos ingrédients disponibles et recevez des suggestions de recettes personnalisées par notre IA.
                         </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-3">
                         <Button
                             onClick={handleGetSuggestions}
                             disabled={isLoadingSuggestions || !ingredients || ingredients.length === 0}
@@ -278,6 +278,6 @@ export function MainPanel() {
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
     );
 }

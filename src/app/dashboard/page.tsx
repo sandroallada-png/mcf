@@ -37,6 +37,7 @@ import { estimateCaloriesAction, suggestDayPlanAction } from '../actions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ImageZoomLightbox } from '@/components/shared/image-zoom-lightbox';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const XP_PER_LEVEL = 500;
 
@@ -63,6 +64,8 @@ export default function DashboardPage() {
   const [isAddingMeal, setIsAddingMeal] = useState(false);
   const [defaultMealType, setDefaultMealType] = useState<Meal['type'] | undefined>(undefined);
   const [suggestionMeal, setSuggestionMeal] = useState<Meal | null>(null);
+  const [isMagicOpen, setIsMagicOpen] = useState(false);
+  const [selectedMagicMeal, setSelectedMagicMeal] = useState<DayPlanMeal | null>(null);
 
   const openFormForType = (type?: Meal['type']) => {
     setDefaultMealType(type);
@@ -841,38 +844,167 @@ export default function DashboardPage() {
           </div>
         </main>
 
-        {/* Mobile Navigation Bar - Native App Style */}
-        <div className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-          <div className="flex items-center justify-between px-6 pb-5 pt-2">
-            <Button
-              variant="ghost"
-              className="flex flex-col items-center gap-1 h-auto py-1.5 px-2 text-muted-foreground hover:text-foreground hover:bg-transparent active:scale-95 transition-all"
-              onClick={() => router.push('/calendar')}
+        {/* Magic Reveal Overlay - Mobile Only */}
+        <AnimatePresence>
+          {isMagicOpen && (
+            <motion.div
+              key="magic-overlay"
+              className="md:hidden fixed inset-0 z-[200] flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
             >
-              <Calendar className="h-5 w-5" />
-              <span className="text-[9px] font-bold tracking-wide">Agenda</span>
-            </Button>
+              {/* Backdrop */}
+              <div
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                onClick={() => { setIsMagicOpen(false); setSelectedMagicMeal(null); }}
+              />
 
-            <div className="relative -top-6 mx-3 filter drop-shadow-lg flex-1">
-              <Button
-                onClick={() => fetchDayPlan()}
-                className="h-16 w-full rounded-3xl bg-primary shadow-xl border-4 border-background flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-all group"
+              {/* Magic Card - reset selection on close */}
+              <motion.div
+                layoutId="magic-btn"
+                className="relative z-10 w-[88vw] max-w-sm bg-background rounded-3xl shadow-2xl shadow-primary/30 border border-primary/20 overflow-hidden"
+                style={{ originX: 0.5, originY: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               >
-                <Sparkles className="h-6 w-6 text-primary-foreground group-hover:rotate-12 transition-transform" />
-                <span className="text-xs font-black uppercase tracking-widest text-primary-foreground/90">Magie</span>
-              </Button>
-            </div>
+                {/* Header gradient */}
+                <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/60 px-5 pt-6 pb-8 relative overflow-hidden">
+                  <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
+                  <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary-foreground/60">Choisissez votre plat</p>
+                      <h2 className="text-xl font-black text-primary-foreground mt-0.5 flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 animate-pulse" /> Magie ✨
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => setIsMagicOpen(false)}
+                      className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-primary-foreground/80 hover:bg-white/20 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
 
-            <Button
-              variant="ghost"
-              className="flex flex-col items-center gap-1 h-auto py-1.5 px-2 text-muted-foreground hover:text-foreground hover:bg-transparent active:scale-95 transition-all"
-              onClick={() => router.push('/my-flex-ai')}
-            >
-              <Bot className="h-5 w-5" />
-              <span className="text-[9px] font-bold tracking-wide">Assistant</span>
-            </Button>
-          </div>
-        </div>
+                {/* Meal List */}
+                <div className="px-4 pt-3 pb-2 space-y-2 -mt-4">
+                  {isLoadingPlan ? (
+                    <div className="flex flex-col items-center justify-center py-10 gap-3">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
+                        <Loader2 className="relative h-8 w-8 animate-spin text-primary" />
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground">Génération du planning...</span>
+                    </div>
+                  ) : dayPlan.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+                      <ChefHat className="h-10 w-10 opacity-20" />
+                      <p className="text-sm font-bold">Aucun plan pour aujourd'hui</p>
+                      <button
+                        onClick={() => fetchDayPlan()}
+                        className="text-xs font-black text-primary underline underline-offset-2"
+                      >Régénérer</button>
+                    </div>
+                  ) : (
+                    dayPlan.map((meal, idx) => {
+                      const isSelected = selectedMagicMeal?.name === meal.name;
+                      return (
+                        <motion.div
+                          key={meal.name}
+                          onClick={() => setSelectedMagicMeal(isSelected ? null : meal)}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.07 }}
+                          className={cn(
+                            "flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-all active:scale-[0.98]",
+                            isSelected
+                              ? "bg-primary/10 border-primary shadow-sm shadow-primary/20"
+                              : "bg-accent/30 border-border/50 hover:border-primary/30"
+                          )}
+                        >
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted border border-border">
+                            {meal.imageUrl ? (
+                              <Image src={meal.imageUrl} alt={meal.name} fill sizes="48px" className="object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <UtensilsCrossed className="h-5 w-5 opacity-20" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("font-black text-sm truncate", isSelected && "text-primary")}>{meal.name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className={cn(
+                                "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full",
+                                isSelected ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary/70"
+                              )}>
+                                {({ 'breakfast': 'Petit-déj', 'lunch': 'Déjeuner', 'dinner': 'Dîner', 'dessert': 'Dessert' } as Record<string, string>)[meal.type] || meal.type}
+                              </span>
+                              <span className="text-[9px] font-bold text-muted-foreground">{meal.calories} kcal</span>
+                            </div>
+                          </div>
+                          {/* Check circle */}
+                          <div className={cn(
+                            "h-6 w-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all",
+                            isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
+                          )}>
+                            {isSelected && (
+                              <svg viewBox="0 0 12 12" className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="2,6 5,9 10,3" />
+                              </svg>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* CTA */}
+                {dayPlan.length > 0 && (
+                  <div className="px-4 pb-5 pt-3">
+                    <AnimatePresence mode="wait">
+                      {!selectedMagicMeal ? (
+                        <motion.p
+                          key="hint"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="text-center text-xs text-muted-foreground font-medium py-2"
+                        >
+                          👆 Sélectionnez un plat à cuisiner
+                        </motion.p>
+                      ) : (
+                        <motion.button
+                          key="cta"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                          onClick={() => {
+                            const encoded = encodeURIComponent(selectedMagicMeal.name);
+                            setIsMagicOpen(false);
+                            setSelectedMagicMeal(null);
+                            router.push(`/cuisine?prep=${encoded}`);
+                          }}
+                          className="w-full h-13 rounded-2xl bg-primary text-primary-foreground font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-primary/30 hover:brightness-110 active:scale-95 transition-all py-3.5"
+                        >
+                          <ChefHat className="h-5 w-5" />
+                          Cuisiner &ldquo;{selectedMagicMeal.name.length > 22 ? selectedMagicMeal.name.slice(0, 22) + '…' : selectedMagicMeal.name}&rdquo;
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
+
 
 
         {suggestionMeal && (

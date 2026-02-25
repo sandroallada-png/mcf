@@ -92,15 +92,17 @@ export default function FridgePage() {
       <AppSidebar collapsible="icon" className="w-80 peer hidden md:block" variant="sidebar">
         <Sidebar {...sidebarProps} />
       </AppSidebar>
-      <SidebarInset className="bg-background flex flex-col h-screen">
-        <AppHeader
-          title="Mon Frigo"
-          icon={<Refrigerator className="h-6 w-6" />}
-          user={user}
-          sidebarProps={sidebarProps}
-        />
-        <div className="flex-1 overflow-y-auto w-full">
-          <MainPanel />
+      <SidebarInset>
+        <div className="flex h-full flex-1 flex-col overflow-hidden">
+          <AppHeader
+            title="Mon Frigo"
+            icon={<Refrigerator className="h-6 w-6" />}
+            user={user}
+            sidebarProps={sidebarProps}
+          />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden w-full bg-background">
+            <MainPanel />
+          </main>
         </div>
       </SidebarInset>
     </SidebarProvider>

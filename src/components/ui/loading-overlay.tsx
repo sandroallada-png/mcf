@@ -21,7 +21,7 @@ export function LoadingOverlay() {
           </div>
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black tracking-tight animate-pulse text-foreground">
+          <h2 className="text-lg sm:text-2xl font-black tracking-tight animate-pulse text-foreground">
             {loadingMessage || "Chargement..."}
           </h2>
           <div className="flex justify-center gap-1.5 pt-2">

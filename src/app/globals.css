@@ -94,3 +94,21 @@
     opacity: 1;
   }
 }
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Give pages breathing room above the global mobile bottom nav */
+@media (max-width: 767px) {
+  main {
+    padding-bottom: calc(5rem + max(0px, env(safe-area-inset-bottom)));
+  }
+}

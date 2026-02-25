@@ -11,6 +11,7 @@ import { FloatingShortcuts } from '@/components/layout/floating-shortcuts';
 import { Toaster } from "@/components/ui/toaster";
 import { ReadOnlyProvider } from '@/contexts/read-only-context';
 import { FamilyMemberGuardModal } from '@/components/shared/family-member-guard';
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -30,6 +31,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 <FeedbackButton />
                 <FloatingShortcuts />
                 <LoadingOverlay />
+                <MobileBottomNav />
                 <Toaster />
               </ReadOnlyProvider>
             </AuthProvider>

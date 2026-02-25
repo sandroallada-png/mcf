@@ -201,16 +201,16 @@ export default function CoursesPage() {
                                         <div className="flex flex-col sm:flex-row gap-4">
                                             <Button
                                                 onClick={handleGenerateList}
-                                                className="h-12 px-8 text-sm font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                                                className="w-full sm:w-auto h-auto py-3 md:h-12 px-6 md:px-8 text-sm font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all whitespace-normal md:whitespace-nowrap text-center flex items-center justify-center"
                                             >
-                                                <Sparkles className="mr-2 h-4 w-4" />
-                                                Générer ma liste de courses avec notre outil
+                                                <Sparkles className="mr-2 h-4 w-4 shrink-0" />
+                                                <span>Générer ma liste de courses</span>
                                             </Button>
 
                                             {historyItems && historyItems.length > 0 && (
                                                 <Button
                                                     variant="outline"
-                                                    className="h-12 px-8 text-sm font-bold rounded-xl"
+                                                    className="w-full sm:w-auto h-auto py-3 md:h-12 px-6 md:px-8 text-sm font-bold rounded-xl whitespace-normal md:whitespace-nowrap text-center flex items-center justify-center"
                                                     onClick={() => {
                                                         const latest = historyItems[0];
                                                         setShoppingList({
@@ -219,8 +219,8 @@ export default function CoursesPage() {
                                                         });
                                                     }}
                                                 >
-                                                    <History className="mr-2 h-4 w-4" />
-                                                    Dernière liste générée
+                                                    <History className="mr-2 h-4 w-4 shrink-0" />
+                                                    <span>Dernière liste générée</span>
                                                 </Button>
                                             )}
                                         </div>

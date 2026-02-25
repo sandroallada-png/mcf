@@ -754,463 +754,473 @@ export default function CuisinePage() {
                         setSelectedCookingItem(null);
                         setActiveTab(value as TabValue);
                     }} className="flex-1 flex flex-col">
-                        <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
+                        <div className="max-w-6xl mx-auto w-full py-4 md:py-6 space-y-0">
 
                             {/* Header Section */}
-                            <div className="space-y-6">
-                                <div className="space-y-2">
-                                    <div className="relative w-20 h-20 mb-4 select-none">
-                                        <Image
-                                            src={contextualImage}
-                                            alt="Context Icon"
-                                            fill
-                                            className="object-contain"
-                                            priority
-                                        />
-                                    </div>
-                                    <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Espace Cuisine</h1>
-                                    <p className="text-muted-foreground text-sm max-w-2xl">
-                                        Planifiez vos repas, explorez de nouveaux plats et suivez votre historique culinaire. {contextualMessage}
-                                    </p>
+                            <div className="space-y-2 px-4 md:px-8 pb-4">
+                                <div className="relative w-10 h-10 md:w-12 md:h-12 mb-2 select-none">
+                                    <Image
+                                        src={contextualImage}
+                                        alt="Context Icon"
+                                        fill
+                                        className="object-contain"
+                                        priority
+                                    />
                                 </div>
+                                <h1 className="text-xl md:text-3xl font-bold tracking-tight">Espace Cuisine</h1>
+                                <p className="text-muted-foreground text-xs max-w-2xl hidden sm:block">
+                                    Planifiez vos repas, explorez de nouveaux plats et suivez votre historique culinaire. {contextualMessage}
+                                </p>
+                            </div>
+                        </div>
 
-                                <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-2">
-                                    <TabsList className="h-9 p-0.5 bg-accent/50 rounded-md border border-muted/20">
+                        {/* ── STICKY TABS BAR — full width, horizontal scroll ── */}
+                        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm">
+                            <div className="relative">
+                                <div className="overflow-x-auto scrollbar-hide flex items-center gap-2 px-4 md:px-8 py-2">
+                                    {/* Tabs */}
+                                    <TabsList className="h-8 p-0.5 bg-accent/50 rounded-md border border-muted/20 shrink-0 flex min-w-0">
                                         {Object.entries(tabDetails).map(([value, { title, icon }]) => (
                                             <TabsTrigger
                                                 key={value}
                                                 value={value}
-                                                className="h-8 px-4 rounded-sm font-semibold text-xs transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                                                className="h-7 px-2.5 md:px-3 rounded-sm font-semibold text-[10px] md:text-xs transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
                                             >
-                                                <span className="mr-2 opacity-60">{icon}</span>
+                                                <span className="mr-1 opacity-60">{icon}</span>
                                                 {title}
                                             </TabsTrigger>
                                         ))}
                                     </TabsList>
 
+                                    {/* IA button — only on suggestions tab */}
                                     {activeTab === 'suggestions' && (
                                         <Button
                                             onClick={() => isReadOnly ? triggerBlock() : handleGetSuggestion()}
                                             disabled={isSuggesting}
-                                            className="h-9 px-4 text-xs font-bold rounded shadow-sm"
+                                            className="h-8 px-3 text-[10px] md:text-xs font-bold rounded shadow-sm shrink-0"
                                         >
-                                            {isSuggesting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-                                            Inspiration IA
+                                            {isSuggesting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
+                                            <span className="hidden sm:inline">Inspiration IA</span>
+                                            <span className="sm:hidden">IA</span>
                                         </Button>
                                     )}
                                 </div>
+                                {/* Right fade hint */}
+                                <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-background/90 to-transparent" />
                             </div>
+                        </div>
 
-                            <div className="flex-1">
-                                <TabsContent value="suggestions" className="m-0 focus-visible:ring-0 outline-none space-y-12">
-                                    <div className="p-6 rounded-lg border bg-accent/5 space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <Bot className="h-4 w-4 text-primary" />
-                                            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/80">Organisation du foyer</h3>
+                        {/* ── TAB CONTENT ── */}
+                        <div className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-5 md:pt-7">
+                            <TabsContent value="suggestions" className="m-0 focus-visible:ring-0 outline-none space-y-7">
+                                <div className="p-4 rounded-lg border bg-accent/5 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <Bot className="h-4 w-4 text-primary" />
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/80">Organisation du foyer</h3>
+                                    </div>
+                                    <WhoIsCooking />
+                                </div>
+
+                                {/* NEW: Personalized Recommendations Section */}
+                                <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="space-y-1">
+                                            <h2 className="text-base font-bold flex items-center gap-2">
+                                                <Sparkles className="h-5 w-5 text-primary" />
+                                                Recommandé pour vous
+                                                <Badge variant="outline" className="text-[10px] uppercase tracking-tighter ml-2 bg-primary/10 text-primary border-primary/20">Algorithme MyFlex</Badge>
+                                            </h2>
+                                            <p className="text-xs text-muted-foreground">Inspirations basées sur votre profil ({userProfile?.origin || 'Cuisine variée'}) et vos saveurs préférées.</p>
                                         </div>
-                                        <WhoIsCooking />
+                                        <Button variant="ghost" size="sm" className="hidden sm:flex text-[10px] uppercase font-bold tracking-widest" onClick={() => window.location.reload()}>
+                                            Rafraîchir
+                                        </Button>
                                     </div>
 
-                                    {/* NEW: Personalized Recommendations Section */}
-                                    <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div className="space-y-1">
-                                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                                    <Sparkles className="h-5 w-5 text-primary" />
-                                                    Recommandé pour vous
-                                                    <Badge variant="outline" className="text-[10px] uppercase tracking-tighter ml-2 bg-primary/10 text-primary border-primary/20">Algorithme MyFlex</Badge>
-                                                </h2>
-                                                <p className="text-xs text-muted-foreground">Inspirations basées sur votre profil ({userProfile?.origin || 'Cuisine variée'}) et vos saveurs préférées.</p>
-                                            </div>
-                                            <Button variant="ghost" size="sm" className="hidden sm:flex text-[10px] uppercase font-bold tracking-widest" onClick={() => window.location.reload()}>
-                                                Rafraîchir
-                                            </Button>
+                                    {isLoadingRecs ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className="h-40 md:h-48 rounded-xl bg-accent/5 border border-dashed animate-pulse" />
+                                            ))}
                                         </div>
-
-                                        {isLoadingRecs ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {[1, 2, 3].map(i => (
-                                                    <div key={i} className="h-48 rounded-xl bg-accent/5 border border-dashed animate-pulse" />
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {recommendations.slice(0, 3).map((dish, idx) => (
-                                                    <Card key={idx} className="group relative aspect-[7/10] overflow-hidden border-none shadow-lg transition-all rounded-xl cursor-pointer" onClick={() => handleShowRecipeForDish(dish)}>
-                                                        <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full bg-background/90 shadow-sm" onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (user) trackInteractionAction(user.uid, dish.name, dish.origin, dish.category, 'like');
-                                                                toast({ title: "Ajouté à vos favoris", description: "L'IA affinera vos prochaines suggestions." });
-                                                            }}>
-                                                                <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
-                                                            </Button>
-                                                        </div>
-                                                        <Image
-                                                            src={dish.imageUrl || `https://picsum.photos/seed/${dish.name.replace(/\s/g, '-')}/400/550`}
-                                                            alt={dish.name}
-                                                            fill
-                                                            className="object-cover group-hover:scale-110 transition-transform duration-1000"
-                                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                        />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent flex flex-col justify-end p-5">
-                                                            <Badge variant="outline" className="mb-2 w-fit text-[8px] bg-primary/20 backdrop-blur border-white/10 text-white font-black uppercase tracking-widest px-2 py-0.5 rounded-sm">
-                                                                ✨ {dish.matchReason || 'Suggestion MyFlex'}
-                                                            </Badge>
-                                                            <h3 className="text-xl font-black text-white uppercase italic leading-tight group-hover:-translate-y-1 transition-transform">{dish.name}</h3>
-                                                            <div className="mt-2 flex items-center gap-3 text-[9px] font-black text-white/50 uppercase tracking-[0.2em]">
-                                                                <div className="flex items-center gap-1">
-                                                                    <ClockIcon className="h-3 w-3" />
-                                                                    <span>{dish.cookingTime}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1">
-                                                                    <MapPin className="h-3 w-3" />
-                                                                    <span>{dish.origin}</span>
-                                                                </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                                            {recommendations.slice(0, 3).map((dish, idx) => (
+                                                <Card key={idx} className="group relative aspect-[5/7] overflow-hidden border-none shadow-lg transition-all rounded-xl cursor-pointer" onClick={() => handleShowRecipeForDish(dish)}>
+                                                    <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full bg-background/90 shadow-sm" onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (user) trackInteractionAction(user.uid, dish.name, dish.origin, dish.category, 'like');
+                                                            toast({ title: "Ajouté à vos favoris", description: "L'IA affinera vos prochaines suggestions." });
+                                                        }}>
+                                                            <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
+                                                        </Button>
+                                                    </div>
+                                                    <Image
+                                                        src={dish.imageUrl || `https://picsum.photos/seed/${dish.name.replace(/\s/g, '-')}/400/550`}
+                                                        alt={dish.name}
+                                                        fill
+                                                        className="object-cover group-hover:scale-110 transition-transform duration-1000"
+                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent flex flex-col justify-end p-3 md:p-5">
+                                                        <Badge variant="outline" className="mb-1.5 w-fit text-[7px] md:text-[8px] bg-primary/20 backdrop-blur border-white/10 text-white font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm">
+                                                            ✨ {dish.matchReason || 'Suggestion MyFlex'}
+                                                        </Badge>
+                                                        <h3 className="text-sm md:text-xl font-black text-white uppercase italic leading-tight group-hover:-translate-y-1 transition-transform">{dish.name}</h3>
+                                                        <div className="mt-1 md:mt-2 flex items-center gap-2 text-[8px] md:text-[9px] font-black text-white/50 uppercase tracking-[0.1em] md:tracking-[0.2em]">
+                                                            <div className="flex items-center gap-1">
+                                                                <ClockIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                                                <span>{dish.cookingTime}</span>
+                                                            </div>
+                                                            <div className="hidden sm:flex items-center gap-1">
+                                                                <MapPin className="h-2.5 w-2.5" />
+                                                                <span>{dish.origin}</span>
                                                             </div>
                                                         </div>
-                                                    </Card>
-                                                ))}
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+
+                                <div className="space-y-5">
+                                    <div className="flex flex-col md:flex-row items-end justify-between gap-4 border-b pb-3">
+                                        <div className="space-y-1">
+                                            <h3 className="text-base font-bold">Explorer les plats</h3>
+                                            <p className="text-xs text-muted-foreground">Découvrez notre catalogue de repas équilibrés.</p>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                            <div className="relative group">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                <Input
+                                                    placeholder="Rechercher..."
+                                                    className="h-9 pl-9 w-full sm:w-48 text-xs font-medium rounded border-muted/20"
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                />
+                                            </div>
+                                            <Select onValueChange={setSelectedCategory} value={selectedCategory}>
+                                                <SelectTrigger className="h-9 w-full sm:w-40 text-xs font-medium rounded border-muted/20 bg-background">
+                                                    <SelectValue placeholder="Catégorie" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-md border shadow-lg text-xs">
+                                                    <SelectItem value="all">Toutes catégories</SelectItem>
+                                                    {dishCategories.map(category => (
+                                                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 pb-6">
+                                        {filteredDishes.length > 0 ? (
+                                            filteredDishes.map((dish, index) => (
+                                                <Card key={`${dish.id}-${index}`}
+                                                    className="group relative aspect-[5/7] rounded-xl overflow-hidden border-none shadow-lg transition-all cursor-pointer bg-muted"
+                                                    onClick={() => handleShowRecipeForDish(dish)}>
+                                                    <Image
+                                                        src={dish.imageUrl || `https://picsum.photos/seed/${dish.name.replace(/\s/g, '-')}/400/550`}
+                                                        alt={dish.name}
+                                                        fill
+                                                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
+                                                        className="object-cover transition-transform duration-1000 group-hover:scale-110"
+                                                        data-ai-hint={dish.imageHint}
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent flex flex-col justify-end p-3 md:p-5">
+                                                        <div className="flex gap-1 mb-1.5">
+                                                            <Badge className="bg-primary/20 backdrop-blur-sm text-white border-white/10 text-[7px] md:text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm">
+                                                                {dish.category}
+                                                            </Badge>
+                                                        </div>
+                                                        <h4 className="text-sm md:text-xl font-black text-white uppercase italic leading-tight mb-1.5 group-hover:-translate-y-1 transition-transform">
+                                                            {dish.name}
+                                                        </h4>
+                                                        <div className="flex items-center gap-2 text-[8px] md:text-[9px] font-black text-white/50 uppercase tracking-widest">
+                                                            <div className="flex items-center gap-1">
+                                                                <ClockIcon className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                                                <span>{dish.cookingTime}</span>
+                                                            </div>
+                                                            <div className="hidden sm:flex items-center gap-1">
+                                                                <MapPin className="h-2.5 w-2.5" />
+                                                                <span className="truncate max-w-[80px]">{dish.origin || 'Standard'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            ))
+                                        ) : (
+                                            <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
+                                                <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Aucun plat trouvé</h3>
                                             </div>
                                         )}
-                                    </section>
+                                    </div>
+                                </div>
+                            </TabsContent>
 
-                                    <div className="space-y-8">
-                                        <div className="flex flex-col md:flex-row items-end justify-between gap-6 border-b pb-4">
-                                            <div className="space-y-1">
-                                                <h3 className="text-xl font-bold">Explorer les plats</h3>
-                                                <p className="text-xs text-muted-foreground">Découvrez notre catalogue de repas équilibrés.</p>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                                <div className="relative group">
-                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input
-                                                        placeholder="Rechercher..."
-                                                        className="h-9 pl-9 w-full sm:w-48 text-xs font-medium rounded border-muted/20"
-                                                        value={searchTerm}
-                                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                                    />
-                                                </div>
-                                                <Select onValueChange={setSelectedCategory} value={selectedCategory}>
-                                                    <SelectTrigger className="h-9 w-full sm:w-40 text-xs font-medium rounded border-muted/20 bg-background">
-                                                        <SelectValue placeholder="Catégorie" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-md border shadow-lg text-xs">
-                                                        <SelectItem value="all">Toutes catégories</SelectItem>
-                                                        {dishCategories.map(category => (
-                                                            <SelectItem key={category} value={category}>{category}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-10">
-                                            {filteredDishes.length > 0 ? (
-                                                filteredDishes.map((dish, index) => (
-                                                    <Card key={`${dish.id}-${index}`}
-                                                        className="group relative aspect-[7/10] rounded-xl overflow-hidden border-none shadow-lg transition-all cursor-pointer bg-muted"
-                                                        onClick={() => handleShowRecipeForDish(dish)}>
-                                                        <Image
-                                                            src={dish.imageUrl || `https://picsum.photos/seed/${dish.name.replace(/\s/g, '-')}/400/550`}
-                                                            alt={dish.name}
-                                                            fill
-                                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                                            className="object-cover transition-transform duration-1000 group-hover:scale-110"
-                                                            data-ai-hint={dish.imageHint}
-                                                        />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent flex flex-col justify-end p-5">
-                                                            <div className="flex gap-1.5 mb-2">
-                                                                <Badge className="bg-primary/20 backdrop-blur-sm text-white border-white/10 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm">
-                                                                    {dish.category}
-                                                                </Badge>
-                                                            </div>
-                                                            <h4 className="text-xl font-black text-white uppercase italic leading-tight mb-2 group-hover:-translate-y-1 transition-transform">
-                                                                {dish.name}
-                                                            </h4>
-                                                            <div className="flex items-center gap-4 text-[9px] font-black text-white/50 uppercase tracking-widest">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <ClockIcon className="h-3 w-3" />
-                                                                    <span>{dish.cookingTime}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <MapPin className="h-3 w-3" />
-                                                                    <span className="truncate max-w-[80px]">{dish.origin || 'Standard'}</span>
-                                                                </div>
-                                                            </div>
+                            <TabsContent value="pending" className="m-0 focus-visible:ring-0 outline-none">
+                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                                    {pendingCookingItems && pendingCookingItems.length > 0 ? pendingCookingItems.map(item => (
+                                        <div
+                                            key={item.id}
+                                            style={{
+                                                transition: 'transform 0.42s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.42s ease',
+                                                transform: dismissingId === item.id ? 'translateY(120%) rotate(3deg) scale(0.8)' : 'translateY(0) rotate(0deg) scale(1)',
+                                                opacity: dismissingId === item.id ? 0 : 1,
+                                                pointerEvents: dismissingId === item.id ? 'none' : 'auto',
+                                            }}
+                                        >
+                                            <Card className="flex flex-col rounded-lg border shadow-sm hover:border-primary/20 transition-colors">
+                                                <CardHeader className="p-3 md:p-5 pb-1.5 md:pb-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-primary/60">
+                                                            En attente
                                                         </div>
-                                                    </Card>
-                                                ))
-                                            ) : (
-                                                <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
-                                                    <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Aucun plat trouvé</h3>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-5 w-5 md:h-6 md:w-6 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10"
+                                                            onClick={() => handleDeletePendingItem(item.id)}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                    <CardTitle className="text-sm md:text-lg font-bold truncate mt-0.5">{item.name}</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="p-3 md:p-5 pt-1.5 md:pt-2 flex-grow space-y-3">
+                                                    <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                        <Calendar className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                                        <span className="truncate">Le {item.createdAt ? format(item.createdAt.toDate(), 'd MMM', { locale: fr }) : ''}</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-1.5 md:gap-2 mt-auto">
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => handlePreviewPendingItem(item, true)}
+                                                            className="h-7 md:h-9 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded border-muted/20 hover:bg-accent/50 group/btn px-1.5"
+                                                        >
+                                                            <Search className="mr-1 h-3 w-3 opacity-50 group-hover/btn:text-primary transition-colors" />
+                                                            Voir
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => setPendingActionItem(item)}
+                                                            className="h-7 md:h-9 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded shadow-sm bg-primary text-white hover:scale-105 transition-all px-1.5"
+                                                        >
+                                                            <CookingPot className="mr-1 h-3 w-3" />
+                                                            Cuisiner
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+
+                                        </div>
+                                    )) : (
+                                        <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
+                                            <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">File d'attente vide</h3>
+                                        </div>
+                                    )}
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="in_progress" className="m-0 focus-visible:ring-0 outline-none">
+                                {selectedCookingItem && !isPast(selectedCookingItem.plannedFor.toDate()) ? (
+                                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <Button variant="outline" size="sm" onClick={() => setSelectedCookingItem(null)} className="h-8 rounded font-semibold text-xs border-muted/20">
+                                            &larr; Retour à la liste
+                                        </Button>
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                            <div className="lg:col-span-8 space-y-8 text-foreground/90">
+                                                <div className="space-y-4">
+                                                    <h2 className="text-4xl font-bold tracking-tight">{selectedCookingItem.name}</h2>
+                                                    <div className="flex flex-wrap gap-4">
+                                                        <Badge variant="secondary" className="bg-accent/50 text-foreground font-bold px-2 py-0.5 rounded text-[10px]">
+                                                            {selectedCookingItem.calories} kcal
+                                                        </Badge>
+                                                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                                                            <ClockIcon className="h-3.5 w-3.5" />
+                                                            <span>{selectedCookingItem.cookingTime}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
+                                                <div className="prose prose-sm dark:prose-invert max-w-none pt-4 border-t">
+                                                    <ReactMarkdown>
+                                                        {selectedCookingItem.recipe || "Chargement des instructions..."}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                            <div className="lg:col-span-4">
+                                                <div className="rounded-lg border overflow-hidden shadow-sm aspect-[4/3] relative group cursor-zoom-in">
+                                                    <Image
+                                                        src={selectedCookingItem.imageUrl || `https://picsum.photos/seed/${selectedCookingItem.name.replace(/\s/g, '-')}/400/300`}
+                                                        alt={selectedCookingItem.name}
+                                                        fill
+                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                                        onClick={() => setZoomImage(selectedCookingItem.imageUrl || `https://picsum.photos/seed/${selectedCookingItem.name.replace(/\s/g, '-')}/400/300`)}
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <ZoomIn className="h-10 w-10 text-white drop-shadow-lg" />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </TabsContent>
-
-                                <TabsContent value="pending" className="m-0 focus-visible:ring-0 outline-none">
+                                ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                        {pendingCookingItems && pendingCookingItems.length > 0 ? pendingCookingItems.map(item => (
+                                        {cookingInProgress && cookingInProgress.length > 0 ? cookingInProgress.map(item => (
                                             <div
                                                 key={item.id}
                                                 style={{
-                                                    transition: 'transform 0.42s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.42s ease',
-                                                    transform: dismissingId === item.id ? 'translateY(120%) rotate(3deg) scale(0.8)' : 'translateY(0) rotate(0deg) scale(1)',
-                                                    opacity: dismissingId === item.id ? 0 : 1,
-                                                    pointerEvents: dismissingId === item.id ? 'none' : 'auto',
+                                                    transition: 'transform 0.45s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.45s ease',
+                                                    transform: dismissingCookingId === item.id ? 'translateY(130%) rotate(-4deg) scale(0.75)' : 'translateY(0) rotate(0deg) scale(1)',
+                                                    opacity: dismissingCookingId === item.id ? 0 : 1,
+                                                    pointerEvents: dismissingCookingId === item.id ? 'none' : 'auto',
                                                 }}
                                             >
-                                                <Card className="flex flex-col rounded-lg border shadow-sm hover:border-primary/20 transition-colors">
-                                                    <CardHeader className="p-5 pb-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="text-[10px] font-bold uppercase tracking-widest text-primary/60">
-                                                                En attente
+                                                <Card
+                                                    className="group flex flex-col rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-lg transition-all overflow-hidden"
+                                                >
+                                                    <div
+                                                        className="relative aspect-[16/9] bg-muted overflow-hidden cursor-pointer"
+                                                        onClick={() => handleSelectCookingItem(item)}
+                                                    >
+                                                        <Image
+                                                            src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
+                                                            alt={item.name}
+                                                            fill
+                                                            className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                                            sizes="(max-width: 640px) 100vw, 33vw"
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                                        <div className="absolute top-2 left-2 flex items-center gap-2">
+                                                            <Badge className="bg-primary/90 text-white text-[8px] font-black uppercase tracking-widest border-none px-2 py-0.5 animate-pulse shadow-lg shadow-primary/30">
+                                                                🍳 En cuisine
+                                                            </Badge>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteCookingItem(item);
+                                                            }}
+                                                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 backdrop-blur-md text-white/70 hover:bg-rose-500 hover:text-white transition-all border border-white/10 z-10"
+                                                            title="Retirer ce repas"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <div className="absolute bottom-3 left-3">
+                                                            <p className="text-white font-black text-base leading-tight drop-shadow">{item.name}</p>
+                                                        </div>
+                                                    </div>
+                                                    <CardContent className="p-4 space-y-3">
+                                                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <ClockIcon className="h-3 w-3" />
+                                                                <span>{item.cookingTime || 'Prêt'}</span>
                                                             </div>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-6 w-6 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10"
-                                                                onClick={() => handleDeletePendingItem(item.id)}
-                                                            >
-                                                                <X className="h-3.5 w-3.5" />
-                                                            </Button>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Calendar className="h-3 w-3" />
+                                                                <span>{item.plannedFor ? format(item.plannedFor.toDate(), 'd MMM', { locale: fr }) : 'Chef'}</span>
+                                                            </div>
                                                         </div>
-                                                        <CardTitle className="text-lg font-bold truncate mt-1">{item.name}</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="p-5 pt-2 flex-grow space-y-4">
-                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                                            <Calendar className="h-3 w-3" />
-                                                            <span>Ajouté le {item.createdAt ? format(item.createdAt.toDate(), 'd MMM', { locale: fr }) : ''}</span>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-2 mt-auto">
-                                                            <Button
-                                                                variant="outline"
-                                                                onClick={() => handlePreviewPendingItem(item, true)}
-                                                                className="h-9 text-[10px] font-black uppercase tracking-widest rounded border-muted/20 hover:bg-accent/50 group/btn"
-                                                            >
-                                                                <Search className="mr-2 h-3.5 w-3.5 opacity-50 group-hover/btn:text-primary transition-colors" />
-                                                                Voir
-                                                            </Button>
-                                                            <Button
-                                                                onClick={() => setPendingActionItem(item)}
-                                                                className="h-9 text-[10px] font-black uppercase tracking-widest rounded shadow-sm bg-primary text-white hover:scale-105 transition-all"
-                                                            >
-                                                                <CookingPot className="mr-2 h-3.5 w-3.5" />
-                                                                Cuisiner
-                                                            </Button>
-                                                        </div>
+                                                        {/* CTA PRINCIPAL */}
+                                                        <Button
+                                                            onClick={() => setCookingModeItem(item)}
+                                                            className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-primary text-white border border-primary shadow-lg hover:bg-primary/90 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                                        >
+                                                            <span className="text-lg mr-2">👨‍🍳</span>
+                                                            Cuisine moi !
+                                                        </Button>
                                                     </CardContent>
                                                 </Card>
                                             </div>
                                         )) : (
                                             <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
-                                                <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">File d'attente vide</h3>
+                                                <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Rien en cours de préparation</h3>
                                             </div>
                                         )}
                                     </div>
-                                </TabsContent>
+                                )}
+                            </TabsContent>
 
-                                <TabsContent value="in_progress" className="m-0 focus-visible:ring-0 outline-none">
-                                    {selectedCookingItem && !isPast(selectedCookingItem.plannedFor.toDate()) ? (
-                                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                            <Button variant="outline" size="sm" onClick={() => setSelectedCookingItem(null)} className="h-8 rounded font-semibold text-xs border-muted/20">
-                                                &larr; Retour à la liste
-                                            </Button>
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                                                <div className="lg:col-span-8 space-y-8 text-foreground/90">
-                                                    <div className="space-y-4">
-                                                        <h2 className="text-4xl font-bold tracking-tight">{selectedCookingItem.name}</h2>
-                                                        <div className="flex flex-wrap gap-4">
-                                                            <Badge variant="secondary" className="bg-accent/50 text-foreground font-bold px-2 py-0.5 rounded text-[10px]">
-                                                                {selectedCookingItem.calories} kcal
-                                                            </Badge>
-                                                            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                                                                <ClockIcon className="h-3.5 w-3.5" />
-                                                                <span>{selectedCookingItem.cookingTime}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="prose prose-sm dark:prose-invert max-w-none pt-4 border-t">
-                                                        <ReactMarkdown>
-                                                            {selectedCookingItem.recipe || "Chargement des instructions..."}
-                                                        </ReactMarkdown>
+                            <TabsContent value="history" className="m-0 focus-visible:ring-0 outline-none">
+                                {selectedCookingItem && isPast(selectedCookingItem.plannedFor.toDate()) ? (
+                                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+                                        <Button variant="outline" size="sm" onClick={() => setSelectedCookingItem(null)} className="h-8 rounded font-semibold text-xs border-muted/20">
+                                            &larr; Retour à l'historique
+                                        </Button>
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 opacity-80">
+                                            <div className="lg:col-span-8 space-y-8">
+                                                <div className="space-y-4">
+                                                    <h2 className="text-4xl font-bold tracking-tight grayscale-[0.2]">{selectedCookingItem.name}</h2>
+                                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">
+                                                        <History className="h-3.5 w-3.5" />
+                                                        <span>Cuisiné le {format(selectedCookingItem.plannedFor.toDate(), 'd MMMM yyyy', { locale: fr })}</span>
                                                     </div>
                                                 </div>
-                                                <div className="lg:col-span-4">
-                                                    <div className="rounded-lg border overflow-hidden shadow-sm aspect-[4/3] relative group cursor-zoom-in">
-                                                        <Image
-                                                            src={selectedCookingItem.imageUrl || `https://picsum.photos/seed/${selectedCookingItem.name.replace(/\s/g, '-')}/400/300`}
-                                                            alt={selectedCookingItem.name}
-                                                            fill
-                                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                            onClick={() => setZoomImage(selectedCookingItem.imageUrl || `https://picsum.photos/seed/${selectedCookingItem.name.replace(/\s/g, '-')}/400/300`)}
-                                                        />
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                                            <ZoomIn className="h-10 w-10 text-white drop-shadow-lg" />
-                                                        </div>
-                                                    </div>
+                                                <div className="prose prose-sm dark:prose-invert max-w-none pt-4 border-t">
+                                                    <ReactMarkdown>
+                                                        {selectedCookingItem.recipe || "Détails du plat archivés."}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                            <div className="lg:col-span-4">
+                                                <div className="rounded-lg border overflow-hidden shadow-sm aspect-[4/3] relative grayscale-[0.5]">
+                                                    <Image
+                                                        src={selectedCookingItem.imageUrl || `https://picsum.photos/seed/${selectedCookingItem.name.replace(/\s/g, '-')}/400/300`}
+                                                        alt={selectedCookingItem.name}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                            {cookingInProgress && cookingInProgress.length > 0 ? cookingInProgress.map(item => (
-                                                <div
-                                                    key={item.id}
-                                                    style={{
-                                                        transition: 'transform 0.45s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.45s ease',
-                                                        transform: dismissingCookingId === item.id ? 'translateY(130%) rotate(-4deg) scale(0.75)' : 'translateY(0) rotate(0deg) scale(1)',
-                                                        opacity: dismissingCookingId === item.id ? 0 : 1,
-                                                        pointerEvents: dismissingCookingId === item.id ? 'none' : 'auto',
-                                                    }}
-                                                >
-                                                    <Card
-                                                        className="group flex flex-col rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-lg transition-all overflow-hidden"
-                                                    >
-                                                        <div
-                                                            className="relative aspect-[16/9] bg-muted overflow-hidden cursor-pointer"
-                                                            onClick={() => handleSelectCookingItem(item)}
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                        {pastCookingItems && pastCookingItems.length > 0 ? pastCookingItems.map(item => (
+                                            <Card
+                                                key={item.id}
+                                                className="group flex flex-col rounded-lg border shadow-xs hover:border-primary/20 transition-all cursor-pointer grayscale-[0.3] hover:grayscale-0"
+                                                onClick={() => handleSelectCookingItem(item)}
+                                            >
+                                                <div className="relative aspect-[16/10] bg-muted overflow-hidden">
+                                                    <Image
+                                                        src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
+                                                        alt={item.name}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                                <CardContent className="p-5 space-y-4">
+                                                    <h4 className="text-base font-bold group-hover:text-primary transition-colors line-clamp-1">{item.name}</h4>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                                            <History className="h-3 w-3" />
+                                                            <span>{format(item.plannedFor.toDate(), 'd MMM yyyy', { locale: fr })}</span>
+                                                        </div>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-7 px-3 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-black text-[9px] uppercase tracking-widest transition-all"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handlePreviewCookingItem(item);
+                                                            }}
                                                         >
-                                                            <Image
-                                                                src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
-                                                                alt={item.name}
-                                                                fill
-                                                                className="object-cover transition-transform duration-700 group-hover:scale-105"
-                                                                sizes="(max-width: 640px) 100vw, 33vw"
-                                                            />
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                                            <div className="absolute top-2 left-2 flex items-center gap-2">
-                                                                <Badge className="bg-primary/90 text-white text-[8px] font-black uppercase tracking-widest border-none px-2 py-0.5 animate-pulse shadow-lg shadow-primary/30">
-                                                                    🍳 En cuisine
-                                                                </Badge>
-                                                            </div>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteCookingItem(item);
-                                                                }}
-                                                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 backdrop-blur-md text-white/70 hover:bg-rose-500 hover:text-white transition-all border border-white/10 z-10"
-                                                                title="Retirer ce repas"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </button>
-                                                            <div className="absolute bottom-3 left-3">
-                                                                <p className="text-white font-black text-base leading-tight drop-shadow">{item.name}</p>
-                                                            </div>
-                                                        </div>
-                                                        <CardContent className="p-4 space-y-3">
-                                                            <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <ClockIcon className="h-3 w-3" />
-                                                                    <span>{item.cookingTime || 'Prêt'}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <Calendar className="h-3 w-3" />
-                                                                    <span>{item.plannedFor ? format(item.plannedFor.toDate(), 'd MMM', { locale: fr }) : 'Chef'}</span>
-                                                                </div>
-                                                            </div>
-                                                            {/* CTA PRINCIPAL */}
-                                                            <Button
-                                                                onClick={() => setCookingModeItem(item)}
-                                                                className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-primary text-white border border-primary shadow-lg hover:bg-primary/90 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                                            >
-                                                                <span className="text-lg mr-2">👨‍🍳</span>
-                                                                Cuisine moi !
-                                                            </Button>
-                                                        </CardContent>
-                                                    </Card>
-                                                </div>
-                                            )) : (
-                                                <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
-                                                    <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Rien en cours de préparation</h3>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </TabsContent>
-
-                                <TabsContent value="history" className="m-0 focus-visible:ring-0 outline-none">
-                                    {selectedCookingItem && isPast(selectedCookingItem.plannedFor.toDate()) ? (
-                                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
-                                            <Button variant="outline" size="sm" onClick={() => setSelectedCookingItem(null)} className="h-8 rounded font-semibold text-xs border-muted/20">
-                                                &larr; Retour à l'historique
-                                            </Button>
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 opacity-80">
-                                                <div className="lg:col-span-8 space-y-8">
-                                                    <div className="space-y-4">
-                                                        <h2 className="text-4xl font-bold tracking-tight grayscale-[0.2]">{selectedCookingItem.name}</h2>
-                                                        <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">
-                                                            <History className="h-3.5 w-3.5" />
-                                                            <span>Cuisiné le {format(selectedCookingItem.plannedFor.toDate(), 'd MMMM yyyy', { locale: fr })}</span>
-                                                        </div>
+                                                            <BookOpen className="mr-1.5 h-3 w-3" />
+                                                            Voir
+                                                        </Button>
                                                     </div>
-                                                    <div className="prose prose-sm dark:prose-invert max-w-none pt-4 border-t">
-                                                        <ReactMarkdown>
-                                                            {selectedCookingItem.recipe || "Détails du plat archivés."}
-                                                        </ReactMarkdown>
-                                                    </div>
-                                                </div>
-                                                <div className="lg:col-span-4">
-                                                    <div className="rounded-lg border overflow-hidden shadow-sm aspect-[4/3] relative grayscale-[0.5]">
-                                                        <Image
-                                                            src={selectedCookingItem.imageUrl || `https://picsum.photos/seed/${selectedCookingItem.name.replace(/\s/g, '-')}/400/300`}
-                                                            alt={selectedCookingItem.name}
-                                                            fill
-                                                            className="object-cover"
-                                                        />
-                                                    </div>
-                                                </div>
+                                                </CardContent>
+                                            </Card>
+                                        )) : (
+                                            <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
+                                                <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Historique vide</h3>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                            {pastCookingItems && pastCookingItems.length > 0 ? pastCookingItems.map(item => (
-                                                <Card
-                                                    key={item.id}
-                                                    className="group flex flex-col rounded-lg border shadow-xs hover:border-primary/20 transition-all cursor-pointer grayscale-[0.3] hover:grayscale-0"
-                                                    onClick={() => handleSelectCookingItem(item)}
-                                                >
-                                                    <div className="relative aspect-[16/10] bg-muted overflow-hidden">
-                                                        <Image
-                                                            src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
-                                                            alt={item.name}
-                                                            fill
-                                                            className="object-cover"
-                                                        />
-                                                    </div>
-                                                    <CardContent className="p-5 space-y-4">
-                                                        <h4 className="text-base font-bold group-hover:text-primary transition-colors line-clamp-1">{item.name}</h4>
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                                                <History className="h-3 w-3" />
-                                                                <span>{format(item.plannedFor.toDate(), 'd MMM yyyy', { locale: fr })}</span>
-                                                            </div>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-7 px-3 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-black text-[9px] uppercase tracking-widest transition-all"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handlePreviewCookingItem(item);
-                                                                }}
-                                                            >
-                                                                <BookOpen className="mr-1.5 h-3 w-3" />
-                                                                Voir
-                                                            </Button>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            )) : (
-                                                <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
-                                                    <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Historique vide</h3>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </TabsContent>
-                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </TabsContent>
                         </div>
                     </Tabs>
                 </main>
@@ -1302,6 +1312,6 @@ export default function CuisinePage() {
                 imageUrl={zoomImage}
                 onClose={() => setZoomImage(null)}
             />
-        </SidebarProvider>
+        </SidebarProvider >
     );
 }
