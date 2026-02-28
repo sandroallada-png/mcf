@@ -116,7 +116,7 @@ export function ImageUploader({ initialImageUrl, onUploadSuccess, onMultipleUplo
             const file = items[i].getAsFile();
             if (file) {
               event.preventDefault();
-              uploadFile(file);
+              uploadFiles([file]);
               break;
             }
           }

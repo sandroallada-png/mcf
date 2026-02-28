@@ -129,13 +129,19 @@ export function BulkDishImporter({ onImportComplete }: BulkDishImporterProps) {
       const response = await axios.post(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
         formData,
-        { timeout: 15000 }
+        { timeout: 20000 }
       );
 
       return response.data.secure_url;
     } catch (error: any) {
       const errorMsg = error.response?.data?.error?.message || error.message;
       console.error(`Cloudinary upload failed for "${dishName}":`, errorMsg);
+
+      // Si l'image source est introuvable (404), on utilise un placeholder
+      if (errorMsg.includes('Resource not found') || error.response?.status === 404) {
+        return `https://placehold.co/600x400?text=${encodeURIComponent(dishName)}`;
+      }
+
       return imageUrl;
     }
   };
@@ -144,28 +150,30 @@ export function BulkDishImporter({ onImportComplete }: BulkDishImporterProps) {
     if (parsedDishes.length === 0) return;
 
     setIsProcessing(true);
-    setImportProgress(0);
+    setImportProgress(1); // Start at 1% to show the progress bar immediately
     try {
       const dishesRef = collection(firestore, 'dishes');
       const total = parsedDishes.length;
       const processedDishes: ParsedDish[] = [];
 
-      for (let i = 0; i < total; i++) {
-        const dish = parsedDishes[i];
+      // Traitement par lots pour plus de rapidité (3 par 3)
+      const batchSize = 3;
+      for (let i = 0; i < total; i += batchSize) {
+        const chunk = parsedDishes.slice(i, i + batchSize);
+        const results = await Promise.all(chunk.map(async (dish, index) => {
+          const cloudinaryUrl = await uploadToCloudinary(dish.imageUrl || '', dish.name);
+          return {
+            ...dish,
+            imageUrl: cloudinaryUrl
+          };
+        }));
 
-        // Try uploading to cloudinary with name for logs
-        const cloudinaryUrl = await uploadToCloudinary(dish.imageUrl || '', dish.name);
+        processedDishes.push(...results);
+        setImportProgress(Math.round((Math.min(i + batchSize, total) / total) * 100));
 
-        processedDishes.push({
-          ...dish,
-          imageUrl: cloudinaryUrl
-        });
-
-        setImportProgress(Math.round(((i + 1) / total) * 100));
-
-        // Small delay to prevent saturation
-        if (i % 3 === 0 && i > 0) {
-          await new Promise(r => setTimeout(r, 600));
+        // Petit délai pour laisser le thread respirer
+        if (i + batchSize < total) {
+          await new Promise(r => setTimeout(r, 300));
         }
       }
 
@@ -308,10 +316,10 @@ export function BulkDishImporter({ onImportComplete }: BulkDishImporterProps) {
         </div>
       )}
 
-      {isProcessing && importProgress > 0 && (
+      {isProcessing && (
         <div className="space-y-2">
           <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-primary">
-            <span>Traitement des images...</span>
+            <span>{importProgress < 100 ? 'Traitement des images...' : 'Enregistrement...'}</span>
             <span>{importProgress}%</span>
           </div>
           <Progress value={importProgress} className="h-1.5" />

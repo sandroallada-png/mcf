@@ -56,7 +56,7 @@ const MEAL_TYPES: BoxMeal['type'][] = ['breakfast', 'lunch', 'snack', 'dinner'];
 const mealTypesMeta: Record<string, { label: string; icon: React.ReactNode }> = {
     breakfast: { label: 'Petit-déj', icon: <Coffee className="h-3 w-3" /> },
     lunch: { label: 'Déjeuner', icon: <Sun className="h-3 w-3" /> },
-    snack: { label: 'Goûter', icon: <Apple className="h-3 w-3" /> },
+    snack: { label: 'Dessert / Collation', icon: <Apple className="h-3 w-3" /> },
     dinner: { label: 'Dîner', icon: <Moon className="h-3 w-3" /> },
 };
 

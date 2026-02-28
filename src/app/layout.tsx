@@ -3,7 +3,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { AppMetadata } from './metadata';
 import { Providers } from './providers';
-import { SidebarProvider } from '@/contexts/sidebar-context';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AccentThemeProvider } from '@/contexts/accent-theme-context';
 import { Poppins } from 'next/font/google';
 
@@ -19,6 +19,12 @@ const fontSans = Poppins({
 // where the metadata object is not correctly applied to the page.
 // We will remove this once the bug is fixed.
 export const metadata = AppMetadata;
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export default function RootLayout({
   children,

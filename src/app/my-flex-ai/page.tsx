@@ -17,6 +17,7 @@ import type { Meal } from '@/lib/types';
 import { HistoryPanel } from '@/components/my-flex-ai/history-panel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AppHeader } from '@/components/layout/app-header';
+import { PageWrapper } from '@/components/shared/page-wrapper';
 
 export default function MyFlexAIPage() {
   const { user, isUserLoading } = useUser();
@@ -103,7 +104,7 @@ export default function MyFlexAIPage() {
           />
 
           {/* Zone principale qui remplit tout l'espace restant */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <PageWrapper className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
@@ -166,7 +167,7 @@ export default function MyFlexAIPage() {
                 </TabsContent>
               </div>
             </Tabs>
-          </div>
+          </PageWrapper>
         </SidebarInset>
       </SidebarProvider>
     </div>

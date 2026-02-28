@@ -6,19 +6,19 @@
 
 import OpenAI from 'openai';
 import {
-  SuggestMealPlanInputSchema,
-  SuggestMealPlanOutputSchema,
-  type SuggestMealPlanInput,
-  type SuggestMealPlanOutput,
-  Dish,
-  AIPersonality,
+    SuggestMealPlanInputSchema,
+    SuggestMealPlanOutputSchema,
+    type SuggestMealPlanInput,
+    type SuggestMealPlanOutput,
+    Dish,
+    AIPersonality,
 } from '@/lib/types';
 import { collection, getDocs, Firestore } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-init';
 
 const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
 });
 
 async function getDishesFromFirestore(db: Firestore): Promise<Dish[]> {
@@ -32,12 +32,12 @@ function mapMealTypeToFrench(type: 'breakfast' | 'lunch' | 'dinner' | 'snack'): 
         case 'breakfast': return 'Petit-déjeuner';
         case 'lunch': return 'Déjeuner';
         case 'dinner': return 'Dîner';
-        case 'snack': return 'Collation';
+        case 'snack': return 'Dessert / Collation';
     }
 }
 
 export async function suggestMealPlan(
-  input: SuggestMealPlanInput
+    input: SuggestMealPlanInput
 ): Promise<SuggestMealPlanOutput> {
     try {
         const firestore = await getFirestoreInstance();
@@ -48,7 +48,7 @@ export async function suggestMealPlan(
         }
 
         // 1. Ask the AI to pick the names of the best 3 dishes for a day plan.
-        const dishListForAI = allDishes.map(d => `- "${d.name}" (Type: ${d.type || 'N/A'}, Catégorie: ${d.category})`).join('\n');
+        const dishListForAI = allDishes.map(d => `- "${d.name}" (Type/Régime: ${d.type || 'N/A'}, Moment conseillé: ${d.momentSuggest || 'N/A'}, Catégorie: ${d.category})`).join('\n');
 
         let systemPrompt = `You are an expert nutritionist. Your task is to select three dishes from the provided list to create a balanced and appealing one-day meal plan (breakfast, lunch, dinner).
 
@@ -81,9 +81,9 @@ Example of a valid JSON response:
         if (!responseJson) {
             throw new Error('AI did not return a response.');
         }
-        
+
         const chosenDishNames = JSON.parse(responseJson) as { breakfast: string, lunch: string, dinner: string };
-        
+
         // 2. Map AI choices back to full dish objects
         const suggestions: SuggestMealPlanOutput = [];
         const mealTypes: ('breakfast' | 'lunch' | 'dinner')[] = ['breakfast', 'lunch', 'dinner'];
@@ -103,7 +103,7 @@ Example of a valid JSON response:
                 });
             }
         }
-        
+
         // 3. Fallback: If AI fails to produce 3 valid suggestions, use random selection.
         if (suggestions.length < 3) {
             console.warn("AI suggestion was incomplete. Falling back to random selection.");
@@ -121,7 +121,7 @@ Example of a valid JSON response:
                 type: d.type as 'breakfast' | 'lunch' | 'dinner',
             }));
         }
-            
+
         return suggestions;
 
     } catch (error) {
@@ -130,7 +130,7 @@ Example of a valid JSON response:
         const firestore = await getFirestoreInstance();
         const allDishes = await getDishesFromFirestore(firestore);
         if (allDishes.length < 3) return [];
-        
+
         const shuffled = allDishes.sort(() => 0.5 - Math.random());
         return [
             { ...shuffled[0], calories: 350, type: 'breakfast' },

@@ -78,8 +78,20 @@
     @apply border-border;
   }
 
+  html {
+    overflow-x: hidden;
+    height: 100%;
+    width: 100%;
+    position: relative;
+  }
+
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -103,6 +115,18 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* WhatsApp-like scroll feel */
+  .custom-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Interaction Feedbacks */
+  .active-squish:active {
+    transform: scale(0.96);
+    transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 

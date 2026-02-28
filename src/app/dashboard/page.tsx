@@ -3,8 +3,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar as DashboardSidebar } from '@/components/dashboard/sidebar';
-import type { Meal, AIPersonality, PendingCooking, UserProfile, DayPlanMeal, CarouselItem as CarouselItemType, Dish } from '@/lib/types';
-import { Coffee, Moon, IceCream } from 'lucide-react';
+import type { Meal, Cooking, AIPersonality, PendingCooking, UserProfile, DayPlanMeal, CarouselItem as CarouselItemType, Dish } from '@/lib/types';
+import { Coffee, Moon, IceCream, Apple } from 'lucide-react';
 import {
   SidebarProvider,
   Sidebar as AppSidebar,
@@ -18,9 +18,9 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, query, where, limit, updateDoc, Timestamp, increment, writeBatch, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, limit, updateDoc, Timestamp, increment, writeBatch, getDoc, setDoc, getDocs } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { Loader2, PartyPopper, LayoutDashboard, ChefHat, PlusCircle, Sparkles, UtensilsCrossed, X, BarChart2, Bot, Calendar, AlarmClock, Check, Shuffle, Award, Flame, Target, TrendingUp, Search, ArrowRight } from 'lucide-react';
+import { Loader2, PartyPopper, LayoutDashboard, ChefHat, PlusCircle, Sparkles, UtensilsCrossed, X, BarChart2, Bot, Calendar, AlarmClock, Check, Shuffle, Award, Flame, Target, TrendingUp, Search, ArrowRight, Pizza, Sandwich, Salad, Cookie, Hourglass } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLoading } from '@/contexts/loading-context';
 import { startOfDay, endOfDay } from 'date-fns';
@@ -33,11 +33,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { SuggestionsDialog } from '@/components/dashboard/suggestions-dialog';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { estimateCaloriesAction, suggestDayPlanAction } from '../actions';
+import { estimateCaloriesAction, suggestDayPlanAction, explainCalorieGoalAction } from '../actions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ImageZoomLightbox } from '@/components/shared/image-zoom-lightbox';
+import { WelcomeSection } from '@/components/dashboard/welcome-section';
+import { StatCards } from '@/components/dashboard/stat-cards';
+import { HouseholdBanner } from '@/components/dashboard/household-banner';
+import { FoodJournal } from '@/components/dashboard/food-journal';
+import { AIAssistantPanel } from '@/components/dashboard/ai-assistant-panel';
+import { MealActionDialogs } from '@/components/dashboard/meal-action-dialogs';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PageWrapper } from '@/components/shared/page-wrapper';
 
 const XP_PER_LEVEL = 500;
 
@@ -78,6 +85,12 @@ export default function DashboardPage() {
   const [isAcceptingPlan, setIsAcceptingPlan] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string, name: string } | null>(null);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+  const [newTargetCalories, setNewTargetCalories] = useState<string>('');
+  const [isEditGoalOpen, setIsEditGoalOpen] = useState(false);
+  const [selectedMealForAction, setSelectedMealForAction] = useState<DayPlanMeal | null>(null);
+  const [mealConflict, setMealConflict] = useState<{ existing: any, new: DayPlanMeal } | null>(null);
+  const [isExplainingCalories, setIsExplainingCalories] = useState(false);
+  const [calorieExplanation, setCalorieExplanation] = useState<string | null>(null);
 
 
   const userProfileRef = useMemoFirebase(() => {
@@ -103,6 +116,19 @@ export default function DashboardPage() {
   }, [effectiveChefId, firestore]);
   const { data: todaysMeals, isLoading: isLoadingTodaysMeals } = useCollection<Meal>(todaysMealsQuery);
 
+  // This query fetches scheduled meals for today
+  const scheduledMealsQuery = useMemoFirebase(() => {
+    if (!effectiveChefId) return null;
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    return query(
+      collection(firestore, 'users', effectiveChefId, 'cooking'),
+      where('plannedFor', '>=', Timestamp.fromDate(todayStart)),
+      where('plannedFor', '<=', Timestamp.fromDate(todayEnd))
+    );
+  }, [effectiveChefId, firestore]);
+  const { data: scheduledMeals, isLoading: isLoadingScheduledMeals } = useCollection<Cooking>(scheduledMealsQuery);
+
   // This query fetches all meals, which is needed for the sidebar context (AI tips)
   const allMealsCollectionRef = useMemoFirebase(
     () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'foodLogs') : null),
@@ -114,7 +140,7 @@ export default function DashboardPage() {
   const { data: carouselItems, isLoading: isLoadingCarousel } = useCollection<CarouselItemType>(carouselCollectionRef);
 
   // --- Dishes (to enrich meal photos) ---
-  const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
+  const dishesCollectionRef = useMemoFirebase(() => query(collection(firestore, 'dishes'), where('isVerified', '==', true)), [firestore]);
   const { data: dishes } = useCollection<Dish>(dishesCollectionRef);
 
   // Map dish name -> imageUrl for fast lookup
@@ -133,7 +159,7 @@ export default function DashboardPage() {
   const singleGoalQuery = useMemoFirebase(
     () => goalsCollectionRef ? query(goalsCollectionRef, limit(1)) : null,
     [goalsCollectionRef]
-  )
+  );
   const { data: goalsData, isLoading: isLoadingGoals } = useCollection<{ description: string }>(singleGoalQuery);
 
   const [goals, setGoals] = useState('Perdre du poids, manger plus sainement et réduire ma consommation de sucre.');
@@ -166,6 +192,32 @@ export default function DashboardPage() {
     }
   }, [userProfile, goals, toast]);
 
+  const calculateRecommendedCalories = (profile?: UserProfile) => {
+    const eatersCount = (profile?.household?.length || 0) + 1;
+    if (!profile || !profile.weight || !profile.height || !profile.age || !profile.gender) {
+      return 2000 * eatersCount;
+    }
+
+    // Mifflin-St Jeor Equation
+    let bmr = (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age);
+    if (profile.gender === 'male') {
+      bmr += 5;
+    } else {
+      bmr -= 161;
+    }
+
+    const activityFactors: Record<string, number> = {
+      sedentary: 1.2,
+      light: 1.375,
+      moderate: 1.55,
+      active: 1.725,
+      very_active: 1.9,
+    };
+
+    const multiplier = activityFactors[profile.activityLevel || 'sedentary'] || 1.2;
+    return Math.round(bmr * multiplier) * eatersCount;
+  };
+
   useEffect(() => {
     if (userProfile) {
       fetchDayPlan();
@@ -183,25 +235,25 @@ export default function DashboardPage() {
 
   const mealTypes: Meal['type'][] = ['breakfast', 'lunch', 'dinner', 'dessert'];
 
-  const mealTypeDetails: Record<Meal['type'], { translation: string; className: string; icon: any; glow: string }> = {
+  const mealTypeDetails: Record<string, { translation: string; className: string; icon: any; glow: string }> = {
     breakfast: { translation: 'Petit-déjeuner', className: "border-blue-500/20 bg-blue-500/5", icon: Coffee, glow: "shadow-blue-500/20" },
     lunch: { translation: 'Déjeuner', className: "border-yellow-500/20 bg-yellow-500/5", icon: UtensilsCrossed, glow: "shadow-yellow-500/20" },
     dinner: { translation: 'Dîner', className: "border-purple-500/20 bg-purple-500/5", icon: Moon, glow: "shadow-purple-500/20" },
-    dessert: { translation: 'Dessert', className: "border-green-500/20 bg-green-500/5", icon: IceCream, glow: "shadow-green-500/20" },
+    dessert: { translation: 'Dessert / Collation', className: "border-green-500/20 bg-green-500/5", icon: Apple, glow: "shadow-green-500/20" },
   };
 
   const mealTypeTranslations: Record<string, string> = {
     breakfast: 'Petit-déjeuner',
     lunch: 'Déjeuner',
     dinner: 'Dîner',
-    dessert: 'Dessert',
+    dessert: 'Dessert / Collation',
   };
 
   useEffect(() => {
     if (goalsData) {
       if (goalsData.length > 0 && goalsData[0]) {
         setGoals(goalsData[0].description);
-        setGoalId(goalsData[0].id);
+        setGoalId((goalsData[0] as any).id);
       } else if (user && !isLoadingGoals) {
         // No goals found, create a default one
         const defaultGoal = {
@@ -219,10 +271,48 @@ export default function DashboardPage() {
     setGoals(newDescription);
     if (goalId && user) {
       const goalRef = doc(firestore, 'users', user.uid, 'goals', goalId);
-      // Using updateDoc directly as it's a simple, non-blocking operation on user interaction
       updateDoc(goalRef, { description: newDescription }).catch(console.error);
     }
-  }
+  };
+
+  const handleUpdateTargetCalories = async () => {
+    if (!user || isNaN(parseInt(newTargetCalories))) return;
+    try {
+      const userRef = doc(firestore, `users/${user.uid}`);
+      await updateDoc(userRef, {
+        targetCalories: parseInt(newTargetCalories)
+      });
+      toast({ title: 'Objectif mis à jour !', description: `Votre nouvel objectif est de ${newTargetCalories} kcal par jour.` });
+      setIsEditGoalOpen(false);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre à jour l'objectif." });
+    }
+  };
+
+  const handleExplainCalories = async () => {
+    const kcal = parseInt(newTargetCalories);
+    if (isNaN(kcal)) return;
+    setIsExplainingCalories(true);
+    setCalorieExplanation(null);
+    try {
+      const { explanation, error } = await explainCalorieGoalAction({
+        targetCalories: kcal,
+        eatersCount: (userProfile?.household?.length || 0) + 1,
+        personality: userProfile?.isAITrainingEnabled ? {
+          tone: userProfile.tone,
+          mainObjective: userProfile.mainObjective,
+          allergies: userProfile.allergies,
+          preferences: userProfile.preferences,
+        } : undefined
+      });
+      if (error) throw new Error(error);
+      setCalorieExplanation(explanation);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible d'obtenir l'explication AI." });
+    } finally {
+      setIsExplainingCalories(false);
+    }
+  };
 
   const addMeal = async (meal: { name: string; type: Meal['type'], cookedBy?: string, calories?: number, imageUrl?: string }) => {
     if (!user || !userProfileRef) return;
@@ -230,7 +320,7 @@ export default function DashboardPage() {
 
     try {
       let calories = meal.calories;
-      let xpGained = 0; // Default XP if not estimated
+      let xpGained = 0;
 
       if (!calories) {
         const estimation = await estimateCaloriesAction({
@@ -244,26 +334,28 @@ export default function DashboardPage() {
         calories = estimation.calories;
         xpGained = estimation.xpGained;
       } else {
-        // balanced XP for manual entry
         xpGained = 5;
       }
 
+      const fullMealData = { ...meal, calories, userId: user?.uid, date: Timestamp.now() };
 
-      const fullMealData = {
-        name: meal.name,
-        type: meal.type,
-        cookedBy: meal.cookedBy || '',
-        calories,
-        imageUrl: meal.imageUrl || '',
-        userId: user.uid,
-        date: Timestamp.now()
-      };
+      // Règle Ultime: 1 repas max par type (Nettoyage des doublons cachés)
+      if (meal.type) {
+        const toDeleteLogs = todaysMeals?.filter(m => m.type === meal.type) || [];
+        const toDeleteCooking = scheduledMeals?.filter(m => m.type === meal.type) || [];
+        for (const t of toDeleteLogs) {
+          deleteDocumentNonBlocking(doc(firestore, 'users', effectiveChefId!, 'foodLogs', t.id));
+        }
+        for (const t of toDeleteCooking) {
+          deleteDocumentNonBlocking(doc(firestore, 'users', effectiveChefId!, 'cooking', t.id));
+        }
+      }
 
+      const userProfileRef = doc(firestore, 'users', effectiveChefId!);
       const mealsCollectionRef = collection(firestore, 'users', effectiveChefId!, 'foodLogs');
       addDocumentNonBlocking(mealsCollectionRef, fullMealData);
 
-      // Use a transaction or a server-side function for atomicity if critical
-      // For client-side, we read then write
+      xpGained = 15; // Fixed XP for adding a meal
       const userDoc = await getDoc(userProfileRef);
       const currentXp = userDoc.data()?.xp ?? 0;
       const newXp = currentXp + xpGained;
@@ -274,18 +366,18 @@ export default function DashboardPage() {
         level: newLevel
       });
 
-      toast({ title: 'Repas ajouté !', description: `${meal.name} (${calories} kcal) a été enregistré. ${xpGained > 0 ? `+${xpGained} XP !` : `${xpGained} XP.`}` });
+      toast({ title: 'Repas ajouté !', description: `${meal.name} (${calories} kcal) a été enregistré. +${xpGained} XP !` });
       setFormOpen(false);
 
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible d\'ajouter le repas.' });
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible d'ajouter le repas." });
     } finally {
       setIsAddingMeal(false);
     }
   };
 
   const handleAddToPending = (meal: Omit<Meal, 'id' | 'date'>) => {
-    if (!effectiveChefId) return;
+    if (!effectiveChefId || !user) return;
     const pendingCookingCollectionRef = collection(firestore, 'users', effectiveChefId, 'pendingCookings');
     addDocumentNonBlocking(pendingCookingCollectionRef, {
       userId: user.uid,
@@ -295,19 +387,108 @@ export default function DashboardPage() {
       imageUrl: (meal as any).imageUrl || '',
     });
     toast({
-      title: 'Repas ajouté à la zone en attente ds la cuisine',
+      title: 'Repas mis en attente',
       description: `${meal.name} est prêt à être cuisiné depuis la page Cuisine.`,
     });
-  }
+    setSelectedMealForAction(null);
+  };
 
-  const removeMeal = (mealId: string) => {
+  const handleScheduleMeal = async (meal: DayPlanMeal) => {
+    if (!effectiveChefId || !user) return;
+
+    const existingMeal = displayMeals.find(m => m.type === meal.type);
+    if (existingMeal) {
+      setMealConflict({ existing: existingMeal, new: meal });
+      setSelectedMealForAction(null);
+      return;
+    }
+
+    try {
+      const cookingCollectionRef = collection(firestore, 'users', effectiveChefId, 'cooking');
+      await addDocumentNonBlocking(cookingCollectionRef, {
+        userId: user.uid,
+        name: meal.name,
+        calories: meal.calories,
+        type: meal.type,
+        imageHint: meal.name,
+        imageUrl: meal.imageUrl || '',
+        plannedFor: Timestamp.now(),
+        isDone: false,
+        createdAt: Timestamp.now()
+      });
+      toast({
+        title: 'Repas programmé !',
+        description: `${meal.name} a été ajouté à votre programme du jour.`,
+      });
+      setSelectedMealForAction(null);
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de programmer le repas.' });
+    }
+  };
+
+  const handleConfirmReplace = async () => {
+    if (!mealConflict || !effectiveChefId || !user) return;
+    try {
+      // Nettoie proprement tout de ce type
+      const type = mealConflict.new.type;
+      if (type) {
+        const toDeleteLogs = todaysMeals?.filter(m => m.type === type) || [];
+        const toDeleteCooking = scheduledMeals?.filter(m => m.type === type) || [];
+        for (const t of toDeleteLogs) {
+          deleteDocumentNonBlocking(doc(firestore, 'users', effectiveChefId, 'foodLogs', t.id));
+        }
+        for (const t of toDeleteCooking) {
+          deleteDocumentNonBlocking(doc(firestore, 'users', effectiveChefId, 'cooking', t.id));
+        }
+      } else {
+        await removeMeal(mealConflict.existing.id, mealConflict.existing.isScheduled);
+      }
+
+      const cookingCollectionRef = collection(firestore, 'users', effectiveChefId, 'cooking');
+      await addDocumentNonBlocking(cookingCollectionRef, {
+        userId: user.uid,
+        name: mealConflict.new.name,
+        calories: mealConflict.new.calories,
+        type: mealConflict.new.type,
+        imageHint: mealConflict.new.name,
+        imageUrl: mealConflict.new.imageUrl || '',
+        plannedFor: Timestamp.now(),
+        isDone: false,
+        createdAt: Timestamp.now()
+      });
+
+      toast({ title: 'Repas remplacé !', description: `${mealConflict.new.name} est maintenant prévu.` });
+      setMealConflict(null);
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Erreur', description: 'Impossible de remplacer le repas.' });
+    }
+  };
+
+  const removeMeal = async (mealId: string, isScheduled: boolean = false) => {
     if (!effectiveChefId) return;
-    const mealRef = doc(firestore, 'users', effectiveChefId, 'foodLogs', mealId);
-    deleteDocumentNonBlocking(mealRef);
+    const targetMeal = displayMeals.find(m => m.id === mealId);
+
+    // Si on trouve le repas affiché, on supprime TOUT ce qui correspond à ce type pour être sûr de ne rien cacher (Règle Ultime)
+    if (targetMeal && targetMeal.type) {
+      const type = targetMeal.type;
+      const toDeleteLogs = todaysMeals?.filter(m => m.type === type) || [];
+      const toDeleteCooking = scheduledMeals?.filter(m => m.type === type) || [];
+
+      for (const t of toDeleteLogs) {
+        deleteDocumentNonBlocking(doc(firestore, 'users', effectiveChefId, 'foodLogs', t.id));
+      }
+      for (const t of toDeleteCooking) {
+        deleteDocumentNonBlocking(doc(firestore, 'users', effectiveChefId, 'cooking', t.id));
+      }
+    } else {
+      const collectionName = isScheduled ? 'cooking' : 'foodLogs';
+      const mealRef = doc(firestore, 'users', effectiveChefId, collectionName, mealId);
+      deleteDocumentNonBlocking(mealRef);
+    }
   };
 
   const handleAcceptPlan = async () => {
-    if (!effectiveChefId || dayPlan.length === 0) return;
+    if (!effectiveChefId || dayPlan.length === 0 || !user) return;
     setIsAcceptingPlan(true);
 
     try {
@@ -317,32 +498,32 @@ export default function DashboardPage() {
       const today = Timestamp.now();
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
+      const existingScheduled = await getDocs(cookingCollectionRef);
+      const existingLogs = await getDocs(mealsCollectionRef);
 
-      // Find existing meals for today to replace them
-      const existingMealsQuery = query(
-        mealsCollectionRef,
-        where('date', '>=', Timestamp.fromDate(todayStart)),
-        where('date', '<=', Timestamp.fromDate(todayEnd))
-      );
-      const existingCookingQuery = query(
-        cookingCollectionRef,
-        where('plannedFor', '>=', Timestamp.fromDate(todayStart)),
-        where('plannedFor', '<=', Timestamp.fromDate(todayEnd))
-      );
+      const typesToOverwrite = dayPlan.map(m => m.type);
 
-      const [existingMealsSnap, existingCookingSnap] = await Promise.all([
-        getDocs(existingMealsQuery),
-        getDocs(existingCookingQuery)
-      ]);
+      existingScheduled.forEach(d => {
+        const data = d.data() as any;
+        const pDate = data.plannedFor?.toDate();
+        if (pDate && pDate >= todayStart && pDate <= todayEnd) {
+          batch.delete(d.ref);
+        }
+      });
 
-      // Map existing meals by type and delete them
-      existingMealsSnap.forEach(doc => batch.delete(doc.ref));
-      existingCookingSnap.forEach(doc => batch.delete(doc.ref));
+      existingLogs.forEach(d => {
+        const data = d.data() as any;
+        const lDate = data.date?.toDate();
+        if (lDate && lDate >= todayStart && lDate <= todayEnd && typesToOverwrite.includes(data.type)) {
+          batch.delete(d.ref);
+        }
+      });
 
+      const currentUser = user;
       dayPlan.forEach(meal => {
         const newMealRef = doc(mealsCollectionRef);
         batch.set(newMealRef, {
-          userId: user.uid,
+          userId: currentUser.uid,
           name: meal.name,
           calories: meal.calories,
           type: meal.type,
@@ -354,7 +535,6 @@ export default function DashboardPage() {
 
       await batch.commit();
       toast({ title: 'Planning accepté !', description: "Les repas d'aujourd'hui ont été ajoutés à votre journal." });
-      // The real-time listener will update the UI automatically
     } catch (error) {
       console.error("Failed to accept plan:", error);
       toast({ variant: 'destructive', title: 'Erreur', description: "Impossible d'enregistrer le planning." });
@@ -363,26 +543,48 @@ export default function DashboardPage() {
     }
   };
 
+  const displayMeals = useMemo(() => {
+    const mealMap = new Map<string, any>();
 
-  // Use todaysMeals for the dashboard cards — enrich with dish photo if meal has none
-  const displayMeals = useMemo(() => (todaysMeals ?? []).map(m => {
-    const enrichedImageUrl = m.imageUrl || dishImageMap.get(m.name?.toLowerCase()) || '';
-    return { ...m, id: m.id, imageUrl: enrichedImageUrl } as Meal;
-  }), [todaysMeals, dishImageMap]);
+    (todaysMeals ?? []).forEach(m => {
+      if (!m.type) return;
+      mealMap.set(m.type, {
+        ...m,
+        id: m.id,
+        imageUrl: m.imageUrl || dishImageMap.get(m.name?.toLowerCase()) || '',
+        isScheduled: false
+      });
+    });
+
+    (scheduledMeals ?? []).forEach(s => {
+      if (!s.type || mealMap.has(s.type)) return;
+      mealMap.set(s.type, {
+        ...s,
+        id: s.id,
+        imageUrl: s.imageUrl || dishImageMap.get(s.name?.toLowerCase()) || '',
+        isScheduled: true,
+        date: s.plannedFor
+      });
+    });
+
+    return Array.from(mealMap.values()) as (Meal & { isScheduled: boolean })[];
+  }, [todaysMeals, scheduledMeals, dishImageMap]);
 
   const handleReplaceWithAlternative = async (alternativeName: string) => {
     if (!suggestionMeal?.id || !effectiveChefId) return;
     try {
-      const mealRef = doc(firestore, 'users', effectiveChefId, 'foodLogs', suggestionMeal.id);
-      // Try to find the image from dishes catalog
+      const isScheduled = (suggestionMeal as any).isScheduled;
+      const collectionName = isScheduled ? 'cooking' : 'foodLogs';
+      const mealRef = doc(firestore, 'users', effectiveChefId, collectionName, suggestionMeal.id);
+
       const altImageUrl = dishImageMap.get(alternativeName.toLowerCase()) || '';
       await updateDoc(mealRef, {
         name: alternativeName,
         imageUrl: altImageUrl,
       });
       toast({
-        title: '✅ Repas modifié !',
-        description: `"${suggestionMeal.name}" a été remplacé par "${alternativeName}". Bon appétit ! 🍽️`,
+        title: 'Repas modifié !',
+        description: `"${suggestionMeal.name}" a été remplacé par "${alternativeName}".`,
       });
       setSuggestionMeal(null);
     } catch (e) {
@@ -401,7 +603,7 @@ export default function DashboardPage() {
   }, [displayMeals]);
 
 
-  const isLoading = isUserLoading || isLoadingTodaysMeals || isLoadingGoals || isLoadingAllMeals || !user || isLoadingProfile || isLoadingCarousel;
+  const isLoading = isUserLoading || isLoadingTodaysMeals || isLoadingScheduledMeals || isLoadingGoals || isLoadingAllMeals || !user || isLoadingProfile || isLoadingCarousel;
 
   useEffect(() => {
     if (!isLoading) {
@@ -417,21 +619,11 @@ export default function DashboardPage() {
     );
   }
 
-  // Pass allMeals to the sidebar for context
   const sidebarProps = {
     goals: goals,
     setGoals: updateGoals,
     meals: allMeals ?? []
   };
-
-  const personality: AIPersonality | undefined = userProfile?.isAITrainingEnabled
-    ? {
-      tone: userProfile.tone,
-      mainObjective: userProfile.mainObjective,
-      allergies: userProfile.allergies,
-      preferences: userProfile.preferences,
-    }
-    : undefined;
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -446,47 +638,29 @@ export default function DashboardPage() {
           sidebarProps={sidebarProps}
         />
 
-        <main className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 md:py-8 space-y-4 md:space-y-8">
-          {/* Header section - Clean & Welcoming */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <div className="text-2xl md:text-3xl select-none">🏠</div>
-                <h1 className="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-foreground truncate">Tableau de bord</h1>
-              </div>
-              <p className="text-muted-foreground text-xs md:text-sm font-medium leading-relaxed max-w-[450px]">
-                Bienvenue, <span className="text-foreground font-bold">{userProfile?.name?.split(' ')[0] || 'Chef'}</span>. Voici un aperçu de votre journée culinaire.
-              </p>
-            </div>
+        <PageWrapper className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 md:py-8 space-y-4 md:space-y-8">
+          <WelcomeSection
+            userName={userProfile?.name?.split(' ')[0] || 'Chef'}
+            contextualMessage={contextualMessage}
+            contextualImage={contextualImage}
+          />
 
-            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
-              <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-                <DialogTrigger asChild>
-                  <Button className="h-9 md:h-10 w-full md:w-auto px-3 md:px-5 text-[10px] md:text-xs font-black rounded-lg border border-primary/20 shadow-md shadow-primary/10 hover:scale-105 active:scale-95 transition-all">
-                    <PlusCircle className="mr-2 h-5 w-5" />
-                    Ajouter un repas
-                  </Button>
-                </DialogTrigger>
-                <AddMealWindow
-                  isOpen={isFormOpen}
-                  onClose={() => setFormOpen(false)}
-                  onSubmit={addMeal}
-                  household={userProfile?.household || []}
-                  userId={user?.uid}
-                  chefId={effectiveChefId}
-                  defaultType={defaultMealType}
-                />
-              </Dialog>
-              <Button variant="outline" className="h-9 md:h-10 w-full md:w-auto px-3 md:px-5 text-[10px] md:text-xs font-black rounded-lg border border-border hover:bg-accent transition-all shadow-sm" asChild>
-                <Link href="/cuisine">
-                  <ChefHat className="mr-1.5 h-3.5 w-3.5 md:h-4 md:w-4" />
-                  Cuisiner
-                </Link>
-              </Button>
-            </div>
+          <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
+            <Button
+              className="h-9 md:h-10 w-full md:w-auto px-3 md:px-5 text-[10px] md:text-xs font-black rounded-lg border border-primary/20 shadow-md shadow-primary/10 hover:scale-105 active:scale-95 transition-all"
+              onClick={() => setFormOpen(true)}
+            >
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Ajouter un repas
+            </Button>
+            <Button variant="outline" className="h-9 md:h-10 w-full md:w-auto px-3 md:px-5 text-[10px] md:text-xs font-black rounded-lg border border-border hover:bg-accent transition-all shadow-sm" asChild>
+              <Link href="/cuisine">
+                <ChefHat className="mr-1.5 h-3.5 w-3.5 md:h-4 md:w-4" />
+                Cuisiner
+              </Link>
+            </Button>
           </div>
 
-          {/* Tips Carousel - Dynamic from Admin */}
           {carouselItems && carouselItems.length > 0 && (
             <div className="w-full">
               <Carousel
@@ -525,326 +699,72 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Stats Section - Clean & Structured */}
-          <div className="border border-border rounded-xl p-3 md:p-5 bg-card shadow-sm">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
-              {[
-                {
-                  label: 'CALORIES',
-                  value: displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0),
-                  unit: 'kcal',
-                  icon: Flame,
-                  color: 'text-orange-500',
-                  bg: 'bg-orange-500/10',
-                  progress: (displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0) / (userProfile?.targetCalories || 2000)) * 100
-                },
-                {
-                  label: 'REPAS',
-                  value: displayMeals.length,
-                  unit: `/ ${userProfile?.targetMeals || 4}`,
-                  icon: UtensilsCrossed,
-                  color: 'text-blue-500',
-                  bg: 'bg-blue-500/10',
-                  progress: (displayMeals.length / (userProfile?.targetMeals || 4)) * 100
-                },
-                {
-                  label: 'OBJECTIF',
-                  value: userProfile?.targetCalories || 2000,
-                  unit: 'kcal / jour',
-                  icon: Target,
-                  color: 'text-emerald-500',
-                  bg: 'bg-emerald-500/10'
-                },
-                {
-                  label: 'NIVEAU',
-                  value: userProfile?.level || 1,
-                  unit: userProfile?.level && userProfile.level < 10 ? 'Novice' : userProfile?.level && userProfile.level < 20 ? 'Apprenti' : userProfile?.level && userProfile.level < 30 ? 'Chef' : 'Maître',
-                  icon: Award,
-                  color: 'text-purple-500',
-                  bg: 'bg-purple-500/10'
-                },
-              ].map((stat, i) => (
+          <StatCards
+            displayMeals={displayMeals}
+            userProfile={userProfile}
+            calculateRecommendedCalories={calculateRecommendedCalories}
+            isEditGoalOpen={isEditGoalOpen}
+            setIsEditGoalOpen={setIsEditGoalOpen}
+            newTargetCalories={newTargetCalories}
+            setNewTargetCalories={setNewTargetCalories}
+            handleUpdateTargetCalories={handleUpdateTargetCalories}
+            handleExplainCalories={handleExplainCalories}
+            isExplainingCalories={isExplainingCalories}
+            calorieExplanation={calorieExplanation}
+            setCalorieExplanation={setCalorieExplanation}
+            cooksForToday={cooksForToday as Record<string, string>}
+          />
 
-                <div key={i} className="group relative bg-background border border-border rounded-lg p-2.5 md:p-4 hover:border-primary/30 hover:shadow-md transition-all duration-300">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className={cn("p-1.5 rounded-md", stat.bg)}>
-                        <stat.icon className={cn("h-3 w-3 md:h-3.5 md:w-3.5", stat.color)} />
-                      </div>
-                      <span className="text-[7px] md:text-[9px] font-black tracking-widest text-muted-foreground uppercase">{stat.label}</span>
-                    </div>
-                    <div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg md:text-xl font-black tracking-tight">{stat.value}</span>
-                        <span className="text-[8px] md:text-[9px] text-muted-foreground font-bold uppercase">{stat.unit}</span>
-                      </div>
-                      {stat.progress !== undefined && (
-                        <div className="mt-2 h-1 md:h-1.5 w-full bg-muted/30 rounded-full overflow-hidden border border-border/50">
-                          <div
-                            className={cn("h-full transition-all duration-1000 ease-out rounded-full", stat.color.replace('text', 'bg'))}
-                            style={{ width: `${Math.min(stat.progress, 100)}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <HouseholdBanner
+            cooksForToday={cooksForToday as Record<string, string>}
+            mealTypeTranslations={mealTypeTranslations}
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-8 relative">
+            <FoodJournal
+              mealTypes={mealTypes}
+              mealTypeDetails={mealTypeDetails}
+              displayMeals={displayMeals}
+              currentTime={currentTime}
+              openFormForType={openFormForType}
+              setSuggestionMeal={setSuggestionMeal}
+              setZoomImageUrl={setZoomImageUrl}
+              removeMeal={removeMeal}
+            />
+
+            <AIAssistantPanel
+              isLoadingPlan={isLoadingPlan}
+              dayPlan={dayPlan}
+              setZoomImageUrl={setZoomImageUrl}
+              openMealActionDialog={setSelectedMealForAction}
+              contextualMessage={contextualMessage}
+            />
           </div>
+        </PageWrapper>
 
-          {/* Household Assignment Banner */}
-          {Object.keys(cooksForToday).length > 0 && (
-            <div className="bg-gradient-to-r from-primary/10 via-background to-primary/5 border border-primary/10 rounded-xl p-4 md:p-5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-                    <ChefHat className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="space-y-0.5">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/60 text-left">Organisation du foyer</h3>
-                    <p className="text-sm md:text-base font-black text-foreground text-left">
-                      {(() => {
-                        const uniqueCooks = Array.from(new Set(Object.values(cooksForToday)));
-                        if (uniqueCooks.length === 1) {
-                          return `C'est ${uniqueCooks[0]} qui cuisine aujourd'hui ! 🧑‍🍳`;
-                        }
-                        return Object.entries(cooksForToday)
-                          .map(([type, name]) => {
-                            const translation = mealTypeTranslations[type as keyof typeof mealTypeTranslations] || type;
-                            return `${translation} : ${name}`;
-                          })
-                          .join(' • ');
-                      })()}
-                    </p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border-primary/20 bg-primary/5 text-primary hover:bg-primary/10" asChild>
-                  <Link href="/cuisine">
-                    Détails de l'équipe
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          )}
+        <MealActionDialogs
+          selectedMealForAction={selectedMealForAction}
+          setSelectedMealForAction={setSelectedMealForAction}
+          handleScheduleMeal={handleScheduleMeal}
+          handleAddToPending={handleAddToPending}
+          mealConflict={mealConflict}
+          setMealConflict={setMealConflict}
+          handleConfirmReplace={handleConfirmReplace}
+          mealTypeTranslations={mealTypeTranslations}
+        />
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-8 items-start">
-            {/* Left Column: Journal du Jour (2/3) */}
-            <div className="lg:col-span-7 border border-border rounded-xl p-3 md:p-5 bg-card shadow-sm space-y-4 md:space-y-6">
-              <div className="flex items-center justify-between border-b border-border pb-2 md:pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-primary/10 rounded-lg">
-                    <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary" />
-                  </div>
-                  <h2 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-foreground">Journal Alimentaire</h2>
-                </div>
-                <Badge variant="outline" className="rounded-full font-bold bg-background border border-border px-2.5 py-0.5 text-[9px] md:text-[10px]">
-                  {currentTime.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </Badge>
-              </div>
+        <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+          <AddMealWindow
+            isOpen={isFormOpen}
+            onClose={() => setFormOpen(false)}
+            onSubmit={addMeal}
+            household={userProfile?.household || []}
+            userId={user?.uid}
+            chefId={effectiveChefId}
+            defaultType={defaultMealType}
+          />
+        </Dialog>
 
-              <div className="grid gap-3 md:gap-4">
-                {mealTypes.map(type => {
-                  const details = mealTypeDetails[type];
-                  const mealsForType = displayMeals.filter(m => m.type === type);
-
-                  return (
-                    <div key={type} className="group/meal flex flex-col gap-3">
-                      <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center gap-2">
-                          <details.icon className={cn("h-4 w-4", details.className.split(' ')[0].replace('border-', 'text-'))} />
-                          <h3 className="text-lg font-black tracking-tight">{details.translation}</h3>
-                        </div>
-                        <button
-                          onClick={() => openFormForType(type)}
-                          className="h-8 w-8 flex items-center justify-center rounded-xl bg-muted/30 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all opacity-0 group-hover/meal:opacity-100 border border-muted/40"
-                        >
-                          <PlusCircle className="h-5 w-5" />
-                        </button>
-                      </div>
-
-                      <div className={cn(
-                        "relative rounded-2xl p-4 transition-all border-2",
-                        mealsForType.length > 0 ? "bg-background border-muted/60 shadow-sm" : "bg-muted/10 border-dashed border-muted/40"
-                      )}>
-                        {mealsForType.length > 0 ? (
-                          <div className="space-y-3">
-                            {mealsForType.map(meal => (
-                              <div
-                                key={meal.id}
-                                className="group/item flex items-center justify-between p-2 md:p-2.5 rounded-xl hover:bg-accent/5 transition-all cursor-pointer border border-transparent hover:border-border/50"
-                                onClick={() => setSuggestionMeal(meal)}
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div
-                                    className={cn("h-8 w-8 md:h-9 md:w-9 rounded-lg flex items-center justify-center shrink-0 border shadow-sm overflow-hidden cursor-zoom-in group/ph active:scale-95 transition-all", details.className)}
-                                    onClick={(e) => {
-                                      if (meal.imageUrl) {
-                                        e.stopPropagation();
-                                        setZoomImageUrl(meal.imageUrl);
-                                      }
-                                    }}
-                                  >
-                                    {meal.imageUrl ? (
-                                      <img src={meal.imageUrl} alt={meal.name} className="h-full w-full object-cover group-hover/ph:scale-110 transition-transform duration-500" />
-                                    ) : (
-                                      <details.icon className="h-4 w-4 opacity-40" />
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs md:text-sm font-bold truncate text-foreground/90">{meal.name}</p>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                      <span className="text-[9px] font-black text-muted-foreground/60 uppercase">{meal.calories} kcal</span>
-                                      {meal.cookedBy && (
-                                        <span className="flex items-center gap-1 text-[9px] font-bold text-primary/60 bg-primary/5 px-2 py-0.5 rounded-full">
-                                          <ChefHat className="h-2 w-2" />
-                                          Cuisinier: {meal.cookedBy}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                <button
-                                  className="h-8 w-8 flex items-center justify-center rounded-full text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-all opacity-0 group-hover/item:opacity-100 border border-transparent hover:border-destructive/20"
-                                  onClick={(e) => { e.stopPropagation(); removeMeal(meal.id); }}
-                                >
-                                  <X className="h-4 w-4 stroke-[3px]" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-8 flex flex-col items-center justify-center gap-2 opacity-30 select-none">
-                            <details.icon className="h-8 w-8" />
-                            <span className="text-[10px] font-black uppercase tracking-widest italic">Aucun enregistrement</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right Column: AI & Recommendations (1/3) */}
-            <div className="lg:col-span-5 border border-border rounded-xl p-3 md:p-5 bg-card shadow-sm space-y-4 md:space-y-6 lg:sticky lg:top-24">
-              <div className="flex items-center gap-2 border-b border-border pb-2 md:pb-3">
-                <div className="p-1.5 bg-primary/10 rounded-lg">
-                  <Sparkles className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary" />
-                </div>
-                <h2 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-foreground">Assistant intelligent</h2>
-              </div>
-
-              <div className="bg-gradient-to-br from-primary/5 via-background to-background rounded-xl p-4 md:p-5 sm:p-6 space-y-4 md:space-y-6 border border-primary/20 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000" />
-
-                <div className="relative z-10 space-y-4 md:space-y-5">
-                  <div className="flex flex-col items-center text-center gap-4">
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24">
-                      <div className="absolute inset-0 bg-white rounded-2xl shadow-md border border-primary/10 transform -rotate-3" />
-                      <div className="relative w-full h-full p-1.5 bg-white rounded-2xl shadow-sm border border-primary/5 overflow-hidden transform rotate-3 transition-transform duration-700 group-hover:rotate-0">
-                        <Image
-                          src="/plat-vide.png"
-                          alt="Vide"
-                          fill
-                          className={cn("object-cover transition-opacity duration-700 ease-in-out", dayPlan.length > 0 ? "opacity-0" : "opacity-100")}
-                          sizes="100px"
-                          priority
-                        />
-                        <Image
-                          src="/repas-plein.png"
-                          alt="Plein"
-                          fill
-                          className={cn("object-cover transition-opacity duration-700 ease-in-out", dayPlan.length > 0 ? "opacity-100" : "opacity-0")}
-                          sizes="100px"
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs font-medium text-muted-foreground leading-relaxed italic px-2 max-w-[240px]">
-                      "{contextualMessage}"
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Planning suggéré</span>
-                      <Badge variant="secondary" className="text-[7px] font-black uppercase tracking-tighter bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20">Alpha v2</Badge>
-                    </div>
-
-                    {isLoadingPlan ? (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 bg-muted/5 rounded-xl border border-dashed border-muted-foreground/30">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary opacity-40" />
-                        <span className="text-[8px] font-black tracking-[0.2em] uppercase text-muted-foreground opacity-40">Analyse en cours...</span>
-                      </div>
-                    ) : dayPlan.length > 0 ? (
-                      <div className="space-y-2">
-                        {dayPlan.map((meal) => (
-                          <div key={meal.name} className="flex items-center gap-3 p-2 rounded-xl bg-background border border-border hover:border-primary/30 transition-all group/plan shadow-sm">
-                            <div
-                              className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-muted border border-border cursor-zoom-in active:scale-95 transition-transform"
-                              onClick={() => meal.imageUrl && setZoomImageUrl(meal.imageUrl)}
-                            >
-                              {meal.imageUrl ? (
-                                <Image
-                                  src={meal.imageUrl}
-                                  alt={meal.name}
-                                  fill
-                                  sizes="40px"
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center opacity-10">
-                                  <UtensilsCrossed className="h-4 w-4" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-[11px] truncate text-foreground/90">{meal.name}</p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[7px] font-black text-primary/60 uppercase bg-primary/5 px-1 py-0.5 rounded-md">{mealTypeTranslations[meal.type]}</span>
-                                <span className="text-[8px] text-muted-foreground/60 font-bold">{meal.calories} kcal</span>
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-lg bg-muted/30 text-muted-foreground hover:bg-primary hover:text-white transition-all border border-muted/40"
-                              onClick={() => handleAddToPending(meal)}
-                            >
-                              <PlusCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <Button onClick={fetchDayPlan} className="w-full h-11 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all border-2 border-primary/30 hover:border-primary/50">
-                          <Sparkles className="mr-2 h-3.5 w-3.5" />
-                          Générer un plan
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Quick Insights Card */}
-                  <div className="pt-3 mt-3 border-t-2 border-primary/5">
-                    <Link href="/my-flex-ai" className="flex items-center justify-between p-3 rounded-xl bg-background border-2 border-muted/60 hover:border-primary/20 transition-all group/insight">
-                      <div className="space-y-0.5">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Chat Intelligent</p>
-                        <p className="text-xs font-bold">Posez vos questions sur la nutrition</p>
-                      </div>
-                      <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center group-hover/insight:bg-primary group-hover/insight:text-white transition-all">
-                        <ArrowRight className="h-5 w-5" />
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        {/* Magic Reveal Overlay - Mobile Only */}
         <AnimatePresence>
           {isMagicOpen && (
             <motion.div
@@ -855,20 +775,17 @@ export default function DashboardPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
             >
-              {/* Backdrop */}
               <div
                 className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                 onClick={() => { setIsMagicOpen(false); setSelectedMagicMeal(null); }}
               />
 
-              {/* Magic Card - reset selection on close */}
               <motion.div
                 layoutId="magic-btn"
                 className="relative z-10 w-[88vw] max-w-sm bg-background rounded-3xl shadow-2xl shadow-primary/30 border border-primary/20 overflow-hidden"
                 style={{ originX: 0.5, originY: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               >
-                {/* Header gradient */}
                 <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/60 px-5 pt-6 pb-8 relative overflow-hidden">
                   <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
                   <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
@@ -888,7 +805,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Meal List */}
                 <div className="px-4 pt-3 pb-2 space-y-2 -mt-4">
                   {isLoadingPlan ? (
                     <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -908,104 +824,78 @@ export default function DashboardPage() {
                       >Régénérer</button>
                     </div>
                   ) : (
-                    dayPlan.map((meal, idx) => {
+                    dayPlan.map((meal) => {
                       const isSelected = selectedMagicMeal?.name === meal.name;
                       return (
                         <motion.div
                           key={meal.name}
+                          whileTap={{ scale: 0.96 }}
                           onClick={() => setSelectedMagicMeal(isSelected ? null : meal)}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.07 }}
                           className={cn(
-                            "flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-all active:scale-[0.98]",
+                            "group relative flex flex-col gap-2 p-2.5 rounded-2xl border-2 transition-all duration-300",
                             isSelected
-                              ? "bg-primary/10 border-primary shadow-sm shadow-primary/20"
-                              : "bg-accent/30 border-border/50 hover:border-primary/30"
+                              ? "bg-primary/5 border-primary shadow-md shadow-primary/10"
+                              : "bg-muted/30 border-transparent hover:border-muted-foreground/20"
                           )}
                         >
-                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted border border-border">
+                          <div className="relative aspect-square w-full rounded-xl overflow-hidden border border-border shadow-sm">
                             {meal.imageUrl ? (
-                              <Image src={meal.imageUrl} alt={meal.name} fill sizes="48px" className="object-cover" />
+                              <Image src={meal.imageUrl} alt={meal.name} fill sizes="150px" className="object-cover" />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <UtensilsCrossed className="h-5 w-5 opacity-20" />
+                              <div className="flex h-full w-full items-center justify-center bg-muted">
+                                <UtensilsCrossed className="h-6 w-6 opacity-20" />
                               </div>
                             )}
+                            <div className={cn(
+                              "absolute inset-0 transition-opacity duration-300",
+                              isSelected ? "bg-primary/10" : "bg-black/0 group-hover:bg-black/5"
+                            )} />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("font-black text-sm truncate", isSelected && "text-primary")}>{meal.name}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className={cn(
-                                "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full",
-                                isSelected ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary/70"
-                              )}>
-                                {({ 'breakfast': 'Petit-déj', 'lunch': 'Déjeuner', 'dinner': 'Dîner', 'dessert': 'Dessert' } as Record<string, string>)[meal.type] || meal.type}
-                              </span>
-                              <span className="text-[9px] font-bold text-muted-foreground">{meal.calories} kcal</span>
-                            </div>
+                          <div className="min-w-0">
+                            <p className={cn("font-black text-[11px] leading-tight truncate px-0.5", isSelected ? "text-primary" : "text-foreground/90")}>
+                              {meal.name}
+                            </p>
                           </div>
-                          {/* Check circle */}
-                          <div className={cn(
-                            "h-6 w-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all",
-                            isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
-                          )}>
-                            {isSelected && (
-                              <svg viewBox="0 0 12 12" className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="2,6 5,9 10,3" />
-                              </svg>
-                            )}
-                          </div>
+                          {isSelected && (
+                            <motion.div
+                              layoutId="check"
+                              className="absolute top-1.5 right-1.5 h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-lg"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                            >
+                              <Check className="h-3 w-3 text-white stroke-[4px]" />
+                            </motion.div>
+                          )}
                         </motion.div>
                       );
                     })
                   )}
                 </div>
 
-                {/* CTA */}
-                {dayPlan.length > 0 && (
-                  <div className="px-4 pb-5 pt-3">
-                    <AnimatePresence mode="wait">
-                      {!selectedMagicMeal ? (
-                        <motion.p
-                          key="hint"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="text-center text-xs text-muted-foreground font-medium py-2"
-                        >
-                          👆 Sélectionnez un plat à cuisiner
-                        </motion.p>
-                      ) : (
-                        <motion.button
-                          key="cta"
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                          onClick={() => {
-                            const encoded = encodeURIComponent(selectedMagicMeal.name);
-                            setIsMagicOpen(false);
-                            setSelectedMagicMeal(null);
-                            router.push(`/cuisine?prep=${encoded}`);
-                          }}
-                          className="w-full h-13 rounded-2xl bg-primary text-primary-foreground font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-primary/30 hover:brightness-110 active:scale-95 transition-all py-3.5"
-                        >
-                          <ChefHat className="h-5 w-5" />
-                          Cuisiner &ldquo;{selectedMagicMeal.name.length > 22 ? selectedMagicMeal.name.slice(0, 22) + '…' : selectedMagicMeal.name}&rdquo;
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                {selectedMagicMeal && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="px-1"
+                  >
+                    <button
+                      onClick={() => {
+                        const encoded = encodeURIComponent(selectedMagicMeal.name);
+                        setIsMagicOpen(false);
+                        setSelectedMagicMeal(null);
+                        router.push(`/cuisine?prep=${encoded}`);
+                      }}
+                      className="w-full h-11 rounded-2xl bg-primary text-primary-foreground font-black text-xs tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-primary/30 active:scale-95 transition-all"
+                    >
+                      <ChefHat className="h-4 w-4" />
+                      Cuisiner ce plat
+                    </button>
+                  </motion.div>
                 )}
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
-
-
-
-
 
         {suggestionMeal && (
           <SuggestionsDialog

@@ -45,18 +45,19 @@ export function MainPanel({
   const [isFormOpen, setFormOpen] = useState(false);
   const [suggestionMeal, setSuggestionMeal] = useState<Meal | null>(null);
 
-  const mealTypes: Meal['type'][] = ['breakfast', 'lunch', 'dinner', 'snack'];
+  const mealTypes: Meal['type'][] = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 
   const mealTypeDetails: Record<Meal['type'], { translation: string; className: string; }> = {
     breakfast: { translation: 'Petit-déjeuner', className: "bg-blue-50 border-blue-100 dark:bg-blue-950/30 dark:border-blue-800/50" },
     lunch: { translation: 'Déjeuner', className: "bg-yellow-50 border-yellow-100 dark:bg-yellow-950/30 dark:border-yellow-800/50" },
     dinner: { translation: 'Dîner', className: "bg-purple-50 border-purple-100 dark:bg-purple-950/30 dark:border-purple-800/50" },
     snack: { translation: 'Collation', className: "bg-green-50 border-green-100 dark:bg-green-950/30 dark:border-green-800/50" },
+    dessert: { translation: 'Dessert', className: "bg-pink-50 border-pink-100 dark:bg-pink-950/30 dark:border-pink-800/50" },
   };
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <main className="flex-1 overflow-y-auto p-4 md:p-6">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 mb-safe">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="font-headline text-xl font-bold md:hidden">Repas du jour</h2>
           <Dialog open={isFormOpen} onOpenChange={setFormOpen}>

@@ -72,11 +72,11 @@ export default function JoinFamilyPage() {
             setIsLoading(true);
             try {
                 const { invite: inviteData, error: inviteError } = await getInviteAction(inviteId as string);
-                if (inviteError) {
-                    setError(inviteError);
+                if (inviteError || !inviteData) {
+                    setError(inviteError || 'Invitation introuvable');
                 } else {
                     setInvite(inviteData);
-                    setName(inviteData.name);
+                    setName((inviteData as any).name);
                 }
             } catch (e) {
                 console.error("Invite fetch failed:", e);

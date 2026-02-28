@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ReadOnlyProvider } from '@/contexts/read-only-context';
 import { FamilyMemberGuardModal } from '@/components/shared/family-member-guard';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
+import { AnimatePresence } from 'framer-motion';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -26,7 +27,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <LoadingProvider>
             <AuthProvider>
               <ReadOnlyProvider>
-                {children}
+                <AnimatePresence mode="wait">
+                  {children}
+                </AnimatePresence>
                 <FamilyMemberGuardModal />
                 <FeedbackButton />
                 <FloatingShortcuts />

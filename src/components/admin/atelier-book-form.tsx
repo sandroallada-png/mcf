@@ -192,7 +192,7 @@ export function AtelierBookForm({ onSubmit, initialData }: AtelierBookFormProps)
                                                             <SelectItem value="tout" className="font-bold text-[10px] uppercase tracking-widest py-3">Tout</SelectItem>
                                                             <SelectItem value="entrée" className="font-bold text-[10px] uppercase tracking-widest py-3">Entrées</SelectItem>
                                                             <SelectItem value="plat" className="font-bold text-[10px] uppercase tracking-widest py-3">Plats</SelectItem>
-                                                            <SelectItem value="dessert" className="font-bold text-[10px] uppercase tracking-widest py-3">Desserts</SelectItem>
+                                                            <SelectItem value="dessert" className="font-bold text-[10px] uppercase tracking-widest py-3">Desserts / Collations</SelectItem>
                                                             <SelectItem value="technique" className="font-bold text-[10px] uppercase tracking-widest py-3">Techniques</SelectItem>
                                                         </SelectContent>
                                                     </Select>

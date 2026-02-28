@@ -47,6 +47,7 @@ type ParsedBlock =
     | { type: 'h1' | 'h2' | 'h3'; text: string }
     | { type: 'paragraph'; text: string }
     | { type: 'bullet'; text: string }
+    | { type: 'numbered'; num: string; text: string }
     | { type: 'divider' }
     | { type: 'empty' };
 

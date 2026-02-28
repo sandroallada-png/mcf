@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, query, where, Timestamp, getDocs, writeBatch } from 'firebase/firestore';
-import type { UserProfile, Meal } from '@/lib/types';
+import type { UserProfile, Meal, MealType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -31,14 +31,14 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { startOfDay, endOfDay, format } from 'date-fns';
+import { startOfDay, endOfDay, format, startOfToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { fr } from 'date-fns/locale';
 
-type MealType = 'breakfast' | 'lunch' | 'dinner' | 'dessert';
+
 type TimeSlot = 'breakfast' | 'lunch' | 'dinner' | 'morning-lunch' | 'morning-dinner' | 'lunch-dinner' | 'all-day';
 
 type CookAssignment = {
@@ -109,27 +109,29 @@ export function WhoIsCooking() {
         if (!user || !effectiveChefId) return;
 
         setIsLoadingCooks(true);
-        const todayStart = startOfDay(new Date());
+        const todayStart = startOfToday();
         const todayEnd = endOfDay(new Date());
 
-        // Fetch meals for the household (using chefId to see shared logs or just own)
-        // Actually, meals are in foodLogs of EACH user? 
-        // User request says "le chef pourra voir son planning". 
-        // We might need to query ALL members logs or just chef's logs if chef marks who cooks.
-        // For now, let's keep chef's logs as source of truth for the foyer's daily plan.
-        const mealsTodayQuery = query(
+        const foodLogsQuery = query(
             collection(firestore, `users/${effectiveChefId}/foodLogs`),
             where('date', '>=', Timestamp.fromDate(todayStart)),
             where('date', '<=', Timestamp.fromDate(todayEnd))
         );
+        const scheduledQuery = query(
+            collection(firestore, `users/${effectiveChefId}/cooking`),
+            where('plannedFor', '>=', Timestamp.fromDate(todayStart)),
+            where('plannedFor', '<=', Timestamp.fromDate(todayEnd))
+        );
 
-        getDocs(mealsTodayQuery).then(snapshot => {
+        Promise.all([getDocs(foodLogsQuery), getDocs(scheduledQuery)]).then(([logsSnap, schedSnap]) => {
             const cooks: Partial<Record<MealType, string>> = {};
-            snapshot.docs.forEach(doc => {
+            logsSnap.docs.forEach(doc => {
                 const meal = doc.data() as Meal;
-                if (meal.cookedBy) {
-                    cooks[meal.type] = meal.cookedBy;
-                }
+                if (meal.cookedBy) cooks[meal.type] = meal.cookedBy;
+            });
+            schedSnap.docs.forEach(doc => {
+                const meal = doc.data() as any;
+                if (meal.cookedBy) cooks[meal.type as MealType] = meal.cookedBy;
             });
             setTodaysCooks(cooks);
         }).finally(() => setIsLoadingCooks(false));
@@ -164,31 +166,40 @@ export function WhoIsCooking() {
             case 'morning-lunch': mealTypesToUpdate = ['breakfast', 'lunch']; break;
             case 'morning-dinner': mealTypesToUpdate = ['breakfast', 'dinner']; break;
             case 'lunch-dinner': mealTypesToUpdate = ['lunch', 'dinner']; break;
-            case 'all-day': mealTypesToUpdate = ['breakfast', 'lunch', 'dinner', 'dessert']; break;
+            case 'all-day': mealTypesToUpdate = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert']; break;
         }
 
         const dayStart = startOfDay(date);
         const dayEnd = endOfDay(date);
 
-        const mealsQuery = query(
+        const foodLogsQuery = query(
             collection(firestore, `users/${effectiveChefId}/foodLogs`),
             where('date', '>=', Timestamp.fromDate(dayStart)),
             where('date', '<=', Timestamp.fromDate(dayEnd))
         );
+        const scheduledQuery = query(
+            collection(firestore, `users/${effectiveChefId}/cooking`),
+            where('plannedFor', '>=', Timestamp.fromDate(dayStart)),
+            where('plannedFor', '<=', Timestamp.fromDate(dayEnd))
+        );
 
         try {
             const batch = writeBatch(firestore);
-            const snapshot = await getDocs(mealsQuery);
+            const [logsSnap, schedSnap] = await Promise.all([getDocs(foodLogsQuery), getDocs(scheduledQuery)]);
 
-            const docsToUpdate = snapshot.docs.filter(doc => mealTypesToUpdate.includes((doc.data() as Meal).type));
+            const logsToUpdate = logsSnap.docs.filter(doc => mealTypesToUpdate.includes((doc.data() as Meal).type));
+            const schedToUpdate = schedSnap.docs.filter(doc => mealTypesToUpdate.includes((doc.data() as any).type));
 
-            if (docsToUpdate.length === 0) {
+            const totalDocs = logsToUpdate.length + schedToUpdate.length;
+
+            if (totalDocs === 0) {
                 toast({
                     title: `Aucun repas planifié`,
                     description: `Ajoutez des repas pour le créneau "${timeSlotTranslations[timeSlot]}" du ${format(date, 'd MMMM', { locale: fr })} afin d'assigner un cuisinier.`,
                 });
             } else {
-                docsToUpdate.forEach(doc => batch.update(doc.ref, { cookedBy: cookName }));
+                logsToUpdate.forEach(doc => batch.update(doc.ref, { cookedBy: cookName }));
+                schedToUpdate.forEach(doc => batch.update(doc.ref, { cookedBy: cookName }));
                 await batch.commit();
 
                 // If it's for today, update local state for immediate feedback
@@ -217,6 +228,7 @@ export function WhoIsCooking() {
         breakfast: 'Petit-déjeuner',
         lunch: 'Déjeuner',
         dinner: 'Dîner',
+        snack: 'Collation',
         dessert: 'Dessert'
     };
 

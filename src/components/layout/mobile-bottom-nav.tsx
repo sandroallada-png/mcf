@@ -133,7 +133,7 @@ export function MobileBottomNav() {
     return (
         <>
             {/* ── NAV BAR ─────────────────────────────────────────────────── */}
-            <div className="md:hidden fixed bottom-0 inset-x-0 z-[90] bg-background/85 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_rgba(0,0,0,0.10)]">
+            <div className="md:hidden fixed bottom-0 inset-x-0 z-[40] bg-background/85 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_rgba(0,0,0,0.10)]">
                 <div
                     className="flex items-end justify-around px-1 pt-1"
                     style={{ paddingBottom: 'max(1.1rem, env(safe-area-inset-bottom))' }}
@@ -141,18 +141,25 @@ export function MobileBottomNav() {
                     {leftItems.map(item => {
                         const isActive = pathname === item.href;
                         return (
-                            <button
+                            <motion.button
                                 key={item.href}
                                 className={cn(
-                                    "flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all active:scale-90",
+                                    "flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all relative",
                                     isActive ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
                                 )}
+                                whileTap={{ scale: 0.9 }}
                                 onClick={() => router.push(item.href)}
                             >
-                                <item.icon className="h-[22px] w-[22px]" />
+                                <item.icon className={cn("h-[22px] w-[22px]", isActive && "animate-in fade-in zoom-in duration-300")} />
                                 <span className="text-[9px] font-black tracking-wide uppercase">{item.label}</span>
-                                {isActive && <span className="absolute bottom-1 h-0.5 w-4 bg-primary rounded-full" />}
-                            </button>
+                                {isActive && (
+                                    <motion.span 
+                                        layoutId="nav-pill"
+                                        className="absolute bottom-1 h-0.5 w-4 bg-primary rounded-full" 
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                    />
+                                )}
+                            </motion.button>
                         );
                     })}
 
@@ -177,18 +184,25 @@ export function MobileBottomNav() {
                     {rightItems.map(item => {
                         const isActive = pathname === item.href;
                         return (
-                            <button
+                            <motion.button
                                 key={item.href}
                                 className={cn(
-                                    "flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all active:scale-90 relative",
+                                    "flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all relative",
                                     isActive ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
                                 )}
+                                whileTap={{ scale: 0.9 }}
                                 onClick={() => router.push(item.href)}
                             >
-                                <item.icon className="h-[22px] w-[22px]" />
+                                <item.icon className={cn("h-[22px] w-[22px]", isActive && "animate-in fade-in zoom-in duration-300")} />
                                 <span className="text-[9px] font-black tracking-wide uppercase">{item.label}</span>
-                                {isActive && <span className="absolute bottom-1 h-0.5 w-4 bg-primary rounded-full" />}
-                            </button>
+                                {isActive && (
+                                    <motion.span 
+                                        layoutId="nav-pill"
+                                        className="absolute bottom-1 h-0.5 w-4 bg-primary rounded-full" 
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                    />
+                                )}
+                            </motion.button>
                         );
                     })}
                 </div>
@@ -295,7 +309,7 @@ export function MobileBottomNav() {
                                                             "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full",
                                                             isSelected ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary/70"
                                                         )}>
-                                                            {({ 'breakfast': 'Petit-déj', 'lunch': 'Déjeuner', 'dinner': 'Dîner', 'dessert': 'Dessert' } as Record<string, string>)[meal.type] || meal.type}
+                                                            {({ 'breakfast': 'Petit-déj', 'lunch': 'Déjeuner', 'dinner': 'Dîner', 'dessert': 'Dessert / Collation' } as Record<string, string>)[meal.type] || meal.type}
                                                         </span>
                                                         <span className="text-[9px] font-bold text-muted-foreground">{meal.calories} kcal</span>
                                                     </div>

@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Lightbulb, Loader2, Sparkles, UtensilsCrossed, Flame, Info, ChevronRight, Check, ArrowRightLeft } from 'lucide-react';
@@ -16,6 +16,9 @@ import type { Meal } from '@/lib/types';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import Image from 'next/image';
 
 interface SuggestionsDialogProps {
   meal: Omit<Meal, 'id' | 'date'> & { id?: string };
@@ -34,14 +37,76 @@ export function SuggestionsDialog({
   onImageClick,
   onSelectAlternative,
 }: SuggestionsDialogProps) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
+  const [dishImageMap, setDishImageMap] = useState<Map<string, string>>(new Map());
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+  const firestore = useFirestore();
+
+  useEffect(() => {
+    const fetchDishes = async () => {
+      try {
+        const dishesRef = collection(firestore, 'dishes');
+        const q = query(dishesRef, where('isVerified', '==', true), where('imageUrl', '!=', ''));
+        const querySnapshot = await getDocs(q);
+        const map = new Map<string, string>();
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.name && data.imageUrl) {
+            map.set(data.name.toLowerCase(), data.imageUrl);
+          }
+        });
+        setDishImageMap(map);
+      } catch (error) {
+        console.error("Error fetching dishes for suggestions:", error);
+      }
+    };
+    if (open) {
+      fetchDishes();
+    }
+  }, [open]);
+
+  const getImageUrl = (name: string, hint?: string) => {
+    // If the hint itself is a URL (fallback for some AI responses)
+    if (hint && (hint.startsWith('http://') || hint.startsWith('https://'))) {
+      return hint;
+    }
+
+    // Direct search by name
+    const directNameMatch = dishImageMap.get(name.toLowerCase());
+    if (directNameMatch) return directNameMatch;
+
+    // Search by hint keywords if available
+    if (hint) {
+      const hintLower = hint.toLowerCase();
+      // Try exact hint match
+      const directHintMatch = dishImageMap.get(hintLower);
+      if (directHintMatch) return directHintMatch;
+
+      // Try partial hint match
+      for (const [key, value] of dishImageMap.entries()) {
+        if (hintLower.includes(key) || key.includes(hintLower)) {
+          return value;
+        }
+      }
+    }
+
+    // Fallback partial name search
+    const nameLower = name.toLowerCase();
+    for (const [key, value] of dishImageMap.entries()) {
+      if (nameLower.includes(key) || key.includes(nameLower)) {
+        return value;
+      }
+    }
+    return null;
+  };
 
   const handleGetSuggestions = async () => {
     setIsLoading(true);
     setSuggestions([]);
+    setImageErrors({});
     const { suggestions: newSuggestions, error } = await getSuggestionsAction({
       loggedFood: meal.name,
       healthGoals: goals,
@@ -76,7 +141,11 @@ export function SuggestionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden border-none bg-background/95 backdrop-blur-xl shadow-2xl rounded-[2rem]">
+      <DialogContent
+        className="max-w-2xl p-0 overflow-hidden border-none bg-background/95 backdrop-blur-xl shadow-2xl rounded-[2rem]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="sr-only">
           <DialogTitle>Détails et suggestions du repas</DialogTitle>
           <DialogDescription>Consultez les détails de votre repas et découvrez des alternatives plus saines.</DialogDescription>
@@ -148,42 +217,73 @@ export function SuggestionsDialog({
               ) : suggestions.length > 0 ? (
                 <ScrollArea className="h-60 pr-1">
                   <div className="space-y-2.5">
-                    {suggestions.map((s, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        disabled={replacingIndex !== null}
-                        onClick={() => handleSelectSuggestion(s, i)}
-                        className={cn(
-                          "w-full text-left p-4 rounded-2xl border transition-all group/item flex items-center gap-4 animate-in slide-in-from-bottom-2 duration-300",
-                          replacingIndex === i
-                            ? "border-primary bg-primary/10 scale-[0.99]"
-                            : "bg-muted/20 border-border/50 hover:border-primary/40 hover:bg-primary/5 hover:scale-[1.01] active:scale-[0.99]",
-                          replacingIndex !== null && replacingIndex !== i && "opacity-40 cursor-not-allowed"
-                        )}
-                        style={{ animationDelay: `${i * 80}ms` }}
-                      >
-                        <div className={cn(
-                          "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition-all",
-                          replacingIndex === i ? "bg-primary" : "bg-primary/10 group-hover/item:bg-primary/20"
-                        )}>
-                          {replacingIndex === i ? (
-                            <Loader2 className="h-4 w-4 text-white animate-spin" />
-                          ) : (
-                            <span className="text-xs font-black text-primary">{i + 1}</span>
+                    {suggestions.map((s, i) => {
+                      let imageUrl = s.imageUrl || getImageUrl(s.name, s.imageHint);
+                      if (imageUrl && imageErrors[imageUrl]) imageUrl = null;
+
+                      const isHintUrl = s.imageHint && (s.imageHint.startsWith('http://') || s.imageHint.startsWith('https://'));
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          disabled={replacingIndex !== null}
+                          onClick={() => handleSelectSuggestion(s.name, i)}
+                          className={cn(
+                            "w-full text-left p-4 rounded-2xl border transition-all group/item flex items-center gap-4 animate-in slide-in-from-bottom-2 duration-300",
+                            replacingIndex === i
+                              ? "border-primary bg-primary/10 scale-[0.99]"
+                              : "bg-muted/20 border-border/50 hover:border-primary/40 hover:bg-primary/5 hover:scale-[1.01] active:scale-[0.99]",
+                            replacingIndex !== null && replacingIndex !== i && "opacity-40 cursor-not-allowed"
                           )}
-                        </div>
-                        <p className={cn(
-                          "flex-1 text-sm font-bold transition-colors leading-snug",
-                          replacingIndex === i ? "text-primary" : "text-foreground/90 group-hover/item:text-primary"
-                        )}>{s}</p>
-                        {replacingIndex === i ? (
-                          <Check className="h-4 w-4 text-primary shrink-0" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 -translate-x-1 group-hover/item:translate-x-0 transition-transform" />
-                        )}
-                      </button>
-                    ))}
+                          style={{ animationDelay: `${i * 80}ms` }}
+                        >
+                          <div className="relative h-16 w-16 shrink-0 rounded-xl overflow-hidden bg-muted group-hover/item:scale-110 transition-transform">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={s.name}
+                                className="h-full w-full object-cover"
+                                onError={() => setImageErrors(prev => ({ ...prev, [imageUrl]: true }))}
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center bg-primary/5">
+                                <UtensilsCrossed className="h-6 w-6 text-primary/30" />
+                              </div>
+                            )}
+                            {replacingIndex === i && (
+                              <div className="absolute inset-0 bg-primary/60 backdrop-blur-sm flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 text-white animate-spin" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0 py-1">
+                            <h4 className={cn(
+                              "text-sm font-black transition-colors leading-tight mb-1 truncate",
+                              replacingIndex === i ? "text-primary" : "text-foreground group-hover/item:text-primary"
+                            )}>{s.name}</h4>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[8px] px-1.5 py-0 border-primary/20 text-primary/70">
+                                {s.calories} kcal
+                              </Badge>
+                              {s.imageHint && !isHintUrl && (
+                                <span className="text-[8px] text-muted-foreground font-medium opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                  #{s.imageHint.split(' ')[0]}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {replacingIndex === i ? (
+                            <Check className="h-4 w-4 text-primary shrink-0" />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center group-hover/item:bg-primary group-hover/item:text-white transition-all scale-75 group-hover/item:scale-100">
+                              <ChevronRight className="h-4 w-4" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               ) : (

@@ -1,10 +1,12 @@
 import { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert';
+
 export type Meal = {
   id: string;
   name: string;
-  type: 'breakfast' | 'lunch' | 'dinner' | 'dessert';
+  type: MealType;
   calories: number;
   date: Timestamp;
   cookedBy?: string;
@@ -18,7 +20,7 @@ export const CookingSchema = z.object({
   description: z.string().optional(),
   calories: z.number(),
   cookingTime: z.string(),
-  type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']),
+  type: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']),
   recipe: z.string().optional(),
   imageHint: z.string(),
   imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
@@ -77,8 +79,18 @@ export const UserProfileSchema = z.object({
   allergies: z.string().optional(),
   preferences: z.string().optional(),
   chefId: z.string().optional().describe('The UID of the household chef/owner if this user is a member.'),
+  // Physical Metrics for calculation
+  weight: z.number().optional().describe('Weight in kg'),
+  height: z.number().optional().describe('Height in cm'),
+  age: z.number().optional(),
+  gender: z.enum(['male', 'female', 'other']).optional(),
+  activityLevel: z.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']).optional(),
   targetCalories: z.number().optional().default(2000),
   targetMeals: z.number().optional().default(4),
+  createdAt: z.any().optional(),
+  referralSource: z.string().optional(),
+  theme: z.string().optional(),
+  phoneNumber: z.string().optional(),
 });
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 
@@ -138,7 +150,8 @@ export const DishSchema = z.object({
   cookingTime: z.string(),
   calories: z.number().optional(),
   imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
-  type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert', '']).optional(),
+  type: z.string().optional().describe("Type de plat ou régime (ex: 'Sans gluten', 'Végétarien')"),
+  momentSuggest: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert', '']).optional().describe("Moment conseillé pour ce plat"),
   recipe: z.string().optional(),
   imageHint: z.string().optional(),
   isVerified: z.boolean().optional(),
@@ -175,7 +188,7 @@ export type Feedback = z.infer<typeof FeedbackSchema>;
 export const UserContributionSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']),
+  type: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']),
   calories: z.number(),
   authorId: z.string(),
   authorName: z.string(),
@@ -325,8 +338,15 @@ export const SuggestHealthyReplacementsInputSchema = z.object({
 });
 export type SuggestHealthyReplacementsInput = z.infer<typeof SuggestHealthyReplacementsInputSchema>;
 
+export const HealthyReplacementSchema = z.object({
+  name: z.string().describe('Le nom de l\'alternative plus saine.'),
+  calories: z.number().describe('Nombre de calories estimé.'),
+  imageHint: z.string().describe('Mots-clés pour l\'image (ex: "salade de lentilles").'),
+  imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
+});
+
 export const SuggestHealthyReplacementsOutputSchema = z.object({
-  suggestions: z.array(z.string()).describe('A list of healthier alternative meals or snacks.'),
+  suggestions: z.array(HealthyReplacementSchema).describe('Une liste d\'alternatives plus saines au repas enregistré.'),
 });
 export type SuggestHealthyReplacementsOutput = z.infer<typeof SuggestHealthyReplacementsOutputSchema>;
 
@@ -343,7 +363,7 @@ export const MealSuggestionSchema = z.object({
   cookingTime: z.string().describe('Estimated cooking time (e.g., "20 min").'),
   imageHint: z.string().describe('Two or three English keywords for a stock photo search (e.g., "grilled salmon").'),
   imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
-  type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']).describe('The type of meal.'),
+  type: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']).describe('The type of meal.'),
   recipe: z.string().optional(),
 });
 
@@ -372,7 +392,7 @@ export type SuggestRecipesFromIngredientsOutput = z.infer<typeof SuggestRecipesF
 // Chat-based meal planning
 const MealPlanItemSchema = z.object({
   name: z.string(),
-  type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']),
+  type: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']),
   calories: z.number(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
 });
@@ -395,7 +415,7 @@ export const SingleMealSuggestionSchema = z.object({
   name: z.string().describe("Le nom du repas."),
   calories: z.number().describe("Nombre de calories estimé."),
   cookingTime: z.string().describe("Temps de cuisson estimé (ex: '20 min')."),
-  type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']).describe("Le type de repas."),
+  type: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']).describe("Le type de repas."),
   imageHint: z.string().describe("Deux ou trois mots-clés pour une recherche d'image (ex: 'salade saine')."),
   imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
   recipe: z.string().optional().describe("La recette détaillée du plat au format Markdown."),
@@ -469,7 +489,7 @@ export type SuggestDayPlanInput = z.infer<typeof SuggestDayPlanInputSchema>;
 
 export const DayPlanMealSchema = z.object({
   name: z.string(),
-  type: z.enum(['breakfast', 'lunch', 'dinner']),
+  type: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']),
   calories: z.number(),
   cookedBy: z.string().optional(),
   imageUrl: z.string().optional().nullable().transform(val => (val === "" ? undefined : val)),
@@ -507,3 +527,16 @@ export const RecommendedDishSchema = DishSchema.extend({
 
 export const SuggestRecommendedDishesOutputSchema = z.array(RecommendedDishSchema);
 export type SuggestRecommendedDishesOutput = z.infer<typeof SuggestRecommendedDishesOutputSchema>;
+
+// explain-calorie-goal
+export const ExplainCalorieGoalInputSchema = z.object({
+  targetCalories: z.number().describe("The user's defined daily calorie target. If family, this should be the total."),
+  eatersCount: z.number().optional().describe("Number of people the meals are cooked for."),
+  personality: AIPersonalitySchema.optional(),
+});
+export type ExplainCalorieGoalInput = z.infer<typeof ExplainCalorieGoalInputSchema>;
+
+export const ExplainCalorieGoalOutputSchema = z.object({
+  explanation: z.string().describe("A friendly and concrete explanation of what the calorie target represents in terms of meals."),
+});
+export type ExplainCalorieGoalOutput = z.infer<typeof ExplainCalorieGoalOutputSchema>;

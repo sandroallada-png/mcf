@@ -204,7 +204,11 @@ export default function SettingsPage() {
     };
 
     const handleFieldChange = (field: keyof UserProfileType, value: string) => {
-        setPersonality(prev => ({ ...prev, [field]: value }));
+        let finalValue: any = value;
+        if (['age', 'weight', 'height', 'targetCalories', 'targetMeals'].includes(field)) {
+            finalValue = value === '' ? undefined : Number(value);
+        }
+        setPersonality(prev => ({ ...prev, [field]: finalValue }));
     };
 
     const handleSaveAISettings = async () => {
@@ -490,6 +494,116 @@ export default function SettingsPage() {
                                         onThemeChange={handleSaveAppearance}
                                     />
                                 )}
+                            </div>
+                        </section>
+
+                        {/* PHYSICAL PROFILE SECTION */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <Target className="h-4 w-4 text-muted-foreground" />
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profil Physique & Objectifs</h2>
+                            </div>
+
+                            <div className="max-w-2xl bg-accent/5 p-6 rounded-lg border border-dashed space-y-8">
+                                <p className="text-xs text-muted-foreground italic">Ces informations permettent à notre outil (MyFlex) de calculer vos besoins nutritionnels précis.</p>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Âge</Label>
+                                        <Input
+                                            type="number"
+                                            value={personality?.age || ''}
+                                            onChange={(e) => handleFieldChange('age', e.target.value)}
+                                            placeholder="Ex: 25"
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Sexe</Label>
+                                        <Select value={personality?.gender || ''} onValueChange={(v) => handleFieldChange('gender', v)}>
+                                            <SelectTrigger className="h-9 text-xs">
+                                                <SelectValue placeholder="Choisir" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="male">Homme</SelectItem>
+                                                <SelectItem value="female">Femme</SelectItem>
+                                                <SelectItem value="other">Autre</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Poids (kg)</Label>
+                                        <Input
+                                            type="number"
+                                            value={personality?.weight || ''}
+                                            onChange={(e) => handleFieldChange('weight', e.target.value)}
+                                            placeholder="70"
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Taille (cm)</Label>
+                                        <Input
+                                            type="number"
+                                            value={personality?.height || ''}
+                                            onChange={(e) => handleFieldChange('height', e.target.value)}
+                                            placeholder="175"
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Niveau d'activité</Label>
+                                    <Select value={personality?.activityLevel || ''} onValueChange={(v) => handleFieldChange('activityLevel', v)}>
+                                        <SelectTrigger className="h-9 text-xs">
+                                            <SelectValue placeholder="Votre activité quotidienne" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sedentary">Sédentaire (Bureau, peu de sport)</SelectItem>
+                                            <SelectItem value="light">Légèrement actif (1-2 fois/semaine)</SelectItem>
+                                            <SelectItem value="moderate">Modérément actif (3-5 fois/semaine)</SelectItem>
+                                            <SelectItem value="active">Très actif (Sport quotidien)</SelectItem>
+                                            <SelectItem value="very_active">Extrêmement actif (Métier physique + sport)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <Label className="text-[10px] uppercase font-black">Objectif Calories</Label>
+                                            <span className="text-[10px] font-bold text-primary">{personality?.targetCalories || 2000} kcal/jour</span>
+                                        </div>
+                                        <Input
+                                            type="number"
+                                            value={personality?.targetCalories || ''}
+                                            onChange={(e) => handleFieldChange('targetCalories', e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <Label className="text-[10px] uppercase font-black">Nombre de repas</Label>
+                                            <span className="text-[10px] font-bold text-primary">{personality?.targetMeals || 4} / jour</span>
+                                        </div>
+                                        <Input
+                                            type="number"
+                                            value={personality?.targetMeals || ''}
+                                            onChange={(e) => handleFieldChange('targetMeals', e.target.value)}
+                                            className="h-9 text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={handleSaveAISettings}
+                                    size="sm"
+                                    disabled={isSaving}
+                                    className="h-9 px-6 text-xs font-bold rounded shadow-lg bg-primary hover:bg-primary/90 transition-all active:scale-95"
+                                >
+                                    Mettre à jour mon profil santé
+                                </Button>
                             </div>
                         </section>
 

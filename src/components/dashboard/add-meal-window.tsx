@@ -35,16 +35,15 @@ import { cn } from '@/lib/utils';
 import { ImageZoomLightbox } from '../shared/image-zoom-lightbox';
 
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, limit, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, deleteDoc, Timestamp, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { getSingleMealSuggestionAction } from '@/app/actions';
 import type { Dish, Meal, SingleMealSuggestion } from '@/lib/types';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { Timestamp } from 'firebase/firestore';
 
 // Schema for the form
 const mealFormSchema = z.object({
     name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères.'),
-    type: z.enum(['breakfast', 'lunch', 'dinner', 'dessert']),
+    type: z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']),
     cookedBy: z.string().optional(),
     date: z.date().optional(),
     calories: z.number().optional(),
@@ -63,6 +62,14 @@ interface AddMealWindowProps {
     defaultType?: Meal['type'];
 }
 
+const mealTypeTranslations: Record<string, string> = {
+    breakfast: 'Petit-déjeuner',
+    lunch: 'Déjeuner',
+    dinner: 'Dîner',
+    snack: 'Dessert / Snack',
+    dessert: 'Dessert / Snack',
+};
+
 export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userId, chefId, defaultType }: AddMealWindowProps) {
     const { firestore, user } = useFirebase();
     const { toast } = useToast();
@@ -76,7 +83,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
 
     // Fetch dishes for search
     const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
-    const dishesQuery = useMemoFirebase(() => query(dishesCollectionRef, orderBy('name'), limit(50)), [dishesCollectionRef]);
+    const dishesQuery = useMemoFirebase(() => query(dishesCollectionRef, where('isVerified', '==', true), orderBy('name'), limit(50)), [dishesCollectionRef]);
     const { data: dishes, isLoading: isLoadingDishes } = useCollection<Dish>(dishesQuery);
 
     const handleSendMissingMeal = async () => {
@@ -104,16 +111,11 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
         }
     };
 
-    const getDefaultMealType = (): 'breakfast' | 'lunch' | 'dinner' | 'dessert' => {
+    const getDefaultMealType = (): Meal['type'] => {
         const hour = new Date().getHours();
-        // Si on est le matin (5h-11h), on suggère le Déjeuner
         if (hour >= 5 && hour < 11) return 'lunch';
-        // Si on est le midi (11h-15h), on suggère le Dîner (ou Dessert/Goûter ?)
-        // Le client dit "on ne peut pas être à 6h et programmer pour 6h", donc on anticipe.
         if (hour >= 11 && hour < 17) return 'dinner';
-        // Le soir, on suggère le Petit-déjeuner du lendemain
         if (hour >= 17 && hour < 22) return 'breakfast';
-        // Fin de soirée / Nuit, on suggère le Petit-déjeuner ou Déjeuner
         return 'breakfast';
     };
 
@@ -138,14 +140,14 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const filteredDishes = useMemo(() => {
         if (!dishes || !searchTerm) return [];
         const lowerTerm = searchTerm.toLowerCase();
-        return dishes.filter(dish => dish.name.toLowerCase().includes(lowerTerm)).slice(0, 5);
+        return dishes.filter(dish => dish.isVerified && dish.name.toLowerCase().includes(lowerTerm)).slice(0, 5);
     }, [dishes, searchTerm]);
 
     const handleSelectDish = (dish: Dish) => {
         setSelectedDish(dish);
         form.setValue('name', dish.name);
-        form.setValue('imageUrl', dish.imageUrl);
-        setSelectedMealInfo({ name: dish.name, imageUrl: dish.imageUrl });
+        form.setValue('imageUrl', dish.imageUrl || undefined);
+        setSelectedMealInfo({ name: dish.name, imageUrl: dish.imageUrl || undefined });
         setSearchTerm('');
     };
 
@@ -205,7 +207,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                 const hasConflict = await checkForConflict(plannedDate, values.type);
                 if (hasConflict) {
                     setPendingSubmission({ values, type: 'later' });
-                    setConflictMessage(`Vous avez déjà un repas de type "${values.type === 'breakfast' ? 'Petit-déjeuner' : values.type === 'lunch' ? 'Déjeuner' : values.type === 'dinner' ? 'Dîner' : 'Dessert'}" programmé pour cette date. Voulez-vous le remplacer ?`);
+                    setConflictMessage(`Vous avez déjà un repas de type "${values.type === 'breakfast' ? 'Petit-déjeuner' : values.type === 'lunch' ? 'Déjeuner' : values.type === 'dinner' ? 'Dîner' : 'Dessert / Collation'}" programmé pour cette date. Voulez-vous le remplacer ?`);
                     setConflictDialogOpen(true);
                     setIsSubmitting(false);
                     return;
@@ -240,107 +242,60 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
 
     const procceedSubmission = async (values: MealFormValues, tab: 'today' | 'later') => {
         try {
-            if (tab === 'later' && values.date) {
-                const effectiveId = chefId || userId;
-                if (!effectiveId) throw new Error("User ID missing");
+            setIsSubmitting(true);
+            const effectiveId = chefId || userId;
+            if (!effectiveId) throw new Error("User ID missing");
 
-                // Re-query for conflict to delete it (simple overwrite)
-                const startOfDay = new Date(plannedDate);
-                startOfDay.setHours(0, 0, 0, 0);
-                const endOfDay = new Date(plannedDate);
-                endOfDay.setHours(23, 59, 59, 999);
+            const targetDate = tab === 'later' ? (values.date || new Date()) : new Date();
+            const startOfDay = new Date(targetDate);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(targetDate);
+            endOfDay.setHours(23, 59, 59, 999);
 
-                // Delete from cooking
+            // 1. Clean existing cooking/foodLogs for same type on that day (Strict uniqueness rule)
+            const qCooking = query(collection(firestore, 'users', effectiveId, 'cooking'),
+                where('plannedFor', '>=', Timestamp.fromDate(startOfDay)),
+                where('plannedFor', '<=', Timestamp.fromDate(endOfDay)),
+                where('type', '==', values.type)
+            );
+            const qLogs = query(collection(firestore, 'users', effectiveId, 'foodLogs'),
+                where('date', '>=', Timestamp.fromDate(startOfDay)),
+                where('date', '<=', Timestamp.fromDate(endOfDay)),
+                where('type', '==', values.type)
+            );
+
+            const [cookingSnap, logsSnap] = await Promise.all([getDocs(qCooking), getDocs(qLogs)]);
+            const batch = writeBatch(firestore);
+            cookingSnap.forEach(d => batch.delete(d.ref));
+            logsSnap.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+
+            if (tab === 'later') {
+                // Save to cooking
                 const cookingRef = collection(firestore, 'users', effectiveId, 'cooking');
-                const qCooking = query(
-                    cookingRef,
-                    where('plannedFor', '>=', Timestamp.fromDate(startOfDay)),
-                    where('plannedFor', '<=', Timestamp.fromDate(endOfDay)),
-                    where('type', '==', values.type)
-                );
-
-                // Delete from foodLogs
-                const foodLogsRef = collection(firestore, 'users', effectiveId, 'foodLogs');
-                const qLogs = query(
-                    foodLogsRef,
-                    where('date', '>=', Timestamp.fromDate(startOfDay)),
-                    where('date', '<=', Timestamp.fromDate(endOfDay)),
-                    where('type', '==', values.type)
-                );
-
-                const [cookingSnap, logsSnap] = await Promise.all([
-                    getDocs(qCooking),
-                    getDocs(qLogs)
-                ]);
-
-                const deletePromises: Promise<void>[] = [];
-                cookingSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
-                logsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
-                await Promise.all(deletePromises);
-
-
-                const cookingData = {
+                await addDoc(cookingRef, {
                     userId: userId,
                     name: values.name,
+                    calories: values.calories || 0,
                     type: values.type,
-                    calories: 0,
-                    cookingTime: 'Unknown',
+                    plannedFor: Timestamp.fromDate(targetDate),
+                    cookedBy: values.cookedBy,
+                    createdAt: serverTimestamp(),
+                    isDone: false,
                     imageHint: values.name,
-                    imageUrl: values.imageUrl || '',
-                    createdAt: Timestamp.now(),
-                    plannedFor: Timestamp.fromDate(plannedDate),
-                    recipe: selectedDish?.recipe,
-                };
-
-                await addDocumentNonBlocking(collection(firestore, 'users', effectiveId, 'cooking'), cookingData);
-                toast({ title: "Repas programmé", description: `Le repas ${values.name} a été programmé pour le ${format(plannedDate, 'dd/MM/yyyy')}.` });
+                    imageUrl: values.imageUrl || null,
+                    cookingTime: "15 min"
+                });
+                toast({ title: "📅 Repas programmé !", description: `Votre ${mealTypeTranslations[values.type]} est prévu pour le ${targetDate.toLocaleDateString()}.` });
                 onClose();
-
             } else {
-                // Today
-                const effectiveId = chefId || userId;
-                if (effectiveId) {
-                    const todayDate = new Date();
-                    const startOfDay = new Date(todayDate);
-                    startOfDay.setHours(0, 0, 0, 0);
-                    const endOfDay = new Date(todayDate);
-                    endOfDay.setHours(23, 59, 59, 999);
-
-                    // Delete from cooking
-                    const cookingRef = collection(firestore, 'users', effectiveId, 'cooking');
-                    const qCooking = query(
-                        cookingRef,
-                        where('plannedFor', '>=', Timestamp.fromDate(startOfDay)),
-                        where('plannedFor', '<=', Timestamp.fromDate(endOfDay)),
-                        where('type', '==', values.type)
-                    );
-
-                    // Delete from foodLogs
-                    const foodLogsRef = collection(firestore, 'users', effectiveId, 'foodLogs');
-                    const qLogs = query(
-                        foodLogsRef,
-                        where('date', '>=', Timestamp.fromDate(startOfDay)),
-                        where('date', '<=', Timestamp.fromDate(endOfDay)),
-                        where('type', '==', values.type)
-                    );
-
-                    const [cookingSnap, logsSnap] = await Promise.all([
-                        getDocs(qCooking),
-                        getDocs(qLogs)
-                    ]);
-
-                    const deletePromises: Promise<void>[] = [];
-                    cookingSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
-                    logsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
-                    await Promise.all(deletePromises);
-                }
-
+                // Save to foodLogs via onSubmit
                 await onSubmit({
                     name: values.name,
                     type: values.type,
+                    calories: values.calories || 0,
                     cookedBy: values.cookedBy,
-                    calories: values.calories,
-                    imageUrl: values.imageUrl,
+                    imageUrl: values.imageUrl || undefined,
                 });
                 onClose();
             }
@@ -420,8 +375,8 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
         if (suggestedAlternative) {
             form.setValue('name', suggestedAlternative.name);
             form.setValue('type', suggestedAlternative.type as any);
-            form.setValue('imageUrl', suggestedAlternative.imageUrl);
-            setSelectedMealInfo({ name: suggestedAlternative.name, imageUrl: suggestedAlternative.imageUrl });
+            form.setValue('imageUrl', suggestedAlternative.imageUrl || undefined);
+            setSelectedMealInfo({ name: suggestedAlternative.name, imageUrl: suggestedAlternative.imageUrl || undefined });
             setSearchTerm('');
             toast({ title: "Alternative sélectionnée", description: "Bon appétit !" });
             setSuggestedAlternative(null);
@@ -429,7 +384,11 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     };
 
     return (
-        <DialogContent className="sm:max-w-[600px] max-h-[95vh] h-full sm:h-[700px] gap-0 p-0 overflow-hidden rounded-2xl border-2 flex flex-col">
+        <DialogContent
+            className="sm:max-w-[600px] max-h-[95vh] h-full sm:h-[700px] gap-0 p-0 overflow-hidden rounded-2xl border-2 flex flex-col"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+        >
             <DialogHeader className="px-6 pt-6 pb-4 bg-muted/10 border-b">
                 <DialogTitle className="text-2xl font-black flex items-center gap-2">
                     🍽️ Ajouter ou Planifier un repas
@@ -784,7 +743,8 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                     <SelectItem value="breakfast">Petit-déjeuner</SelectItem>
                                                     <SelectItem value="lunch">Déjeuner</SelectItem>
                                                     <SelectItem value="dinner">Dîner</SelectItem>
-                                                    <SelectItem value="dessert">Dessert</SelectItem>
+                                                    <SelectItem value="dessert">Dessert / Snack</SelectItem>
+                                                    <SelectItem value="snack">Goûter / Collation</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -874,7 +834,6 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                     </Form>
                 </div>
             </Tabs>
-
             {/* Conflict Confirmation Dialog */}
             {conflictDialogOpen && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

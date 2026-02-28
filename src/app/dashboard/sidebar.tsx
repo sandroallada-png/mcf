@@ -14,16 +14,16 @@ import type { Meal } from '@/lib/types';
 import { getTipsAction } from '@/app/actions';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Logo } from '../icons';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
+import { Logo } from '@/components/icons';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { useUser, useFirebase } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
-import { ButtonWithLoading } from '../ui/button-with-loading';
-import { Progress } from '../ui/progress';
-import { SidebarContent } from '../ui/sidebar';
+import { ButtonWithLoading } from '@/components/ui/button-with-loading';
+import { Progress } from '@/components/ui/progress';
+import { SidebarContent } from '@/components/ui/sidebar';
 
 export const mainNavLinks = [
     { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="h-5 w-5" /> },

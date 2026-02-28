@@ -56,10 +56,7 @@ export default function AdminAtelierPage() {
     const { data: books, isLoading: isLoadingBooks } = useCollection<AtelierBook>(atelierQuery);
 
     const handleEdit = (book: AtelierBook) => {
-        setEditingBook({
-            ...book,
-            isLocked: (book as any).isLocked || false
-        });
+        setEditingBook({ ...book } as any);
         setFormOpen(true);
     };
 

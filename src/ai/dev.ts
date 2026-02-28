@@ -35,7 +35,7 @@ const flows = Object.values({
   ...suggestSingleMeal,
   ...suggestDayPlan,
   ...generateReminderMessage,
-}).filter(f => f.name && f.run);
+}).filter((f: any) => f.name && f.run);
 
 export default defineDevServer(
   (config: DevServerConfig) =>

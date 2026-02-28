@@ -35,6 +35,9 @@ import {
     suggestDayPlan
 } from '@/ai/flows/suggest-day-plan';
 import {
+    generateReminderMessage,
+} from '@/ai/flows/generate-reminder-message';
+import {
     generateShoppingList
 } from '@/ai/flows/generate-shopping-list';
 import {
@@ -65,6 +68,8 @@ import type {
     GenerateShoppingListOutput,
     SuggestRecommendedDishesInput,
     SuggestRecommendedDishesOutput,
+    ExplainCalorieGoalInput,
+    ExplainCalorieGoalOutput,
 } from '@/lib/types';
 
 
@@ -269,5 +274,18 @@ export async function getInviteAction(inviteId: string) {
     } catch (e: any) {
         console.error(e);
         return { invite: null, error: 'Une erreur est survenue.' };
+    }
+}
+
+export async function explainCalorieGoalAction(
+    input: ExplainCalorieGoalInput
+): Promise<{ explanation: string | null; error: string | null }> {
+    try {
+        const { explainCalorieGoal } = await import('@/ai/flows/explain-calorie-goal');
+        const result = await explainCalorieGoal(input);
+        return { explanation: result.explanation, error: null };
+    } catch (e: any) {
+        console.error('Error in explainCalorieGoalAction:', e);
+        return { explanation: null, error: e.message || 'Failed to explain calorie goal.' };
     }
 }

@@ -59,13 +59,13 @@ export async function suggestDayPlan(
         // For simplicity, this version randomly selects dishes.
         // A more advanced version could use an AI call to select complementary dishes.
         for (const mealType of mealTypes) {
-            let relevantDishes = allDishes.filter(d => (d.type || '').toLowerCase() === mealType);
+            let relevantDishes = allDishes.filter(d => (d.momentSuggest || d.type || '').toLowerCase() === mealType);
 
             if (relevantDishes.length === 0) {
                 if (mealType === 'breakfast') {
                     relevantDishes = allDishes.filter(d => (d.category || '').toLowerCase() === 'healthy');
                 } else {
-                    relevantDishes = allDishes.filter(d => ['lunch', 'dinner', 'plat quotidien', 'plat unique', '', undefined].includes((d.type || '').toLowerCase()));
+                    relevantDishes = allDishes.filter(d => ['lunch', 'dinner', 'plat quotidien', 'plat unique', '', undefined].includes((d.momentSuggest || d.type || '').toLowerCase()));
                 }
             }
 

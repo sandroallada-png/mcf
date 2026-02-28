@@ -15,8 +15,8 @@ import { getSuggestionsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Lightbulb, Loader2, Sparkles, UtensilsCrossed } from 'lucide-react';
 import type { Meal } from '@/lib/types';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 interface SuggestionsDialogProps {
   meal: Meal;
@@ -31,7 +31,7 @@ export function SuggestionsDialog({
   open,
   onOpenChange,
 }: SuggestionsDialogProps) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 

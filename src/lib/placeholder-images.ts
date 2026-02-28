@@ -9,9 +9,7 @@ export type ImagePlaceholder = {
   price?: string;
   category?: 'fresh' | 'spices' | 'prepared' | 'restaurant' | 'recipe' | 'guide';
 };
-
-export const placeholderImages: ImagePlaceholder[] = data.placeholderImages;
-
+export const placeholderImages: ImagePlaceholder[] = data.placeholderImages as ImagePlaceholder[];
     
 
     

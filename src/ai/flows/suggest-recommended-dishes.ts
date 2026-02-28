@@ -70,15 +70,15 @@ export async function suggestRecommendedDishes(
 
             // 2. Behavioral Influence (Virtual Profile)
             // Score from user's history
-            score += (vp.originScores[dishOrigin] || 0) * 2;
-            score += (vp.categoryScores[dishCategory] || 0) * 1.5;
+            score += ((vp.originScores as any)[dishOrigin] || 0) * 2;
+            score += ((vp.categoryScores as any)[dishCategory] || 0) * 1.5;
 
             // 3. Variety / Novelty
             // Small random boost to avoid stagnation
             score += Math.random() * 5;
 
             // 4. Time of Day Filter (Soft)
-            if (input.timeOfDay && (dish.type || '').toLowerCase() === input.timeOfDay.toLowerCase()) {
+            if (input.timeOfDay && (dish.momentSuggest || dish.type || '').toLowerCase() === input.timeOfDay.toLowerCase()) {
                 score += 5;
             }
 
@@ -100,7 +100,7 @@ PROFIL UTILISATEUR :
 - Préférences : ${userProfile.preferences || 'Variées'}
 
 CANDIDATS :
-${candidates.map((c, i) => `${i + 1}. ${c.name} (Origine: ${c.origin}, Catégorie: ${c.category})`).join('\n')}
+${candidates.map((c, i) => `${i + 1}. ${c.name} (Origine: ${c.origin}, Catégorie: ${c.category}, Type/Diététique: ${c.type || 'N/A'}, Moment conseillé: ${c.momentSuggest || 'N/A'})`).join('\n')}
 
 INSTRUCTIONS :
 1. Sélectionne les ${input.count} plats les plus pertinents. 

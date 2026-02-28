@@ -23,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn, formatUserIdentifier } from "@/lib/utils";
 
-import { UserProfile, UserData } from "@/lib/types";
+import { UserProfile } from "@/lib/types";
 
 export default function AdminUsersPage() {
     const { user, isUserLoading } = useUser();
@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
     const { data: allMeals } = useCollection<any>(allMealsCollectionRef);
 
     const usersCollectionRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-    const { data: users, isLoading: isLoadingUsers } = useCollection<UserData>(usersCollectionRef);
+    const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersCollectionRef);
 
     const filteredUsers = useMemo(() => {
         if (!users) return [];

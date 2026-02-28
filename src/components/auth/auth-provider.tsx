@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const isAdmin = u.email === ADMIN_EMAIL_LOCAL;
       const userDocRef = doc(firestore, 'users', u.uid);
       const userDocSnap = await getDoc(userDocRef);
-      let data;
+      let data: any;
 
       if (!userDocSnap.exists()) {
         const newData = {

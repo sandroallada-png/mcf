@@ -33,7 +33,7 @@ export function ProgressChart({ meals = [] }: ProgressChartProps) {
       { type: 'Petit-déj.', calories: 0 },
       { type: 'Déjeuner', calories: 0 },
       { type: 'Dîner', calories: 0 },
-      { type: 'Desserts', calories: 0 },
+      { type: 'Desserts / Collations', calories: 0 },
     ];
 
     if (!meals) {
@@ -53,7 +53,7 @@ export function ProgressChart({ meals = [] }: ProgressChartProps) {
           item = data.find(d => d.type === 'Dîner');
           break;
         case 'dessert':
-          item = data.find(d => d.type === 'Desserts');
+          item = data.find(d => d.type === 'Desserts / Collations');
           break;
       }
       if (item) {

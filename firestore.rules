@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // --- FONCTIONS DE BASE ---
     function isAdmin() {
       return request.auth != null && request.auth.token.email == 'maxyculture11@gmail.com';
     }
@@ -14,124 +15,96 @@ service cloud.firestore {
       return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.chefId == chefId;
     }
 
-    // Users: Profiles and their sub-collections (foodLogs, goals, notifications, etc.)
+    // --- UTILISATEURS & PROFILS ---
     match /users/{userId} {
-      // Allow listing for phone-based login and household member lookups
-      allow list: if true;
-      allow get: if true;
+      // Autoriser la consultation d'un profil par tout utilisateur authentifié (pour les invitations)
+      allow get: if request.auth != null;
+      // Listage autorisé pour les membres authentifiés pour les besoins du foyer
+      allow list: if request.auth != null;
       allow create: if isUser(userId);
       allow update: if isUser(userId) || isAdmin();
       allow delete: if isAdmin();
 
-      // For all sub-collections: 
-      // 1. The user themself
-      // 2. Admin
-      // 3. Members of the household (if userId is their chef)
+      // Sous-collections (foodLogs, goals, cooking, pendingCookings, notifications, favoriteRecipes, analytics, etc.)
       match /{allPaths=**} {
-        allow read: if isUser(userId) || isAdmin() || isFamilyMember(userId);
-        allow write: if isUser(userId) || isAdmin() || isFamilyMember(userId);
+        allow read, write: if isUser(userId) || isAdmin() || isFamilyMember(userId);
       }
     }
 
+    // --- CONTENU PUBLIC (LECTURE) ---
+    // On regroupe les contenus lisibles par tous
     
-    // Promotions: Lecture publique, écriture réservée à l'admin.
-    match /promotions/{promotionId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    match /promotions {
-      allow list: if true;
-    }
-    
-    // Carousel Items: Lecture publique, écriture réservée à l'admin.
-    match /carouselItems/{itemId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /carouselItems {
-      allow list: if true;
-    }
-    
-    // Publications: Lecture publique, soumission par les utilisateurs connectés, modération par l'admin.
-    match /publications/{publicationId} {
-      // Tout le monde peut lire les documents. Le filtrage (ex: status == 'approved') se fait dans la requête.
-      allow get, list: if true;
-      
-      // Seuls les utilisateurs connectés peuvent créer (soumettre).
-      allow create: if request.auth != null;
-      
-      // Seul l'admin peut modifier (approuver/rejeter) ou supprimer.
-      allow update, delete: if isAdmin();
-    }
-    
-    // Dishes: Lecture publique, écriture réservée à l'admin.
     match /dishes/{dishId} {
       allow read: if true;
       allow write: if isAdmin();
     }
-    
     match /dishes {
-        allow list: if true;
+      allow list: if true;
     }
 
-    // Feedbacks: Écriture pour les utilisateurs connectés, lecture publique.
-    match /feedbacks/{feedbackId} {
-      allow create: if request.auth != null;
+    match /promotions/{promotionId} {
       allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /promotions {
+      allow list: if true;
+    }
+    
+    match /carouselItems/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /carouselItems {
+      allow list: if true;
+    }
+    
+    match /publications/{publicationId} {
+      allow read, list: if true;
+      allow create: if request.auth != null;
       allow update, delete: if isAdmin();
     }
-    
-    match /feedbacks {
-        allow list: if true;
-    }
-    
-    // Invites: Root level collection for household invitations
-    match /invites/{inviteId} {
-      allow read: if true; // Needs to be readable for pre-filling during signup
-      allow create: if request.auth != null && request.resource.data.chefId == request.auth.uid;
-      allow update: if request.auth != null; // Allow members to mark as 'accepted'
-      allow delete: if request.auth != null && (resource.data.chefId == request.auth.uid || isAdmin());
-    }
 
-    // User Contributions: Écriture pour les utilisateurs connectés, lecture pour l'admin.
-    match /userContributions/{contributionId} {
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      allow read, list, update, delete: if isAdmin();
-    }
-
-    // Atelier Books: Lecture publique, écriture réservée à l'admin.
     match /atelierBooks/{bookId} {
       allow read, list: if true;
       allow write: if isAdmin();
     }
 
-    // Root Notifications: Used by admin for tracking
-    match /notifications/{notificationId} {
-      allow read, write: if isAdmin();
+    // --- INTERACTIONS UTILISATEURS ---
+
+    match /feedbacks/{feedbackId} {
+      allow read, list: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
-    match /notifications {
-      allow list: if isAdmin();
+    
+    match /invites/{inviteId} {
+      // Lecture obligatoire pour vérifier le chefId avant acceptation
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.chefId == request.auth.uid;
+      allow update: if request.auth != null; 
+      allow delete: if request.auth != null && (resource.data.chefId == request.auth.uid || isAdmin());
     }
 
-    // Root Messages: Used by admin for support
-    match /messages/{messageId} {
-      allow read, write: if isAdmin();
-    }
-    match /messages {
-      allow list: if isAdmin();
+    match /userContributions/{contributionId} {
+      allow create: if request.auth != null && (request.resource.data.authorId == request.auth.uid || isAdmin());
+      // L'auteur peut voir sa contribution, l'admin peut tout voir/gérer
+      allow read, get, list: if isAdmin() || (request.auth != null && resource.data.authorId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
-    // Missing Meals: Users submit, Admin reads/manages
     match /missingMeals/{mealId} {
       allow create: if request.auth != null;
-      allow read, write: if isAdmin();
+      allow read, list, write: if isAdmin();
     }
-    match /missingMeals {
-      allow list: if isAdmin();
-    }
+
+    // --- ADMINISTRATION ---
+
+    match /notifications/{notificationId} { allow read, write: if isAdmin(); }
+    match /messages/{messageId} { allow read, write: if isAdmin(); }
+    
+    // Explicit list for admin collections
+    match /notifications { allow list: if isAdmin(); }
+    match /messages { allow list: if isAdmin(); }
+    match /missingMeals { allow list: if isAdmin(); }
   }
 }
-
-

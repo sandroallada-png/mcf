@@ -62,7 +62,7 @@ export async function suggestSingleMeal(
     }
 
     // Step 1: Ask the AI to pick the *name* of the best dish.
-    const dishListForAI = allDishes.map(d => `- ${d.name} (Catégorie: ${d.category}, Type: ${d.type || 'N/A'})`).join('\n');
+    const dishListForAI = allDishes.map(d => `- ${d.name} (Catégorie: ${d.category}, Type/Régime: ${d.type || 'N/A'}, Moment conseillé: ${d.momentSuggest || 'N/A'})`).join('\n');
 
     let systemPrompt = `You are an expert nutritionist's assistant. Your ONLY task is to choose the most suitable dish from the following list for a user.
 
@@ -118,7 +118,7 @@ Your response MUST be a valid JSON object with the following structure:
     if (!chosenDish) {
       console.warn(`AI suggested an invalid dish: "${chosenDishName}". Falling back to random selection.`);
       const mealType = mapTimeOfDayToMealType(input.timeOfDay);
-      let relevantDishes = allDishes.filter(d => (d.type || '').toLowerCase() === mealType);
+      let relevantDishes = allDishes.filter(d => (d.momentSuggest || d.type || '').toLowerCase() === mealType);
       if (relevantDishes.length === 0) {
         relevantDishes = allDishes; // Fallback to all if no type matches
       }

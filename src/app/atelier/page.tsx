@@ -332,7 +332,7 @@ export default function AtelierPage() {
                     sidebarProps={sidebarProps}
                     className="border-b-0 px-1 md:px-2 dark:bg-[#0d0d0d] bg-background backdrop-blur-none"
                 />
-                <main className="flex-1 w-full pb-20">
+                <main className="flex-1 w-full pb-32 md:pb-20">
                     {/* Hero Section - Premium Chef Style (Locked to dark theme) */}
                     <div className="relative w-full overflow-hidden bg-[#0d0d0d] pt-6 md:pt-10 pb-8 md:pb-12 px-4 md:px-6">
                         {/* Radial Glow */}
@@ -380,7 +380,7 @@ export default function AtelierPage() {
                                 { id: 'favorites', label: 'Mes Favoris' },
                                 { id: 'entrée', label: 'Entrées' },
                                 { id: 'plat', label: 'Plats' },
-                                { id: 'dessert', label: 'Desserts' },
+                                { id: 'dessert', label: 'Desserts / Collations' },
                                 { id: 'technique', label: 'Techniques' },
                             ].map((cat) => (
                                 <Button

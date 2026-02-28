@@ -29,7 +29,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DishForm } from '@/components/admin/dish-form';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import type { Dish, UserContribution } from '@/lib/types';
+import type { Dish, UserContribution, MissingMeal } from '@/lib/types';
 import {
     AlertDialog,
     AlertDialogAction,

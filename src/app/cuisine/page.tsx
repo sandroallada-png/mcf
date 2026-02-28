@@ -31,6 +31,8 @@ import { format, isPast, startOfToday, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { WhoIsCooking } from '@/components/cuisine/who-is-cooking';
 import { useReadOnly } from '@/contexts/read-only-context';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PageWrapper } from '@/components/shared/page-wrapper';
 
 type TimeOfDay = 'matin' | 'midi' | 'soir' | 'dessert';
 
@@ -364,7 +366,7 @@ export default function CuisinePage() {
         if (!user || !userProfileRef) return;
 
         const XP_PER_LEVEL = 500;
-        const xpGained = meal.xpGained || 10;
+        const xpGained = (meal as any).xpGained || 10;
 
         const relatedDish = dishes?.find(d => d.name === meal.name);
         if (user) {
@@ -467,8 +469,19 @@ export default function CuisinePage() {
     const handleCookingItemDone = (item: Cooking) => {
         // Animate card out then MARK AS DONE in Firestore to move it to Archives
         setDismissingCookingId(item.id);
-        setTimeout(() => {
+        setTimeout(async () => {
             if (effectiveChefId) {
+                // Règle Ultime: Quand un plat est fait, on l'ajoute au journal alimentaitre (foodLogs)
+                const mealsRef = collection(firestore, 'users', effectiveChefId, 'foodLogs');
+                addDocumentNonBlocking(mealsRef, {
+                    userId: user?.uid,
+                    name: item.name,
+                    calories: item.calories,
+                    type: item.type,
+                    imageUrl: item.imageUrl || '',
+                    date: Timestamp.now()
+                });
+
                 const ref = doc(firestore, 'users', effectiveChefId, 'cooking', item.id);
                 updateDoc(ref, { isDone: true }).catch(console.error);
             }
@@ -644,8 +657,8 @@ export default function CuisinePage() {
                 trackInteractionAction(
                     user.uid,
                     meal.name,
-                    masterDish?.origin || meal.origin || 'Inconnue',
-                    masterDish?.category || meal.category || 'Inconnue',
+                    masterDish?.origin || (meal as any).origin || 'Inconnue',
+                    masterDish?.category || (meal as any).category || 'Inconnue',
                     'view' // Add to pending is a high interest view
                 );
             }
@@ -695,8 +708,8 @@ export default function CuisinePage() {
                 trackInteractionAction(
                     user.uid,
                     meal.name,
-                    masterDish?.origin || meal.origin || 'Inconnue',
-                    masterDish?.category || meal.category || 'Inconnue',
+                    masterDish?.origin || (meal as any).origin || 'Inconnue',
+                    masterDish?.category || (meal as any).category || 'Inconnue',
                     'cook_start'
                 );
             }
@@ -749,7 +762,7 @@ export default function CuisinePage() {
                     user={user}
                     sidebarProps={sidebarProps}
                 />
-                <main className="flex-1 flex flex-col overflow-y-auto bg-background">
+                <PageWrapper className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden w-full bg-background relative">
                     <Tabs value={activeTab} onValueChange={(value) => {
                         setSelectedCookingItem(null);
                         setActiveTab(value as TabValue);
@@ -757,7 +770,7 @@ export default function CuisinePage() {
                         <div className="max-w-6xl mx-auto w-full py-4 md:py-6 space-y-0">
 
                             {/* Header Section */}
-                            <div className="space-y-2 px-4 md:px-8 pb-4">
+                            <div className="space-y-2 px-4 md:px-8 pb-4 pt-20 md:pt-24">
                                 <div className="relative w-10 h-10 md:w-12 md:h-12 mb-2 select-none">
                                     <Image
                                         src={contextualImage}
@@ -774,42 +787,52 @@ export default function CuisinePage() {
                             </div>
                         </div>
 
-                        {/* ── STICKY TABS BAR — full width, horizontal scroll ── */}
-                        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm">
-                            <div className="relative">
-                                <div className="overflow-x-auto scrollbar-hide flex items-center gap-2 px-4 md:px-8 py-2">
-                                    {/* Tabs */}
-                                    <TabsList className="h-8 p-0.5 bg-accent/50 rounded-md border border-muted/20 shrink-0 flex min-w-0">
-                                        {Object.entries(tabDetails).map(([value, { title, icon }]) => (
-                                            <TabsTrigger
-                                                key={value}
-                                                value={value}
-                                                className="h-7 px-2.5 md:px-3 rounded-sm font-semibold text-[10px] md:text-xs transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
-                                            >
-                                                <span className="mr-1 opacity-60">{icon}</span>
-                                                {title}
-                                            </TabsTrigger>
-                                        ))}
-                                    </TabsList>
-
-                                    {/* IA button — only on suggestions tab */}
-                                    {activeTab === 'suggestions' && (
-                                        <Button
-                                            onClick={() => isReadOnly ? triggerBlock() : handleGetSuggestion()}
-                                            disabled={isSuggesting}
-                                            className="h-8 px-3 text-[10px] md:text-xs font-bold rounded shadow-sm shrink-0"
-                                        >
-                                            {isSuggesting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
-                                            <span className="hidden sm:inline">Inspiration IA</span>
-                                            <span className="sm:hidden">IA</span>
-                                        </Button>
-                                    )}
+                        {/* ── PERMANENTLY STABLE FIXED TABS DOCK ── */}
+                        {/* Fixed below the h-14 header (top-14) to avoid overlapping the brand navigation */}
+                        <div className="fixed top-14 inset-x-0 z-[45] pointer-events-none transform-gpu">
+                            {/* Visual mask matching header backdrop offset to top-14 */}
+                            <div className="absolute inset-x-0 bottom-0 top-0 bg-background/80 backdrop-blur-xl border-b border-border/40 -z-10" />
+                            
+                            <div className="pointer-events-auto pt-4 pb-4 w-full flex justify-center px-4">
+                                <div className="bg-background/80 backdrop-blur-xl border border-border/40 shadow-2xl rounded-2xl p-1.5 flex items-center w-full sm:w-auto max-w-[95vw] relative transition-all shadow-primary/5">
+                                    <div className="overflow-x-auto scrollbar-hide flex items-center w-full overscroll-x-contain">
+                                        <TabsList className="h-9 bg-transparent border-none flex w-max flex-nowrap shrink-0 gap-1.5 px-0.5 items-center">
+                                            {Object.entries(tabDetails).map(([value, { title, icon }]) => (
+                                                <TabsTrigger
+                                                    key={value}
+                                                    value={value}
+                                                    className="h-8 px-4 rounded-xl font-bold text-[10px] md:text-xs transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg whitespace-nowrap shrink-0 flex items-center gap-1.5 active:scale-95"
+                                                >
+                                                    <span className="opacity-70">{icon}</span>
+                                                    {title}
+                                                </TabsTrigger>
+                                            ))}
+                                            
+                                            {activeTab === 'suggestions' && (
+                                                <div className="flex items-center pl-1 ml-1 border-l border-border/50 h-6 shrink-0">
+                                                    <Button
+                                                        onClick={() => isReadOnly ? triggerBlock() : handleGetSuggestion()}
+                                                        disabled={isSuggesting}
+                                                        size="sm"
+                                                        className="h-8 px-4 text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl shadow-md bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white active:scale-95 transition-all flex items-center gap-1.5 border-none"
+                                                    >
+                                                        {isSuggesting ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Sparkles className="h-3.5 w-3.5" />
+                                                        )}
+                                                        <span>Inspiration IA</span>
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </TabsList>
+                                    </div>
                                 </div>
-                                {/* Right fade hint */}
-                                <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-background/90 to-transparent" />
                             </div>
                         </div>
 
+                        {/* Layout Spacer: Replaces the space taken by the fixed dock in the document flow */}
+                        <div className="h-[76px] w-full shrink-0" />
                         {/* ── TAB CONTENT ── */}
                         <div className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-5 md:pt-7">
                             <TabsContent value="suggestions" className="m-0 focus-visible:ring-0 outline-none space-y-7">
@@ -1223,7 +1246,7 @@ export default function CuisinePage() {
                             </TabsContent>
                         </div>
                     </Tabs>
-                </main>
+                </PageWrapper>
                 {suggestion && (
                     <SuggestionDialog
                         suggestion={suggestion}
@@ -1235,7 +1258,7 @@ export default function CuisinePage() {
                         onAccept={isViewOnlySuggestion ? undefined : handleAcceptSuggestion}
                         onAddToPending={(pendingItemToCook || isViewOnlySuggestion) ? undefined : handleAddToPendingDish}
                         onPlan={isViewOnlySuggestion ? undefined : handlePlanDish}
-                        existingCookings={cookingItems}
+                        existingCookings={cookingItems as any}
                         isFavorite={favorites?.some(f => f.id === (suggestion?.id || suggestion?.name?.replace(/\s/g, '_').toLowerCase()))}
                         onToggleFavorite={handleToggleFavorite}
                         mode="dish"
@@ -1252,7 +1275,7 @@ export default function CuisinePage() {
 
                 {/* Dialog: Planifier ou Cuisiner maintenant */}
                 <Dialog open={!!pendingActionItem} onOpenChange={(o) => !o && setPendingActionItem(null)}>
-                    <DialogContent className="max-w-sm rounded-2xl border-none bg-background/95 backdrop-blur-xl shadow-2xl p-0 overflow-hidden">
+                    <DialogContent className="max-w-sm w-[95vw] sm:rounded-2xl rounded-3xl border-none bg-background/95 backdrop-blur-xl shadow-2xl p-0 overflow-hidden">
                         <DialogHeader className="sr-only">
                             <DialogTitle>Options de cuisine</DialogTitle>
                             <DialogDescription>Choisissez quand cuisiner ce repas</DialogDescription>
