@@ -8,11 +8,17 @@ Ce document répertorie les liens vers les différents dépôts du projet.
 
 *Contient le code Next.js, les fonctions AI, le dashboard admin et la gestion des utilisateurs.*
 
-## 📱 Application Native (Android / Capacitor)
-**Dépôt de build :**
+## 📱 Applications Natives
+
+### Android (Capacitor)
+**Dépôt de build Android :**
 [https://github.com/sandroallada-png/native](https://github.com/sandroallada-png/native)
 
-*Contient uniquement le code spécifique à la plateforme Android (Capacitor), les ressources visuelles natives (icônes, splash screen) et la configuration Android Studio.*
+### iOS (Capacitor)
+**Dépôt de build iOS :**
+[https://github.com/sandroallada-png/mcf-ios](https://github.com/sandroallada-png/mcf-ios)
+
+*Chaque dépôt contient le code spécifique à sa plateforme, les ressources visuelles (icônes, splash screen) et la configuration IDE (Android Studio / Xcode).*
 
 ---
 > [!TIP]
