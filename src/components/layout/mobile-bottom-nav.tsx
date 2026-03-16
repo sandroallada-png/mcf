@@ -6,9 +6,10 @@ import { motion, AnimatePresence, useAnimate } from 'framer-motion';
 import { LayoutDashboard, Calendar, Sparkles, ChefHat, Bot, Loader2, UtensilsCrossed, X, Library } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser, useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, query, limit } from 'firebase/firestore';
-import type { UserProfile, DayPlanMeal, AIPersonality } from '@/lib/types';
-import { suggestDayPlanAction } from '@/app/actions';
+import { doc, collection, query, limit, where, Timestamp } from 'firebase/firestore';
+import type { UserProfile, DayPlanMeal, AIPersonality, Cooking, Meal, FridgeItem } from '@/lib/types';
+import { suggestDayPlanAction, getSingleMealSuggestionAction } from '@/app/actions';
+import { startOfDay, endOfDay } from 'date-fns';
 import Image from 'next/image';
 
 const HIDDEN_PATHS = [
@@ -38,6 +39,17 @@ export function MobileBottomNav() {
     const [isLoadingPlan, setIsLoadingPlan] = useState(false);
     const [planFetched, setPlanFetched] = useState(false);
     const [currentTime, setCurrentTime] = useState<Date>(new Date());
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generationStep, setGenerationStep] = useState(0);
+    const [magicSuggestion, setMagicSuggestion] = useState<DayPlanMeal | null>(null);
+
+    const generationTexts = [
+        "Analyse de votre frigo...",
+        "Vérification de votre historique...",
+        "Lecture de votre profil et objectifs...",
+        "Consultation de vos plats favoris...",
+        "Création de votre plat magique..."
+    ];
 
     // ── Time Update ───────────────────────────────────────────────────
     useEffect(() => {
@@ -51,13 +63,34 @@ export function MobileBottomNav() {
         [user, firestore]
     );
     const { data: userProfile } = useDoc<UserProfile>(profileRef);
+    const effectiveChefId = userProfile?.chefId || user?.uid;
 
     const goalsRef = useMemoFirebase(
-        () => (user ? query(collection(firestore, 'users', user.uid, 'goals'), limit(1)) : null),
-        [user, firestore]
+        () => (effectiveChefId ? query(collection(firestore, 'users', effectiveChefId, 'goals'), limit(1)) : null),
+        [effectiveChefId, firestore]
     );
     const { data: goalsData } = useCollection<{ description: string }>(goalsRef);
     const goals = goalsData?.[0]?.description || 'Manger équilibré et sainement.';
+
+    // Scheduled meals for today
+    const scheduledMealsQuery = useMemoFirebase(() => {
+        if (!effectiveChefId) return null;
+        const todayStart = startOfDay(currentTime);
+        const todayEnd = endOfDay(currentTime);
+        return query(
+            collection(firestore, 'users', effectiveChefId, 'cooking'),
+            where('plannedFor', '>=', Timestamp.fromDate(todayStart)),
+            where('plannedFor', '<=', Timestamp.fromDate(todayEnd))
+        );
+    }, [effectiveChefId, firestore, currentTime]);
+    const { data: scheduledMeals } = useCollection<Cooking>(scheduledMealsQuery);
+
+    // Fridge and History (for context in generation)
+    const fridgeRef = useMemoFirebase(() => effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'fridge') : null, [effectiveChefId, firestore]);
+    const { data: fridgeItems } = useCollection<FridgeItem>(fridgeRef);
+
+    const historyRef = useMemoFirebase(() => effectiveChefId ? query(collection(firestore, 'users', effectiveChefId, 'foodLogs'), limit(10)) : null, [effectiveChefId, firestore]);
+    const { data: historyItems } = useCollection<Meal>(historyRef);
 
     // ── Fetch day plan ───────────────────────────────────────────────────
     const fetchDayPlan = useCallback(async () => {
@@ -90,9 +123,10 @@ export function MobileBottomNav() {
 
     // ── Magic Context Logic ───────────────────────────────────────────
     const magicInfo = useMemo(() => {
-        if (!dayPlan.length) return null;
+        const now = currentTime;
+        const hour = now.getHours();
         
-        const hour = currentTime.getHours();
+        // 1. Chercher dans les plats programmés par l'utilisateur
         let targetType: DayPlanMeal['type'] = 'lunch';
         let targetTime = '13:00';
 
@@ -101,27 +135,95 @@ export function MobileBottomNav() {
         else if (hour < 22) { targetType = 'dinner'; targetTime = '20:00'; }
         else { targetType = 'breakfast'; targetTime = 'demain 08:30'; }
 
-        const meal = dayPlan.find(m => m.type === targetType) || dayPlan[0];
-        const peopleCount = userProfile?.household?.length || 1;
+        const programmedMeal = scheduledMeals?.find(m => m.type === targetType && !m.isDone);
+        
+        const peopleCount = (userProfile?.household?.length || 0) + 1;
+
+        if (programmedMeal) {
+            return {
+                time: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                meal: programmedMeal,
+                targetTime,
+                peopleCount,
+                isProgrammed: true
+            };
+        }
+
+        // 2. Si rien de programmé, mais qu'on a déjà une suggestion générée
+        if (magicSuggestion) {
+            return {
+                time: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                meal: magicSuggestion,
+                targetTime,
+                peopleCount,
+                isProgrammed: false
+            };
+        }
 
         return {
-            time: currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            meal,
+            time: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            meal: null,
             targetTime,
-            peopleCount
+            peopleCount,
+            isProgrammed: false
         };
-    }, [dayPlan, currentTime, userProfile]);
+    }, [scheduledMeals, magicSuggestion, currentTime, userProfile]);
 
     // ── Handlers ──────────────────────────────────────────────────────
+    const handleGenerateMagicMeal = useCallback(async () => {
+        setIsGenerating(true);
+        setGenerationStep(0);
+
+        // Simulation des étapes d'analyse
+        for (let i = 0; i < generationTexts.length; i++) {
+            setGenerationStep(i);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        try {
+            const hour = currentTime.getHours();
+            let timeOfDay: 'matin' | 'midi' | 'soir' | 'dessert' = 'midi';
+            if (hour < 10) timeOfDay = 'matin';
+            else if (hour < 15) timeOfDay = 'midi';
+            else if (hour < 22) timeOfDay = 'soir';
+            else timeOfDay = 'dessert';
+
+            let personality: AIPersonality | undefined;
+            if (userProfile?.isAITrainingEnabled) {
+                personality = {
+                    tone: userProfile.tone,
+                    mainObjective: userProfile.mainObjective,
+                    allergies: userProfile.allergies,
+                    preferences: userProfile.preferences,
+                };
+            }
+
+            const { suggestion, error } = await getSingleMealSuggestionAction({
+                timeOfDay,
+                dietaryGoals: goals,
+                personality,
+                mealHistory: historyItems?.map(m => m.name),
+            });
+
+            if (error) throw new Error(error);
+            if (suggestion) {
+                setMagicSuggestion(suggestion as DayPlanMeal);
+            }
+        } catch (e) {
+            console.error("Magic generation failed:", e);
+        } finally {
+            setIsGenerating(false);
+        }
+    }, [userProfile, goals, historyItems, currentTime]);
+
     const handleMagicPress = useCallback(() => {
         setIsMagicOpen(true);
-        if (!planFetched && userProfile) {
-            fetchDayPlan();
-        }
-    }, [planFetched, userProfile, fetchDayPlan]);
+    }, []);
 
     const closeOverlay = useCallback(() => {
         setIsMagicOpen(false);
+        setMagicSuggestion(null);
+        setIsGenerating(false);
     }, []);
 
     // ── AI page drain animation ──────────────────────────────────────────
@@ -279,9 +381,13 @@ export function MobileBottomNav() {
                             {/* Header / Icon */}
                             <div className="pt-10 pb-4 flex justify-center">
                                 <motion.div 
-                                    className="h-24 w-24 rounded-full bg-gradient-to-tr from-primary to-violet-500 p-0.5 shadow-xl"
-                                    animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
-                                    transition={{ duration: 4, repeat: Infinity }}
+                                    className="h-24 w-24 rounded-full bg-gradient-to-tr from-primary via-violet-500 to-orange-400 p-0.5 shadow-2xl relative"
+                                    animate={{ 
+                                        scale: [1, 1.1, 1], 
+                                        rotate: [0, 10, -10, 0],
+                                        boxShadow: ["0 0 0px var(--primary)", "0 0 30px var(--primary)", "0 0 0px var(--primary)"]
+                                    }}
+                                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                                 >
                                     <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
                                         {magicInfo?.meal?.imageUrl ? (
@@ -297,18 +403,40 @@ export function MobileBottomNav() {
 
                             {/* Magic Text Content */}
                             <div className="px-8 pb-10 text-center space-y-6 relative z-10">
-                                {isLoadingPlan ? (
+                                {isGenerating ? (
                                     <motion.div 
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        className="flex flex-col items-center gap-4 py-6"
+                                        className="flex flex-col items-center gap-6 py-6"
                                     >
-                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                        <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground animate-pulse">
-                                            Consultation des astres...
-                                        </p>
+                                        <div className="relative">
+                                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                            <motion.div 
+                                                className="absolute inset-0 bg-primary/20 blur-xl rounded-full"
+                                                animate={{ scale: [1, 1.5, 1] }}
+                                                transition={{ duration: 2, repeat: Infinity }}
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <AnimatePresence mode="wait">
+                                                <motion.p 
+                                                    key={generationStep}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -10 }}
+                                                    className="text-sm font-black text-foreground"
+                                                >
+                                                    {generationTexts[generationStep]}
+                                                </motion.p>
+                                            </AnimatePresence>
+                                            <div className="flex justify-center gap-1">
+                                                {generationTexts.map((_, i) => (
+                                                    <div key={i} className={cn("h-1 w-4 rounded-full transition-all duration-500", i <= generationStep ? "bg-primary" : "bg-primary/10")} />
+                                                ))}
+                                            </div>
+                                        </div>
                                     </motion.div>
-                                ) : magicInfo ? (
+                                ) : magicInfo.meal ? (
                                     <>
                                         <div className="space-y-2">
                                             <motion.p 
@@ -316,7 +444,7 @@ export function MobileBottomNav() {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60"
                                             >
-                                                Assistant Culinaire
+                                                {magicInfo.isProgrammed ? "Repas Programmé" : "Suggestion Magique"}
                                             </motion.p>
                                             <motion.div
                                                 initial={{ opacity: 0 }}
@@ -329,12 +457,14 @@ export function MobileBottomNav() {
                                                 </h2>
                                                 <div className="bg-primary/5 rounded-3xl p-5 border border-primary/10">
                                                     <p className="text-sm font-bold text-foreground leading-relaxed">
-                                                        Le <span className="text-primary italic">"{magicInfo.meal.name}"</span> est à cuisiner pour <span className="underline underline-offset-4 decoration-primary/40">{magicInfo.targetTime}</span>.
+                                                        {magicInfo.isProgrammed ? "Voici votre repas programmé :" : "J'ai trouvé une idée pour vous :"}
+                                                        <br />
+                                                        <span className="text-primary italic mt-2 inline-block">"{magicInfo.meal.name}"</span>
                                                     </p>
-                                                    <div className="mt-3 flex items-center justify-center gap-2">
+                                                    <div className="mt-4 flex items-center justify-center gap-2">
                                                         <div className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
                                                         <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                                                            {magicInfo.peopleCount} {magicInfo.peopleCount > 1 ? 'personnes qui cuisinent' : 'personne qui cuisine'}
+                                                            Cuisine pour {magicInfo.peopleCount} {magicInfo.peopleCount > 1 ? 'personnes' : 'personne'}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -346,7 +476,7 @@ export function MobileBottomNav() {
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: 0.4 }}
                                             onClick={() => {
-                                                const encoded = encodeURIComponent(magicInfo.meal.name);
+                                                const encoded = encodeURIComponent(magicInfo.meal!.name);
                                                 closeOverlay();
                                                 router.push(`/cuisine?tab=in_progress&cook=${encoded}`);
                                             }}
@@ -357,14 +487,29 @@ export function MobileBottomNav() {
                                         </motion.button>
                                     </>
                                 ) : (
-                                    <p className="text-xs font-bold text-muted-foreground py-10">
-                                        Impossible de lire le futur... réessayez !
-                                    </p>
+                                    <div className="py-6 space-y-6">
+                                        <div className="space-y-2">
+                                            <h2 className="text-xl font-black">Rien de prévu ?</h2>
+                                            <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                                                Vous n'avez pas encore programmé de repas pour ce moment de la journée.
+                                            </p>
+                                        </div>
+                                        
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={handleGenerateMagicMeal}
+                                            className="w-full bg-white text-black h-16 rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-xl flex items-center justify-center gap-3 border-2 border-primary/20 group"
+                                        >
+                                            <Sparkles className="h-5 w-5 text-primary group-hover:animate-pulse" />
+                                            Générer un repas
+                                        </motion.button>
+                                    </div>
                                 )}
                                 
                                 <button 
                                     onClick={closeOverlay}
-                                    className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors"
+                                    className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors pt-2"
                                 >
                                     Fermer
                                 </button>

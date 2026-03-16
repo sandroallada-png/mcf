@@ -225,17 +225,40 @@ export default function CuisinePage() {
             const queryParams = new URLSearchParams(window.location.search);
             const cookDishName = queryParams.get('cook');
             if (cookDishName) {
-                // Find dish in catalogue
-                const dish = dishes.find(d => d.name.toLowerCase() === cookDishName.toLowerCase());
-                if (dish) {
-                    handleShowRecipeForDish(dish);
-                    // Clear the param from URL without refreshing
-                    const newUrl = window.location.pathname + (window.location.hash || '');
-                    window.history.replaceState({}, '', newUrl);
+                // 1. Chercher dans les plats programmés
+                const programmed = cookingInProgress.find(d => d.name.toLowerCase() === cookDishName.toLowerCase());
+                if (programmed) {
+                    setCookingModeItem(programmed);
+                } else {
+                    // 2. Chercher dans les plats en attente
+                    const pending = pendingCookingItems?.find(d => d.name.toLowerCase() === cookDishName.toLowerCase());
+                    if (pending) {
+                        setCookingModeItem({
+                            ...pending,
+                            plannedFor: Timestamp.now(),
+                            isDone: false,
+                            servings: userProfile?.household?.length ? userProfile.household.length + 1 : 1
+                        } as Cooking);
+                    } else {
+                        // 3. Chercher dans le catalogue global
+                        const dish = dishes.find(d => d.name.toLowerCase() === cookDishName.toLowerCase());
+                        if (dish) {
+                            setCookingModeItem({
+                                ...dish,
+                                plannedFor: Timestamp.now(),
+                                isDone: false,
+                                servings: userProfile?.household?.length ? userProfile.household.length + 1 : 1
+                            } as unknown as Cooking);
+                        }
+                    }
                 }
+                
+                // Clear the param from URL without refreshing
+                const newUrl = window.location.pathname + (window.location.hash || '');
+                window.history.replaceState({}, '', newUrl);
             }
         }
-    }, [dishes]);
+    }, [dishes, cookingInProgress, pendingCookingItems, userProfile]);
 
     useEffect(() => {
         setCurrentTime(new Date());
@@ -1175,7 +1198,7 @@ export default function CuisinePage() {
                                                             Voir
                                                         </Button>
                                                         <Button
-                                                            onClick={() => setPendingActionItem(item)}
+                                                            onClick={() => guardAction(setPendingActionItem)(item)}
                                                             className="h-7 md:h-9 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded shadow-sm bg-primary text-white hover:scale-105 transition-all px-1.5"
                                                         >
                                                             <CookingPot className="mr-1 h-3 w-3" />
@@ -1295,7 +1318,7 @@ export default function CuisinePage() {
                                                         </div>
                                                         {/* CTA PRINCIPAL */}
                                                         <Button
-                                                            onClick={() => setCookingModeItem(item)}
+                                                            onClick={() => guardAction(setCookingModeItem)(item)}
                                                             className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-primary text-white border border-primary shadow-lg hover:bg-primary/90 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
                                                         >
                                                             <span className="text-lg mr-2">👨‍🍳</span>

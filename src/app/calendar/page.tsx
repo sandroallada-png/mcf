@@ -88,8 +88,8 @@ export default function CalendarPage() {
 
     // --- Data fetching for goals & personality (for AI context) ---
     const goalsCollectionRef = useMemoFirebase(
-        () => (user ? collection(firestore, 'users', user.uid, 'goals') : null),
-        [user, firestore]
+        () => (effectiveChefId ? collection(firestore, 'users', effectiveChefId, 'goals') : null),
+        [effectiveChefId, firestore]
     );
     const singleGoalQuery = useMemoFirebase(
         () => goalsCollectionRef ? query(goalsCollectionRef, limit(1)) : null,
@@ -177,22 +177,23 @@ export default function CalendarPage() {
             if (goalsData.length > 0 && goalsData[0]) {
                 setGoals(goalsData[0].description);
                 setGoalId(goalsData[0].id);
-            } else if (user && !isLoadingGoals) {
+            } else if (effectiveChefId && !isLoadingGoals) {
                 const defaultGoal = {
-                    userId: user.uid,
+                    userId: effectiveChefId,
                     description: 'Perdre du poids, manger plus sainement et réduire ma consommation de sucre.',
                     targetValue: 2000,
                     timeFrame: 'daily',
                 };
-                addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'goals'), defaultGoal);
+                addDocumentNonBlocking(collection(firestore, 'users', effectiveChefId, 'goals'), defaultGoal);
             }
         }
     }, [goalsData, user, isLoadingGoals, firestore]);
 
     const updateGoals = (newDescription: string) => {
+        if (isReadOnly) { triggerBlock(); return; }
         setGoals(newDescription);
-        if (goalId && user) {
-            const goalRef = doc(firestore, 'users', user.uid, 'goals', goalId);
+        if (goalId && effectiveChefId) {
+            const goalRef = doc(firestore, 'users', effectiveChefId, 'goals', goalId);
             updateDoc(goalRef, { description: newDescription }).catch(console.error);
         }
     }

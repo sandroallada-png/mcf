@@ -14,7 +14,7 @@ export function LoadingOverlay() {
       <div className="flex flex-col items-center gap-6 p-12 text-center">
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
-          <div className="relative w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center animate-bounce duration-[2s] overflow-hidden">
+          <div className="relative w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center animate-bounce duration-[2s] overflow-hidden border border-white/20">
             <img 
               src="/new-logo/logo-annimate.png" 
               alt="Chargement..." 

@@ -27,7 +27,8 @@ service cloud.firestore {
 
       // Sous-collections (foodLogs, goals, cooking, pendingCookings, notifications, favoriteRecipes, analytics, etc.)
       match /{allPaths=**} {
-        allow read, write: if isUser(userId) || isAdmin() || isFamilyMember(userId);
+        allow read: if isUser(userId) || isAdmin() || isFamilyMember(userId);
+        allow write: if isUser(userId) || isAdmin();
       }
     }
 

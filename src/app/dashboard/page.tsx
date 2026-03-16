@@ -762,7 +762,7 @@ export default function DashboardPage() {
               displayMeals={displayMeals}
               currentTime={currentTime}
               openFormForType={openFormForType}
-              setSuggestionMeal={setSuggestionMeal}
+              setSuggestionMeal={guardAction(setSuggestionMeal)}
               setZoomImageUrl={setZoomImageUrl}
               removeMeal={removeMeal}
             />
@@ -771,7 +771,7 @@ export default function DashboardPage() {
               isLoadingPlan={isLoadingPlan}
               dayPlan={dayPlan}
               setZoomImageUrl={setZoomImageUrl}
-              openMealActionDialog={setSelectedMealForAction}
+              openMealActionDialog={guardAction(setSelectedMealForAction)}
               contextualMessage={contextualMessage}
             />
           </div>
