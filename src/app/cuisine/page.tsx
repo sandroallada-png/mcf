@@ -212,15 +212,30 @@ export default function CuisinePage() {
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const query = new URLSearchParams(window.location.search);
-            const tab = query.get('tab');
+            const queryParams = new URLSearchParams(window.location.search);
+            const tab = queryParams.get('tab');
             if (tab && tabDetails[tab as TabValue]) {
                 setActiveTab(tab as TabValue);
-                // Clean URL
-                window.history.replaceState({}, '', '/cuisine');
             }
         }
     }, []);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && dishes && dishes.length > 0) {
+            const queryParams = new URLSearchParams(window.location.search);
+            const cookDishName = queryParams.get('cook');
+            if (cookDishName) {
+                // Find dish in catalogue
+                const dish = dishes.find(d => d.name.toLowerCase() === cookDishName.toLowerCase());
+                if (dish) {
+                    handleShowRecipeForDish(dish);
+                    // Clear the param from URL without refreshing
+                    const newUrl = window.location.pathname + (window.location.hash || '');
+                    window.history.replaceState({}, '', newUrl);
+                }
+            }
+        }
+    }, [dishes]);
 
     useEffect(() => {
         setCurrentTime(new Date());

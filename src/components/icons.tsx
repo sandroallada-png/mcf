@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
+import { cn } from '@/lib/utils';
+
 export function Logo({ className, showText = true }: { className?: string; showText?: boolean }) {
   return (
-    <Link href="/" className={`flex items-center gap-2 ${className || ''}`} aria-label="Accueil">
-      <LogoIcon />
+    <Link href="/" className={cn("flex items-center gap-2", className)} aria-label="Accueil">
+      <LogoIcon className="h-8 w-8" />
       {showText && <span className="font-headline text-xl font-bold">my cook flex</span>}
     </Link>
   );
@@ -17,7 +19,8 @@ export function LogoIcon({ className }: { className?: string }) {
       alt="My Cook Flex Icon"
       width={40}
       height={40}
-      className={className}
+      className={cn("object-contain h-full w-full", className)}
+      priority
     />
   );
 }

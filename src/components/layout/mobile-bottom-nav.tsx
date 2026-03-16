@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence, useAnimate } from 'framer-motion';
 import { LayoutDashboard, Calendar, Sparkles, ChefHat, Bot, Loader2, UtensilsCrossed, X, Library } from 'lucide-react';
@@ -32,12 +32,18 @@ export function MobileBottomNav() {
     const drainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hasDrainedRef = useRef(false);
 
-    // ── Magic overlay state ──────────────────────────────────────────────
+    // ── States ────────────────────────────────────────────────────────
     const [isMagicOpen, setIsMagicOpen] = useState(false);
-    const [selectedMagicMeal, setSelectedMagicMeal] = useState<DayPlanMeal | null>(null);
     const [dayPlan, setDayPlan] = useState<DayPlanMeal[]>([]);
     const [isLoadingPlan, setIsLoadingPlan] = useState(false);
     const [planFetched, setPlanFetched] = useState(false);
+    const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+    // ── Time Update ───────────────────────────────────────────────────
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     // ── Firebase data ────────────────────────────────────────────────────
     const profileRef = useMemoFirebase(
@@ -82,7 +88,31 @@ export function MobileBottomNav() {
         }
     }, [userProfile, goals]);
 
-    // ── Open magic overlay ───────────────────────────────────────────────
+    // ── Magic Context Logic ───────────────────────────────────────────
+    const magicInfo = useMemo(() => {
+        if (!dayPlan.length) return null;
+        
+        const hour = currentTime.getHours();
+        let targetType: DayPlanMeal['type'] = 'lunch';
+        let targetTime = '13:00';
+
+        if (hour < 10) { targetType = 'breakfast'; targetTime = '08:30'; }
+        else if (hour < 15) { targetType = 'lunch'; targetTime = '13:00'; }
+        else if (hour < 22) { targetType = 'dinner'; targetTime = '20:00'; }
+        else { targetType = 'breakfast'; targetTime = 'demain 08:30'; }
+
+        const meal = dayPlan.find(m => m.type === targetType) || dayPlan[0];
+        const peopleCount = userProfile?.household?.length || 1;
+
+        return {
+            time: currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            meal,
+            targetTime,
+            peopleCount
+        };
+    }, [dayPlan, currentTime, userProfile]);
+
+    // ── Handlers ──────────────────────────────────────────────────────
     const handleMagicPress = useCallback(() => {
         setIsMagicOpen(true);
         if (!planFetched && userProfile) {
@@ -92,7 +122,6 @@ export function MobileBottomNav() {
 
     const closeOverlay = useCallback(() => {
         setIsMagicOpen(false);
-        setSelectedMagicMeal(null);
     }, []);
 
     // ── AI page drain animation ──────────────────────────────────────────
@@ -221,7 +250,7 @@ export function MobileBottomNav() {
                 {isMagicOpen && (
                     <motion.div
                         key="magic-overlay"
-                        className="md:hidden fixed inset-0 z-[200] flex items-center justify-center"
+                        className="md:hidden fixed inset-0 z-[200] flex items-center justify-center px-6"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -229,153 +258,117 @@ export function MobileBottomNav() {
                     >
                         {/* Backdrop */}
                         <div
-                            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
                             onClick={closeOverlay}
                         />
 
                         {/* Card */}
                         <motion.div
-                            className="relative z-10 w-[88vw] max-w-sm bg-background rounded-2xl shadow-2xl shadow-primary/30 border border-primary/20 overflow-hidden"
-                            initial={{ scale: 0.85, y: 40, opacity: 0 }}
-                            animate={{ scale: 1, y: 0, opacity: 1 }}
-                            exit={{ scale: 0.85, y: 40, opacity: 0 }}
-                            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                            className="relative z-10 w-full max-w-sm bg-background/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl shadow-primary/20 border border-primary/20 overflow-hidden"
+                            initial={{ scale: 0.8, y: 100, opacity: 0, rotate: -2 }}
+                            animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
+                            exit={{ scale: 0.8, y: 100, opacity: 0, rotate: 2 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                         >
-                            {/* Header */}
-                            <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/60 px-5 pt-6 pb-8 relative overflow-hidden">
-                                <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
-                                <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
-                                <div className="relative z-10 flex items-center justify-between">
-                                    <div>
-                                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary-foreground/60">
-                                            Choisissez votre plat
-                                        </p>
-                                        <h2 className="text-xl font-black text-primary-foreground mt-0.5 flex items-center gap-2">
-                                            <Sparkles className="h-5 w-5 animate-pulse" /> Magie ✨
-                                        </h2>
-                                    </div>
-                                    <button
-                                        onClick={closeOverlay}
-                                        className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-primary-foreground/80 hover:bg-white/20 transition-colors"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
+                            {/* Decorative Sparkles Background */}
+                            <div className="absolute inset-0 pointer-events-none opacity-20">
+                                <Sparkles className="absolute top-10 left-10 h-20 w-20 text-primary blur-2xl" />
+                                <Sparkles className="absolute bottom-10 right-10 h-20 w-20 text-primary blur-2xl" />
                             </div>
 
-                            {/* Meal List */}
-                            <div className="px-4 pt-3 pb-2 space-y-2 -mt-4">
+                            {/* Header / Icon */}
+                            <div className="pt-10 pb-4 flex justify-center">
+                                <motion.div 
+                                    className="h-24 w-24 rounded-full bg-gradient-to-tr from-primary to-violet-500 p-0.5 shadow-xl"
+                                    animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
+                                    transition={{ duration: 4, repeat: Infinity }}
+                                >
+                                    <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                                        {magicInfo?.meal?.imageUrl ? (
+                                            <div className="relative w-full h-full">
+                                                <Image src={magicInfo.meal.imageUrl} alt="Meal" fill className="object-cover" />
+                                            </div>
+                                        ) : (
+                                            <Sparkles className="h-10 w-10 text-primary" />
+                                        )}
+                                    </div>
+                                </motion.div>
+                            </div>
+
+                            {/* Magic Text Content */}
+                            <div className="px-8 pb-10 text-center space-y-6 relative z-10">
                                 {isLoadingPlan ? (
-                                    <div className="flex flex-col items-center justify-center py-10 gap-3">
-                                        <div className="relative">
-                                            <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
-                                            <Loader2 className="relative h-8 w-8 animate-spin text-primary" />
-                                        </div>
-                                        <span className="text-xs font-bold text-muted-foreground">Génération du planning...</span>
-                                    </div>
-                                ) : dayPlan.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
-                                        <ChefHat className="h-10 w-10 opacity-20" />
-                                        <p className="text-sm font-bold">Aucun plan pour aujourd&apos;hui</p>
-                                        <button
-                                            onClick={fetchDayPlan}
-                                            className="text-xs font-black text-primary underline underline-offset-2"
-                                        >
-                                            Régénérer
-                                        </button>
-                                    </div>
-                                ) : (
-                                    dayPlan.map((meal, idx) => {
-                                        const isSelected = selectedMagicMeal?.name === meal.name;
-                                        return (
-                                            <motion.div
-                                                key={meal.name}
-                                                onClick={() => setSelectedMagicMeal(isSelected ? null : meal)}
-                                                initial={{ opacity: 0, y: 8 }}
+                                    <motion.div 
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="flex flex-col items-center gap-4 py-6"
+                                    >
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                        <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground animate-pulse">
+                                            Consultation des astres...
+                                        </p>
+                                    </motion.div>
+                                ) : magicInfo ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <motion.p 
+                                                initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: idx * 0.07 }}
-                                                className={cn(
-                                                    "flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-all active:scale-[0.98]",
-                                                    isSelected
-                                                        ? "bg-primary/10 border-primary shadow-sm shadow-primary/20"
-                                                        : "bg-accent/30 border-border/50 hover:border-primary/30"
-                                                )}
+                                                className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60"
                                             >
-                                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted border border-border">
-                                                    {meal.imageUrl ? (
-                                                        <Image src={meal.imageUrl} alt={meal.name} fill sizes="48px" className="object-cover" />
-                                                    ) : (
-                                                        <div className="flex h-full w-full items-center justify-center">
-                                                            <UtensilsCrossed className="h-5 w-5 opacity-20" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className={cn("font-black text-sm truncate", isSelected && "text-primary")}>{meal.name}</p>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className={cn(
-                                                            "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full",
-                                                            isSelected ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary/70"
-                                                        )}>
-                                                            {({ 'breakfast': 'Petit-déj', 'lunch': 'Déjeuner', 'dinner': 'Dîner', 'dessert': 'Dessert / Collation' } as Record<string, string>)[meal.type] || meal.type}
-                                                        </span>
-                                                        <span className="text-[9px] font-bold text-muted-foreground">{meal.calories} kcal</span>
-                                                    </div>
-                                                </div>
-                                                {/* Checkmark */}
-                                                <div className={cn(
-                                                    "h-6 w-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all",
-                                                    isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
-                                                )}>
-                                                    {isSelected && (
-                                                        <svg viewBox="0 0 12 12" className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                            <polyline points="2,6 5,9 10,3" />
-                                                        </svg>
-                                                    )}
-                                                </div>
-                                            </motion.div>
-                                        );
-                                    })
-                                )}
-                            </div>
-
-                            {/* CTA */}
-                            {dayPlan.length > 0 && (
-                                <div className="px-4 pb-5 pt-3">
-                                    <AnimatePresence mode="wait">
-                                        {!selectedMagicMeal ? (
-                                            <motion.p
-                                                key="hint"
+                                                Assistant Culinaire
+                                            </motion.p>
+                                            <motion.div
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                className="text-center text-xs text-muted-foreground font-medium py-2"
+                                                transition={{ delay: 0.2 }}
+                                                className="space-y-4"
                                             >
-                                                👆 Sélectionnez un plat à cuisiner
-                                            </motion.p>
-                                        ) : (
-                                            <motion.button
-                                                key="cta"
-                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.9 }}
-                                                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                                                onClick={() => {
-                                                    const encoded = encodeURIComponent(selectedMagicMeal.name);
-                                                    closeOverlay();
-                                                    router.push(`/cuisine?prep=${encoded}`);
-                                                }}
-                                                className="w-full rounded-2xl bg-primary text-primary-foreground font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-primary/30 hover:brightness-110 active:scale-95 transition-all py-3.5"
-                                            >
-                                                <ChefHat className="h-5 w-5" />
-                                                Cuisiner &ldquo;{selectedMagicMeal.name.length > 22
-                                                    ? selectedMagicMeal.name.slice(0, 22) + '…'
-                                                    : selectedMagicMeal.name}&rdquo;
-                                            </motion.button>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            )}
+                                                <h2 className="text-xl font-black leading-tight">
+                                                    Il est <span className="text-primary">{magicInfo.time}</span>
+                                                </h2>
+                                                <div className="bg-primary/5 rounded-3xl p-5 border border-primary/10">
+                                                    <p className="text-sm font-bold text-foreground leading-relaxed">
+                                                        Le <span className="text-primary italic">"{magicInfo.meal.name}"</span> est à cuisiner pour <span className="underline underline-offset-4 decoration-primary/40">{magicInfo.targetTime}</span>.
+                                                    </p>
+                                                    <div className="mt-3 flex items-center justify-center gap-2">
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+                                                        <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                                                            {magicInfo.peopleCount} {magicInfo.peopleCount > 1 ? 'personnes qui cuisinent' : 'personne qui cuisine'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        </div>
+
+                                        <motion.button
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.4 }}
+                                            onClick={() => {
+                                                const encoded = encodeURIComponent(magicInfo.meal.name);
+                                                closeOverlay();
+                                                router.push(`/cuisine?tab=in_progress&cook=${encoded}`);
+                                            }}
+                                            className="w-full bg-primary text-primary-foreground h-16 rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 flex items-center justify-center gap-3 active:scale-95 transition-all group"
+                                        >
+                                            <ChefHat className="h-5 w-5 group-hover:rotate-12 transition-transform" />
+                                            Cuisiner
+                                        </motion.button>
+                                    </>
+                                ) : (
+                                    <p className="text-xs font-bold text-muted-foreground py-10">
+                                        Impossible de lire le futur... réessayez !
+                                    </p>
+                                )}
+                                
+                                <button 
+                                    onClick={closeOverlay}
+                                    className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-primary transition-colors"
+                                >
+                                    Fermer
+                                </button>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
