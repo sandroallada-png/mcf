@@ -1,10 +1,10 @@
 
 'use client';
 
-import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Calendar, Hourglass, Shuffle, UtensilsCrossed } from 'lucide-react';
+import { useTranslation, Trans } from 'react-i18next';
 
 interface MealActionDialogsProps {
   selectedMealForAction: any | null;
@@ -27,6 +27,8 @@ export function MealActionDialogs({
   handleConfirmReplace,
   mealTypeTranslations
 }: MealActionDialogsProps) {
+  const { t } = useTranslation();
+
   return (
     <>
       <Dialog open={!!selectedMealForAction} onOpenChange={(open) => !open && setSelectedMealForAction(null)}>
@@ -41,23 +43,25 @@ export function MealActionDialogs({
             <div className="mx-auto h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
-            <DialogTitle className="text-center text-xl font-black">Que voulez-vous faire ?</DialogTitle>
+            <DialogTitle className="text-center text-xl font-black">{t('action_what_to_do')}</DialogTitle>
             <DialogDescription className="text-center text-sm font-medium leading-relaxed">
-              Choisissez comment ajouter <span className="text-foreground font-extrabold">"{selectedMealForAction?.name}"</span> à votre journée.
+              <Trans i18nKey="action_choose_how" values={{ name: selectedMealForAction?.name }}>
+                Choisissez comment ajouter <span className="text-foreground font-extrabold">"{selectedMealForAction?.name}"</span> à votre journée.
+              </Trans>
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-3 py-6">
             <Button
               onClick={() => selectedMealForAction && handleScheduleMeal(selectedMealForAction)}
-              className="h-16 rounded-2xl flex items-center justify-start gap-4 px-5 text-left border-2 border-primary/10 bg-primary/5 hover:bg-primary hover:text-white hover:border-primary transition-all group/btn1 relative overflow-hidden"
+              className="h-16 rounded-2xl flex items-center justify-start gap-4 px-5 text-left border-2 border-primary/10 bg-primary/10 hover:bg-primary/20 transition-all relative overflow-hidden"
             >
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover/btn1:scale-110">
-                <Calendar className="h-5 w-5" />
+              <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 shadow-sm">
+                <Calendar className="h-5 w-5 text-primary" />
               </div>
               <div className="flex flex-col">
-                <span className="font-black text-sm uppercase tracking-tight">Cuisiner maintenant</span>
-                <span className="text-[10px] opacity-70 font-bold group-hover/btn1:text-white/80 transition-colors">Ajouter à mon planning d'aujourd'hui</span>
+                <span className="font-black text-sm uppercase tracking-tight text-primary">{t('action_cook_now')}</span>
+                <span className="text-[10px] font-bold text-primary/70">{t('action_add_to_plan')}</span>
               </div>
             </Button>
 
@@ -70,14 +74,14 @@ export function MealActionDialogs({
                 <Hourglass className="h-5 w-5" />
               </div>
               <div className="flex flex-col">
-                <span className="font-black text-sm uppercase tracking-tight">Mettre en attente</span>
-                <span className="text-[10px] text-muted-foreground font-bold group-hover/btn2:text-primary/70 transition-colors">Envoyer vers la zone (Cuisine)</span>
+                <span className="font-black text-sm uppercase tracking-tight">{t('action_put_on_hold')}</span>
+                <span className="text-[10px] text-muted-foreground font-bold group-hover/btn2:text-primary/70 transition-colors">{t('action_send_to_kitchen')}</span>
               </div>
             </Button>
           </div>
 
           <div className="pt-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => setSelectedMealForAction(null)}>
-            Annuler
+            {t('action_cancel')}
           </div>
         </DialogContent>
       </Dialog>
@@ -100,9 +104,9 @@ export function MealActionDialogs({
 
           <div className="p-8 pt-10 text-center space-y-6">
             <div className="space-y-2 text-center">
-              <DialogTitle className="text-2xl font-black tracking-tight">Conflit de repas !</DialogTitle>
+              <DialogTitle className="text-2xl font-black tracking-tight">{t('action_conflict_title')}</DialogTitle>
               <DialogDescription className="text-sm font-medium text-muted-foreground">
-                Un plat est déjà prévu pour ce créneau ({mealTypeTranslations[mealConflict?.new.type || 'lunch']}).
+                {t('action_conflict_desc', { type: mealTypeTranslations[mealConflict?.new.type || 'lunch'] })}
               </DialogDescription>
             </div>
 
@@ -115,7 +119,7 @@ export function MealActionDialogs({
                     <UtensilsCrossed className="h-6 w-6 opacity-20" />
                   )}
                 </div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground">Actuel</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground">{t('action_current')}</p>
                 <p className="text-[11px] font-bold truncate w-full">{mealConflict?.existing.name}</p>
               </div>
 
@@ -127,7 +131,7 @@ export function MealActionDialogs({
                     <UtensilsCrossed className="h-6 w-6 opacity-20" />
                   )}
                 </div>
-                <p className="text-[10px] font-black uppercase text-primary">Nouveau</p>
+                <p className="text-[10px] font-black uppercase text-primary">{t('action_new')}</p>
                 <p className="text-[11px] font-bold truncate w-full">{mealConflict?.new.name}</p>
               </div>
             </div>
@@ -137,14 +141,14 @@ export function MealActionDialogs({
                 onClick={handleConfirmReplace}
                 className="h-14 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/25"
               >
-                Remplacer l'existant
+                {t('action_replace')}
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => setMealConflict(null)}
                 className="h-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
               >
-                Garder actuel
+                {t('action_keep_current')}
               </Button>
             </div>
           </div>

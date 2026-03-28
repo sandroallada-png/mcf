@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirebase } from '@/firebase';
+import { useTranslation } from 'react-i18next';
 
 
 interface MainPanelProps {
@@ -44,27 +45,28 @@ export function MainPanel({
 }: MainPanelProps) {
   const [isFormOpen, setFormOpen] = useState(false);
   const [suggestionMeal, setSuggestionMeal] = useState<Meal | null>(null);
+  const { t } = useTranslation();
 
   const mealTypes: Meal['type'][] = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 
   const mealTypeDetails: Record<Meal['type'], { translation: string; className: string; }> = {
-    breakfast: { translation: 'Petit-déjeuner', className: "bg-blue-50 border-blue-100 dark:bg-blue-950/30 dark:border-blue-800/50" },
-    lunch: { translation: 'Déjeuner', className: "bg-yellow-50 border-yellow-100 dark:bg-yellow-950/30 dark:border-yellow-800/50" },
-    dinner: { translation: 'Dîner', className: "bg-purple-50 border-purple-100 dark:bg-purple-950/30 dark:border-purple-800/50" },
-    snack: { translation: 'Collation', className: "bg-green-50 border-green-100 dark:bg-green-950/30 dark:border-green-800/50" },
-    dessert: { translation: 'Dessert', className: "bg-pink-50 border-pink-100 dark:bg-pink-950/30 dark:border-pink-800/50" },
+    breakfast: { translation: t('chart_breakfast'), className: "bg-blue-50 border-blue-100 dark:bg-blue-950/30 dark:border-blue-800/50" },
+    lunch: { translation: t('chart_lunch'), className: "bg-yellow-50 border-yellow-100 dark:bg-yellow-950/30 dark:border-yellow-800/50" },
+    dinner: { translation: t('chart_dinner'), className: "bg-purple-50 border-purple-100 dark:bg-purple-950/30 dark:border-purple-800/50" },
+    snack: { translation: t('stat_col'), className: "bg-green-50 border-green-100 dark:bg-green-950/30 dark:border-green-800/50" },
+    dessert: { translation: t('chart_dessert'), className: "bg-pink-50 border-pink-100 dark:bg-pink-950/30 dark:border-pink-800/50" },
   };
 
   return (
     <div className="flex h-full flex-1 flex-col">
       <main className="flex-1 overflow-y-auto p-4 md:p-6 mb-safe">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-headline text-xl font-bold md:hidden">Repas du jour</h2>
+          <h2 className="font-headline text-xl font-bold md:hidden">{t('dashboard_title')}</h2>
           <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Ajouter un repas
+                {t('dashboard_add_meal')}
               </Button>
             </DialogTrigger>
             <AddMealWindow
@@ -136,7 +138,7 @@ export function MainPanel({
                       </Card>
                     ))
                 ) : (
-                  <p className="pt-2 text-xs text-muted-foreground">Aucun {mealTypeDetails[type].translation.toLowerCase()} enregistré.</p>
+                  <p className="pt-2 text-xs text-muted-foreground">{t('journal_no_meal', { type: mealTypeDetails[type].translation.toLowerCase() })}</p>
                 )}
               </CardContent>
             </Card>
@@ -147,7 +149,7 @@ export function MainPanel({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart2 className="h-5 w-5 text-primary" />
-              Progression
+              {t('chart_total_today')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -161,19 +163,19 @@ export function MainPanel({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-primary" />
-              <span>Planing à venir</span>
+              <span>{t('dashboard_upcoming_plan')}</span>
             </CardTitle>
             <CardDescription>
-              Notre outil peut préparer votre plan de repas pour les jours à venir.
+              {t('dashboard_upcoming_desc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8 text-center flex-col gap-4">
-              <p className="text-sm text-muted-foreground">Passez au calendrier pour organiser vos futurs repas.</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard_go_to_calendar_desc')}</p>
               <Button asChild>
                 <Link href="/calendar">
                   <Calendar className="mr-2 h-4 w-4" />
-                  Aller au calendrier
+                  {t('nav_calendar')}
                 </Link>
               </Button>
             </div>

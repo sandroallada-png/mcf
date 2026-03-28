@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, SkipForward, X, ChefHat, CheckCircle2, Clock, Timer, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, X, ChefHat, CheckCircle2, Clock, Timer, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cooking } from '@/lib/types';
 
@@ -276,6 +276,12 @@ function StepScreen({ steps, onFinish }: StepScreenProps) {
         }
     }, [currentStep, steps.length, onFinish]);
 
+    const handleBack = () => {
+        if (currentStep > 0) {
+            setCurrentStep(i => i - 1);
+        }
+    };
+
     // Auto-advance when timer finishes
     useEffect(() => {
         if (isComplete && !playing && hasTimer) {
@@ -408,22 +414,34 @@ function StepScreen({ steps, onFinish }: StepScreenProps) {
                     </Button>
                 )}
 
-                <Button
-                    onClick={handleNext}
-                    className={cn(
-                        "w-full h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98]",
-                        hasTimer && !isComplete
-                            ? "bg-transparent border border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5"
-                            : isLastStep
-                                ? "bg-emerald-600 text-white shadow-xl shadow-emerald-600/20"
-                                : "bg-primary text-white shadow-xl shadow-primary/20"
+                <div className="flex gap-3">
+                    {currentStep > 0 && (
+                        <Button
+                            onClick={handleBack}
+                            variant="outline"
+                            className="flex-1 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] bg-transparent border border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5"
+                        >
+                            <SkipBack className="mr-2 h-4 w-4" />Précédent
+                        </Button>
                     )}
-                >
-                    {isLastStep
-                        ? <><CheckCircle2 className="mr-2 h-4 w-4" />Repas terminé !</>
-                        : <><SkipForward className="mr-2 h-4 w-4" />Étape suivante</>
-                    }
-                </Button>
+                    <Button
+                        onClick={handleNext}
+                        className={cn(
+                            "h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98]",
+                            currentStep > 0 ? "flex-1" : "w-full",
+                            hasTimer && !isComplete
+                                ? "bg-transparent border border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5"
+                                : isLastStep
+                                    ? "bg-emerald-600 text-white shadow-xl shadow-emerald-600/20"
+                                    : "bg-primary text-white shadow-xl shadow-primary/20"
+                        )}
+                    >
+                        {isLastStep
+                            ? <><CheckCircle2 className="mr-2 h-4 w-4" />Repas terminé !</>
+                            : <><SkipForward className="mr-1.5 h-4 w-4" />Suivant</>
+                        }
+                    </Button>
+                </div>
             </div>
 
             {/* Keyframe for flame wiggle */}

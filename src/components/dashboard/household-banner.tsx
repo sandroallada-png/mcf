@@ -1,10 +1,10 @@
 
 'use client';
 
-import React from 'react';
 import { ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 interface HouseholdBannerProps {
   cooksForToday: Record<string, string>;
@@ -12,6 +12,8 @@ interface HouseholdBannerProps {
 }
 
 export function HouseholdBanner({ cooksForToday, mealTypeTranslations }: HouseholdBannerProps) {
+  const { t } = useTranslation();
+
   if (Object.keys(cooksForToday).length === 0) return null;
 
   return (
@@ -22,12 +24,12 @@ export function HouseholdBanner({ cooksForToday, mealTypeTranslations }: Househo
             <ChefHat className="h-6 w-6 text-white" />
           </div>
           <div className="space-y-0.5 text-left">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/60">Organisation du foyer</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/60">{t('banner_org')}</h3>
             <p className="text-sm md:text-base font-black text-foreground">
               {(() => {
                 const uniqueCooks = Array.from(new Set(Object.values(cooksForToday)));
                 if (uniqueCooks.length === 1) {
-                  return `C'est ${uniqueCooks[0]} qui cuisine aujourd'hui ! 🧑‍🍳`;
+                  return t('banner_one_cook', { name: uniqueCooks[0] });
                 }
                 return Object.entries(cooksForToday)
                   .map(([type, name]) => {
@@ -41,7 +43,7 @@ export function HouseholdBanner({ cooksForToday, mealTypeTranslations }: Househo
         </div>
         <Button variant="outline" size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border-primary/20 bg-primary/5 text-primary hover:bg-primary/10" asChild>
           <Link href="/cuisine">
-            Détails de l'équipe
+            {t('banner_details')}
           </Link>
         </Button>
       </div>

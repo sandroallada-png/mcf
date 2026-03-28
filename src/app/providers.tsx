@@ -1,5 +1,7 @@
 'use client';
 
+import '@/lib/i18n';
+
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AuthProvider } from '@/components/auth/auth-provider';

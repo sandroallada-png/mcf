@@ -4,6 +4,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useTranslation, Trans } from 'react-i18next';
 
 interface WelcomeSectionProps {
   userName: string;
@@ -12,6 +13,7 @@ interface WelcomeSectionProps {
 }
 
 export function WelcomeSection({ userName, contextualMessage, contextualImage }: WelcomeSectionProps) {
+  const { t } = useTranslation();
   return (
     <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary/10 via-background to-secondary/5 border border-primary/5 p-6 md:p-8 shadow-sm">
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -22,10 +24,12 @@ export function WelcomeSection({ userName, contextualMessage, contextualImage }:
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground leading-none">
-              Salut, <span className="text-primary">{userName}</span> !
+              <Trans i18nKey="dashboard_welcome" values={{ name: userName }}>
+                Salut, <span className="text-primary">{{name: userName}}</span> !
+              </Trans>
             </h1>
             <p className="mt-4 text-sm md:text-base font-medium text-muted-foreground/80 leading-relaxed max-w-md">
-              Voici un aperçu de votre journée. {contextualMessage}
+              {t('dashboard_overview_msg', { msg: contextualMessage })}
             </p>
           </motion.div>
         </div>

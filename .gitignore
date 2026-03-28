@@ -39,8 +39,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Documentation
+# Documentation (privée — non versionnée)
 DOCUMENTATION.md
+TECHNICAL_MODERATION.md
+PLATFORMS.md
+PROJECT_ANALYSIS.md
+# USER_MANUAL.md → versionné intentionnellement (utilisé par l'IA)
 
 # Native platforms
 /android/
@@ -60,3 +64,7 @@ DOCUMENTATION.md
 
 # Architecture reminders
 project-rules.md
+
+# Admin module
+/src/modules/admin/
+/src/app/admin/

@@ -164,21 +164,20 @@ export default function CoursesPage() {
     ];
 
     return (
-        <div className="h-screen w-full bg-background font-body flex flex-col">
+        <div className="h-screen w-full bg-background font-body flex flex-col overflow-hidden">
             <SidebarProvider>
                 <AppSidebar collapsible="icon" className="w-64 peer hidden md:block border-r bg-sidebar">
                     <Sidebar {...sidebarProps} />
                 </AppSidebar>
-                <SidebarInset>
-                    <div className="flex h-full flex-1 flex-col overflow-hidden">
-                        <AppHeader
-                            title="Courses"
-                            icon={<ShoppingCart className="h-4 w-4" />}
-                            user={user}
-                            sidebarProps={sidebarProps}
-                        />
-                        <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden bg-background">
-                            <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
+                <SidebarInset className="bg-background flex flex-col min-w-0 flex-1 overflow-hidden">
+                    <AppHeader
+                        title="Courses"
+                        icon={<ShoppingCart className="h-4 w-4" />}
+                        user={user}
+                        sidebarProps={sidebarProps}
+                    />
+                    <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden bg-background">
+                        <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-8 md:space-y-10">
                                 {/* Header Section */}
                                 <div className="space-y-6">
                                     <div className="space-y-2">
@@ -424,8 +423,7 @@ export default function CoursesPage() {
                                     </div>
                                 )}
                             </div>
-                        </main>
-                    </div>
+                    </main>
                 </SidebarInset>
             </SidebarProvider>
         </div>

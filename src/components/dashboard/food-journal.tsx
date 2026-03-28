@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useRef, useMemo } from 'react';
@@ -10,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import type { MealType } from '@/lib/types';
 import { openDishPreview } from '@/components/shared/global-dish-preview';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 
 interface FoodJournalProps {
   mealTypes: string[];
@@ -35,6 +35,7 @@ export function FoodJournal({
   const router = useRouter();
   const { toast } = useToast();
   const notifiedMealsRef = useRef<Set<string>>(new Set());
+  const { t } = useTranslation();
 
   const thresholds: Record<string, number> = useMemo(() => ({
     breakfast: 8.5, // 08:30
@@ -54,8 +55,11 @@ export function FoodJournal({
           if (!notifiedMealsRef.current.has(mealKey)) {
             notifiedMealsRef.current.add(mealKey);
             toast({
-              title: 'Céline (L\'IA) - A table !',
-              description: `Avez-vous oublié de cuisiner votre ${mealTypeDetails[meal.type]?.translation.toLowerCase()} ("${meal.name}") ?`,
+              title: `⏰ ${t('journal_late_notification_title')}`,
+              description: t('journal_late_notification_desc', { 
+                type: mealTypeDetails[meal.type]?.translation.toLowerCase(), 
+                name: meal.name 
+              }),
               variant: 'default',
             });
           }
@@ -77,7 +81,7 @@ export function FoodJournal({
           <div className="p-1.5 bg-primary/10 rounded-lg">
             <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary" />
           </div>
-          <h2 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-foreground">Journal Alimentaire</h2>
+          <h2 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-foreground">{t('journal_title')}</h2>
         </div>
         <Badge variant="outline" className="rounded-full font-bold bg-background border border-border px-2.5 py-0.5 text-[9px] md:text-[10px]">
           {currentTime.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -117,7 +121,7 @@ export function FoodJournal({
                         key={meal.id}
                         className={cn(
                           "group/item flex items-center justify-between p-2 md:p-2.5 rounded-xl transition-all cursor-pointer border",
-                          late ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/30" : "border-transparent hover:border-border/50 hover:bg-accent/5"
+                          late ? "border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-sm" : "border-transparent hover:border-border/50 hover:bg-accent/5"
                         )}
                         onClick={() => setSuggestionMeal(meal)}
                       >
@@ -151,11 +155,11 @@ export function FoodJournal({
                               <span className="text-[10px] font-bold text-muted-foreground">{meal.calories} kcal</span>
                               <div className="flex items-center gap-1.5">
                                 {meal.isScheduled && (
-                                  <Badge variant="secondary" className={cn("text-[7px] font-black uppercase px-1 py-0 border-none", late ? "bg-red-500/20 text-red-500" : "bg-primary/10 text-primary")}>Prévu</Badge>
+                                  <Badge variant="secondary" className={cn("text-[8px] font-black uppercase px-2 py-0.5 border-none", late ? "bg-amber-100 text-amber-900" : "bg-primary/10 text-primary")}>{t('journal_scheduled')}</Badge>
                                 )}
                                 {late && (
-                                  <Badge variant="outline" className="text-[7px] font-black uppercase px-1 py-0 text-red-500 border-red-500/30 flex items-center gap-1">
-                                    <AlertCircle className="h-2 w-2" /> En retard
+                                  <Badge className="text-[8px] font-black uppercase px-2 py-0.5 bg-amber-500 text-white border-none flex items-center gap-1.5 shadow-md shadow-amber-500/20">
+                                    <AlertCircle className="h-3 w-3" /> {t('journal_late')}
                                   </Badge>
                                 )}
                                 <div 
@@ -186,13 +190,13 @@ export function FoodJournal({
                   </div>
                 ) : (
                   <button
-                    onClick={() => openFormForType(type as import('@/lib/types').MealType)}
+                    onClick={() => openFormForType(type as MealType)}
                     className="w-full flex items-center justify-center gap-2 py-4 group/add"
                   >
                     <div className="h-8 w-8 rounded-full bg-background border border-border flex items-center justify-center group-hover/add:border-primary/50 group-hover/add:bg-primary/5 transition-all text-muted-foreground group-hover/add:text-primary">
                       <PlusCircle className="h-4 w-4" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 group-hover/add:text-primary/70 transition-colors">Ajouter un repas</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 group-hover/add:text-primary/70 transition-colors">{t('dashboard_add_meal')}</span>
                   </button>
                 )}
               </div>

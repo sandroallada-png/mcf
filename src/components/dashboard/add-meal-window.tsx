@@ -34,11 +34,13 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ImageZoomLightbox } from '../shared/image-zoom-lightbox';
 
+import { motion, AnimatePresence } from 'framer-motion';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit, getDocs, deleteDoc, Timestamp, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { getSingleMealSuggestionAction } from '@/app/actions';
 import type { Dish, Meal, SingleMealSuggestion } from '@/lib/types';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useTranslation } from 'react-i18next';
 
 // Schema for the form
 const mealFormSchema = z.object({
@@ -60,7 +62,12 @@ interface AddMealWindowProps {
     userId?: string;
     chefId?: string;
     defaultType?: Meal['type'];
+    mainObjective?: string;
 }
+
+const UNHEALTHY_KEYWORDS = [
+    'burger', 'pizza', 'frite', 'soda', 'coca', 'kebab', 'tacos', 'glace', 'mcdo', 'kfc', 'nutella', 'mayonnaise', 'beignet', 'crepe salee', 'panini', 'chips'
+];
 
 const mealTypeTranslations: Record<string, string> = {
     breakfast: 'Petit-déjeuner',
@@ -70,7 +77,7 @@ const mealTypeTranslations: Record<string, string> = {
     dessert: 'Dessert / Snack',
 };
 
-export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userId, chefId, defaultType }: AddMealWindowProps) {
+export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userId, chefId, defaultType, mainObjective }: AddMealWindowProps) {
     const { firestore, user } = useFirebase();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<'today' | 'later'>('today');
@@ -80,6 +87,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const [sentMissingMeal, setSentMissingMeal] = useState(false);
     const [selectedMealInfo, setSelectedMealInfo] = useState<{ name: string; imageUrl?: string } | null>(null);
     const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+    const { t } = useTranslation();
 
     // Fetch dishes for search
     const dishesCollectionRef = useMemoFirebase(() => collection(firestore, 'dishes'), [firestore]);
@@ -154,6 +162,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
     const [pendingSubmission, setPendingSubmission] = useState<{ values: MealFormValues; type: 'today' | 'later' } | null>(null);
     const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
     const [conflictMessage, setConflictMessage] = useState('');
+    const [complianceWarningOpen, setComplianceWarningOpen] = useState(false);
 
     const checkForConflict = async (date: Date, type: Meal['type']) => {
         const effectiveId = chefId || userId;
@@ -193,6 +202,19 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
 
 
     const handleFormSubmit = async (values: MealFormValues) => {
+        // Compliance Check
+        const isWeightLossObjective = mainObjective?.toLowerCase().includes('perte') || 
+                                     mainObjective?.toLowerCase().includes('poids') ||
+                                     mainObjective?.toLowerCase().includes('minceur');
+        
+        const isUnhealthy = UNHEALTHY_KEYWORDS.some(kw => values.name.toLowerCase().includes(kw));
+
+        if (isWeightLossObjective && isUnhealthy && !complianceWarningOpen) {
+            setComplianceWarningOpen(true);
+            // We don't return yet, we let the user click "OK" on the warning before proceeding or they can cancel
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             if (activeTab === 'later' && values.date) {
@@ -389,20 +411,68 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
         >
+            {/* Compliance Warning Overlay */}
+            <AnimatePresence>
+                {complianceWarningOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-background/90 backdrop-blur-md z-[60] flex items-center justify-center p-6"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="bg-card w-full max-w-[340px] p-8 rounded-[2.5rem] border-2 shadow-2xl text-center space-y-6"
+                        >
+                            <div className="mx-auto w-20 h-20 rounded-full bg-amber-50 flex items-center justify-center border-4 border-amber-100 animate-bounce shadow-inner">
+                                <span className="text-4xl">⚠️</span>
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-2xl font-black text-foreground">Attention !</h2>
+                                <p className="text-muted-foreground font-medium leading-relaxed">
+                                    Ce repas ne correspond pas à votre objectif actuel de <span className="text-primary font-bold">{mainObjective || "votre santé"}</span>.
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <Button 
+                                    onClick={() => {
+                                        setComplianceWarningOpen(false);
+                                        // Procéder quand même car c'est un avertissement
+                                        const vals = form.getValues();
+                                        setIsSubmitting(true);
+                                        procceedSubmission(vals, activeTab);
+                                    }}
+                                    className="w-full h-12 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-200 font-bold shadow-lg shadow-amber-900/5 active:scale-95 transition-all"
+                                >
+                                    OK, JE COMPRENDS
+                                </Button>
+                                <button 
+                                    onClick={() => setComplianceWarningOpen(false)}
+                                    className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors pt-2"
+                                >
+                                    MODIFIER MON REPAS
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <DialogHeader className="px-6 pt-6 pb-4 bg-muted/10 border-b">
                 <DialogTitle className="text-2xl font-black flex items-center gap-2">
-                    🍽️ Ajouter ou Planifier un repas
+                    {t('add_meal_title')}
                 </DialogTitle>
                 <DialogDescription className="font-medium text-muted-foreground">
-                    Enregistrez ce que vous mangez pour suivre vos objectifs.
+                    {t('add_meal_subtitle')}
                 </DialogDescription>
             </DialogHeader>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'today' | 'later')} className="w-full h-full flex flex-col min-h-0">
 
                 <div className="px-6 py-2 bg-muted/5 border-b">
                     <TabsList className="grid w-full grid-cols-2 h-10">
-                        <TabsTrigger value="today" className="text-xs font-bold uppercase tracking-wide">Aujourd'hui</TabsTrigger>
-                        <TabsTrigger value="later" className="text-xs font-bold uppercase tracking-wide">Plus tard</TabsTrigger>
+                        <TabsTrigger value="today" className="text-xs font-bold uppercase tracking-wide">{t('add_meal_today')}</TabsTrigger>
+                        <TabsTrigger value="later" className="text-xs font-bold uppercase tracking-wide">{t('add_meal_later')}</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -418,7 +488,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     render={({ field }) => (
                                         <FormItem className="relative">
                                             <div className="flex items-center justify-between mb-2">
-                                                <FormLabel>Que mangez-vous ?</FormLabel>
+                                                <FormLabel>{t('add_meal_what')}</FormLabel>
                                                 {!selectedMealInfo && !searchTerm && (
                                                     <Button
                                                         type="button"
@@ -431,12 +501,12 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                         {isSearchingAlternative ? (
                                                             <>
                                                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                                                Génération...
+                                                                {t('add_meal_generating')}
                                                             </>
                                                         ) : (
                                                             <>
                                                                 <Sparkles className="h-3 w-3" />
-                                                                Besoin d'une idée ?
+                                                                {t('add_meal_need_idea')}
                                                             </>
                                                         )}
                                                     </Button>
@@ -459,7 +529,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                             )}
                                                         </div>
                                                         <div className="flex-1">
-                                                            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-0.5">Voici votre repas choisi</p>
+                                                            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-0.5">{t('add_meal_your_choice')}</p>
                                                             <p className="text-xl font-black text-foreground">{selectedMealInfo.name}</p>
                                                             <Button
                                                                 type="button"
@@ -471,7 +541,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                                     form.setValue('name', '');
                                                                 }}
                                                             >
-                                                                Modifier mon choix
+                                                                {t('add_meal_edit_choice')}
                                                             </Button>
                                                         </div>
                                                         <div className="flex flex-col items-center gap-2">
@@ -498,7 +568,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                     <div className="relative">
                                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                         <Input
-                                                            placeholder="ex: Poulet Yassa, Ratatouille..."
+                                                            placeholder={t('add_meal_placeholder')}
                                                             {...field}
                                                             className="pl-9 h-12 rounded-xl focus-visible:ring-primary/20"
                                                             autoComplete="off"
@@ -520,14 +590,14 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                 {/* Close Suggestion if it exists when searching something else */}
                                 {searchTerm && suggestedAlternative && !selectedDish && (
                                     <div className="flex justify-between items-center px-1">
-                                        <p className="text-[10px] font-medium text-muted-foreground italic">Recherche en cours...</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground italic">{t('add_meal_searching')}</p>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             className="h-6 text-[10px] text-muted-foreground px-2"
                                             onClick={() => setSuggestedAlternative(null)}
                                         >
-                                            Ignorer la suggestion
+                                            {t('add_meal_ignored_suggestion')}
                                         </Button>
                                     </div>
                                 )}
@@ -568,7 +638,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Coup de cœur suggéré</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">{t('add_meal_ai_suggestion')}</p>
                                                 <p className="text-lg font-black text-foreground truncate">{suggestedAlternative.name}</p>
                                                 <div className="flex items-center gap-3 mt-1">
                                                     <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
@@ -582,7 +652,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                 </div>
                                             </div>
                                             <Button type="button" size="sm" className="rounded-full px-6 font-bold shadow-lg shadow-primary/20">
-                                                Choisir
+                                                {t('add_meal_choose_btn')}
                                             </Button>
                                         </div>
                                     </div>
@@ -592,7 +662,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                 {searchTerm && !selectedDish && (
                                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">
-                                            {filteredDishes.length > 0 ? 'Suggestions' : 'Résultats'}
+                                            {filteredDishes.length > 0 ? t('add_meal_suggestions') : t('add_meal_results')}
                                         </p>
 
                                         <div className="grid gap-2">
@@ -625,7 +695,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                             <p className="text-sm font-bold text-foreground">{dish.name}</p>
                                                             <div className="flex items-center gap-2 mt-0.5">
                                                                 <Badge variant="secondary" className="text-[9px] h-4 px-1.5 font-bold border-muted-foreground/20">
-                                                                    {dish.recipe ? 'Recette dispo' : 'Sans recette'}
+                                                                    {dish.recipe ? t('add_meal_with_recipe') : t('add_meal_no_recipe')}
                                                                 </Badge>
                                                                 <span className="text-[10px] text-muted-foreground truncate">{dish.origin}</span>
                                                             </div>
@@ -678,12 +748,11 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                         <>
                                                             <div className="flex flex-col items-center gap-2">
                                                                 <HelpCircle className="h-8 w-8 text-muted-foreground/30" />
-                                                                <p className="text-sm font-medium text-muted-foreground">Repas pas encore disponible</p>
+                                                                <p className="text-sm font-medium text-muted-foreground">{t('add_meal_not_found')}</p>
                                                                 {searchTerm.length > 2 && (
                                                                     <div className="mt-2 space-y-3 w-full">
                                                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                                                            Nous avons bien remarqué que votre repas est absent.
-                                                                            Souhaitez-vous nous le signaler pour que nos modérateurs puissent l'ajouter ?
+                                                                            {t('add_meal_report_missing')}
                                                                         </p>
                                                                         {!sentMissingMeal ? (
                                                                             <Button
@@ -695,12 +764,12 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                                                 disabled={isSubmitting}
                                                                             >
                                                                                 {isSubmitting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
-                                                                                Envoyer ce repas absent
+                                                                                {t('add_meal_send_missing')}
                                                                             </Button>
                                                                         ) : (
                                                                             <div className="flex items-center justify-center gap-2 text-primary font-bold text-xs p-2 bg-primary/5 rounded-lg border border-primary/20">
                                                                                 <CheckCircle2 className="h-4 w-4" />
-                                                                                Signalé avec succès !
+                                                                                {t('add_meal_reported')}
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -715,7 +784,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                                 disabled={isSearchingAlternative}
                                                             >
                                                                 {isSearchingAlternative ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-                                                                Trouver une alternative
+                                                                {t('add_meal_find_alternative')}
                                                             </Button>
                                                         </>
                                                     )}
@@ -732,7 +801,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     name="type"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Type</FormLabel>
+                                            <FormLabel>{t('add_meal_type')}</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
@@ -758,15 +827,15 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                         name="cookedBy"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Cuisinier</FormLabel>
+                                                <FormLabel>{t('add_meal_cook')}</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value || ''}>
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Moi" />
+                                                            <SelectValue placeholder={t('add_meal_cook_me')} />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="">Moi</SelectItem>
+                                                        <SelectItem value="">{t('add_meal_cook_me')}</SelectItem>
                                                         {household.map(m => (
                                                             <SelectItem key={m} value={m}>{m}</SelectItem>
                                                         ))}
@@ -785,7 +854,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     name="date"
                                     render={({ field }) => (
                                         <FormItem className="flex flex-col">
-                                            <FormLabel>Date prévue</FormLabel>
+                                            <FormLabel>{t('add_meal_planned_date')}</FormLabel>
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <FormControl>
@@ -799,7 +868,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                                             {field.value ? (
                                                                 format(field.value, "PPP", { locale: fr })
                                                             ) : (
-                                                                <span>Choisir une date</span>
+                                                                <span>{t('add_meal_choose_date')}</span>
                                                             )}
                                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                         </Button>
@@ -824,10 +893,10 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                             </TabsContent>
 
                             <div className="pt-2 flex justify-end gap-2">
-                                <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>Annuler</Button>
+                                <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>{t('add_meal_cancel_btn')}</Button>
                                 <Button type="submit" disabled={isSubmitting || !form.getValues().name}>
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {activeTab === 'today' ? 'Ajouter le repas' : 'Programmer'}
+                                    {activeTab === 'today' ? t('add_meal_add_btn') : t('add_meal_plan_btn')}
                                 </Button>
                             </div>
                         </form>
@@ -840,7 +909,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                     <div className="bg-card w-full max-w-sm p-6 rounded-xl border shadow-xl space-y-4 animate-in fade-in zoom-in duration-200">
                         <div className="flex flex-col items-center text-center gap-2">
                             <Clock className="h-10 w-10 text-orange-500 bg-orange-100 p-2 rounded-full" />
-                            <h3 className="font-bold text-lg">Conflit de planning</h3>
+                            <h3 className="font-bold text-lg">{t('add_meal_conflict_title')}</h3>
                             <p className="text-sm text-muted-foreground">{conflictMessage}</p>
                         </div>
                         <div className="flex gap-2 justify-center">
@@ -853,7 +922,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     setIsSubmitting(false);
                                 }}
                             >
-                                Annuler
+                                {t('add_meal_cancel_btn')}
                             </Button>
                             <Button
                                 size="sm"
@@ -863,7 +932,7 @@ export function AddMealWindow({ isOpen, onClose, onSubmit, household = [], userI
                                     }
                                 }}
                             >
-                                Remplacer
+                                {t('add_meal_conflict_replace')}
                             </Button>
                         </div>
                     </div>

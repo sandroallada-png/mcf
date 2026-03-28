@@ -29,28 +29,29 @@ import { useLoading } from '@/contexts/loading-context';
 import { cn, formatUserIdentifier } from '@/lib/utils';
 import { useReadOnly } from '@/contexts/read-only-context';
 import { ThemeToggle } from '../theme-toggle';
+import { useTranslation } from 'react-i18next';
 
 export const mainNavLinks = [
-  { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="h-5 w-5" /> },
-  { href: '/cuisine', label: 'Cuisine', icon: <ChefHat className="h-5 w-5" /> },
-  { href: '/box', label: <span className="flex items-center gap-2">Ma Box <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-primary/10 text-primary border-none">Nouveau</Badge></span>, icon: <Package className="h-5 w-5" /> },
-  { href: '/atelier', label: 'Atelier du Chef', icon: <Library className="h-5 w-5" /> },
-  { href: '/calendar', label: 'Calendrier', icon: <Calendar className="h-5 w-5" /> },
-  { href: '/my-flex-ai', label: 'My Flex Coach', icon: <Bot className="h-5 w-5" /> },
-  { href: '/fridge', label: 'Frigo', icon: <Refrigerator className="h-5 w-5" /> },
-  { href: '/courses', label: 'Courses', icon: <ShoppingCart className="h-5 w-5" /> },
-  { href: '/mon-niveau', label: 'Mon Niveau', icon: <Trophy className="h-5 w-5" /> },
+  { href: '/dashboard', labelKey: 'nav_dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+  { href: '/cuisine', labelKey: 'nav_cuisine', icon: <ChefHat className="h-5 w-5" /> },
+  { href: '/box', labelKey: 'nav_box', isBox: true, icon: <Package className="h-5 w-5" /> },
+  { href: '/atelier', labelKey: 'nav_atelier', icon: <Library className="h-5 w-5" /> },
+  { href: '/calendar', labelKey: 'nav_calendar', icon: <Calendar className="h-5 w-5" /> },
+  { href: '/my-flex-ai', labelKey: 'nav_coach', icon: <Bot className="h-5 w-5" /> },
+  { href: '/fridge', labelKey: 'nav_fridge', icon: <Refrigerator className="h-5 w-5" /> },
+  { href: '/courses', labelKey: 'nav_shopping', icon: <ShoppingCart className="h-5 w-5" /> },
+  { href: '/mon-niveau', labelKey: 'nav_levels', icon: <Trophy className="h-5 w-5" /> },
 ];
 
 export const adminNavLinks = [
-  { href: '/admin', label: 'Outils Admin', icon: <Shield className="h-5 w-5" /> },
-  { href: '/admin/feedbacks', label: 'Feedbacks', icon: <Star className="h-5 w-5" /> },
-  { href: '/admin/follow-up', label: 'Suivi et Relance', icon: <Activity className="h-5 w-5" /> },
+  { href: '/admin', labelKey: 'nav_admin_tools', icon: <Shield className="h-5 w-5" /> },
+  { href: '/admin/feedbacks', labelKey: 'nav_feedbacks', icon: <Star className="h-5 w-5" /> },
+  { href: '/admin/follow-up', labelKey: 'nav_follow_up', icon: <Activity className="h-5 w-5" /> },
 ];
 
 export const accountNavLinks = [
-  { href: '#', label: 'Mon Abonnement', icon: <Star className="h-5 w-5" /> },
-  { href: '/settings', label: 'Profil & Paramètres', icon: <User className="h-5 w-5" /> },
+  { href: '#', labelKey: 'nav_subscription', icon: <Star className="h-5 w-5" /> },
+  { href: '/settings', labelKey: 'nav_settings', icon: <User className="h-5 w-5" /> },
 ]
 
 interface SidebarProps {
@@ -79,6 +80,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
   const { state, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const { isReadOnly, chefName, triggerBlock, effectiveLevel, effectiveXp } = useReadOnly();
+  const { t } = useTranslation();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -155,25 +157,25 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
               {mainNavLinks.map(link => (
                 <Link key={link.href} href={link.href} onClick={(e) => handleNavClick(e, link.href)} className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 px-3 py-1.5 rounded-md transition-colors text-sm font-medium group">
                   <span className="text-muted-foreground group-hover:text-foreground/80">{link.icon}</span>
-                  {link.label}
+                  {link.isBox ? <span className="flex items-center gap-2">{t(link.labelKey)} <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-primary/10 text-primary border-none">{t('nav_new')}</Badge></span> : t(link.labelKey)}
                 </Link>
               ))}
               {isAdmin && (
                 <div className="pt-4 pb-1">
-                  <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Administration</p>
+                  <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">{t('sidebar_admin')}</p>
                 </div>
               )}
               {isAdmin && adminNavLinks.map(link => (
                 <Link key={link.href} href={link.href} onClick={(e) => handleNavClick(e, link.href)} className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 px-3 py-1.5 rounded-md transition-colors text-sm font-medium group">
                   <span className="text-muted-foreground group-hover:text-foreground/80">{link.icon}</span>
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               ))}
             </div>
           </nav>
           <Separator className="my-4" />
           <div className="flex items-center justify-between px-3 mb-6">
-            <span className="text-sm font-medium text-muted-foreground">Mode d'affichage</span>
+            <span className="text-sm font-medium text-muted-foreground">{t('sidebar_display_mode')}</span>
             <ThemeToggle />
           </div>
           <div className="flex flex-1 flex-col gap-4">
@@ -182,7 +184,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
-                    Niveau {currentLevel}
+                    {t('sidebar_level')} {currentLevel}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">{xpForCurrentLevel} / {XP_PER_LEVEL} XP</p>
                 </div>
@@ -195,7 +197,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
               <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 p-3">
                 <div className="flex items-center gap-3">
                   <Target className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-base">Vos Objectifs</CardTitle>
+                  <CardTitle className="text-base">{t('sidebar_goals')}</CardTitle>
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild={!isReadOnly} onClick={isReadOnly ? () => triggerBlock() : undefined}>
                   {isReadOnly ? <Edit className="h-4 w-4" /> : <Link href="/settings"><Edit className="h-4 w-4" /></Link>}
@@ -207,9 +209,9 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Activity className="h-4 w-4 text-muted-foreground" />
-                      <h4 className="text-xs font-semibold">État</h4>
+                      <h4 className="text-xs font-semibold">{t('sidebar_status')}</h4>
                     </div>
-                    <Badge variant="secondary" className="text-xs">En cours</Badge>
+                    <Badge variant="secondary" className="text-xs">{t('sidebar_in_progress')}</Badge>
                   </div>
                 </div>
               </CardContent>
@@ -218,7 +220,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
               <CardHeader className="flex-row items-center gap-3 space-y-0 p-3">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <div>
-                  <CardTitle className="text-base">Conseils de l'outil</CardTitle>
+                  <CardTitle className="text-base">{t('sidebar_tips')}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col justify-between p-3 pt-0">
@@ -228,12 +230,12 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
                   </div>
                 ) : (
                   <div className="flex flex-1 items-center justify-center text-center text-xs text-muted-foreground">
-                    Cliquez pour générer vos conseils.
+                    {t('sidebar_no_tips')}
                   </div>
                 )}
                 <ButtonWithLoading onClick={handleGetTips} className="mt-3 w-full h-9">
                   <Lightbulb className="mr-2 h-4 w-4" />
-                  Générer mes conseils
+                  {t('sidebar_generate_tips')}
                 </ButtonWithLoading>
               </CardContent>
             </Card>
@@ -255,7 +257,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
             <Link
               key={link.href}
               href={link.href}
-              title={isCollapsed ? (typeof link.label === 'string' ? link.label : 'Navigation') : undefined}
+              title={isCollapsed ? t(link.labelKey) : undefined}
               onClick={(e) => handleNavClick(e, link.href)}
               className={cn(
                 "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all text-sm font-medium group relative",
@@ -269,7 +271,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
               )}>
                 {link.icon}
               </span>
-              {!isCollapsed && link.label}
+              {!isCollapsed && (link.isBox ? <span className="flex items-center gap-2">{t(link.labelKey)} <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-primary/10 text-primary border-none">{t('nav_new')}</Badge></span> : t(link.labelKey))}
               {isCollapsed && pathname === link.href && (
                 <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
               )}
@@ -279,7 +281,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
 
         {isAdmin && (
           <div className="px-3 pt-6 pb-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Système</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">{t('sidebar_system')}</p>
           </div>
         )}
         <div className="space-y-0.5 px-1">
@@ -287,7 +289,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
             <Link
               key={link.href}
               href={link.href}
-              title={isCollapsed ? link.label : undefined}
+              title={isCollapsed ? t(link.labelKey) : undefined}
               onClick={(e) => handleNavClick(e, link.href)}
               className={cn(
                 "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all text-sm font-medium group",
@@ -301,7 +303,7 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
               )}>
                 {link.icon}
               </span>
-              {!isCollapsed && link.label}
+              {!isCollapsed && t(link.labelKey)}
             </Link>
           ))}
         </div>
@@ -313,14 +315,14 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
           <div className="flex items-center gap-2">
             <Shield className="h-3.5 w-3.5 text-amber-500 shrink-0" />
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">Mode Observateur</p>
-              {chefName && <p className="text-[10px] text-muted-foreground truncate">Chef&nbsp;: {chefName}</p>}
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">{t('sidebar_observer')}</p>
+              {chefName && <p className="text-[10px] text-muted-foreground truncate">{t('sidebar_chef')} {chefName}</p>}
             </div>
           </div>
         </div>
       )}
       {isReadOnly && isCollapsed && (
-        <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center" title="Mode Observateur">
+        <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center" title={t('sidebar_observer')}>
           <Shield className="h-3.5 w-3.5 text-amber-500" />
         </div>
       )}
@@ -334,18 +336,18 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
             className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:bg-accent/40 px-3 py-1.5 rounded-md transition-colors text-sm font-medium"
           >
             <span className="text-muted-foreground/70">{link.icon}</span>
-            {link.label}
+            {t(link.labelKey)}
           </Link>
         ))}
         {!isCollapsed && <Separator className="my-2 opacity-50" />}
         <div className={cn("flex items-center gap-2.5 px-2 py-2 hover:bg-accent/40 rounded-md transition-colors cursor-pointer group", isCollapsed && "justify-center px-0")}>
           <Avatar className="h-6 w-6 rounded-sm">
-            <AvatarImage src={userProfile?.avatarUrl ?? user?.photoURL ?? undefined} alt="Utilisateur" />
+            <AvatarImage src={userProfile?.avatarUrl ?? user?.photoURL ?? undefined} alt={t('sidebar_user')} />
             <AvatarFallback className="text-[10px] font-bold bg-muted">{(userProfile?.name || user?.displayName || 'U').charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden">
-              <p className="text-xs font-semibold truncate text-foreground/80 group-hover:text-foreground">{userProfile?.name || user?.displayName || 'Utilisateur'}</p>
+              <p className="text-xs font-semibold truncate text-foreground/80 group-hover:text-foreground">{userProfile?.name || user?.displayName || t('sidebar_user')}</p>
               <p className="text-[10px] text-muted-foreground truncate">{formatUserIdentifier(user?.email)}</p>
             </div>
           )}

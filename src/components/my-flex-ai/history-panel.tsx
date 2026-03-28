@@ -1,14 +1,12 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Plus, Trash2, Loader2, Sparkles } from "lucide-react";
+import { MessageSquare, Plus, Loader2, Sparkles, Clock } from "lucide-react";
 import { useUser, useFirebase, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { motion } from 'framer-motion';
 
 interface Conversation {
     id: string;
@@ -37,97 +35,110 @@ export function HistoryPanel({ onSelectConversation, activeConversationId }: His
   
   const formatDate = (timestamp: Conversation['createdAt']) => {
     if (!timestamp) return "À l'instant";
-    const date = new Date(timestamp.seconds * 1000);
-    return formatDistanceToNow(date, { addSuffix: true, locale: fr });
+    try {
+      return formatDistanceToNow(new Date(timestamp.seconds * 1000), { addSuffix: true, locale: fr });
+    } catch {
+      return "Date inconnue";
+    }
   };
 
+  return (
+    <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden">
+      {/* ── Barre d'en-tête : une seule ligne, sans débordement ── */}
+      <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-primary/5">
+        {/* Titre compact */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="shrink-0 h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+            <MessageSquare className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">Historique</p>
+            <p className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider mt-0.5">Échanges récents</p>
+          </div>
+        </div>
 
-    return (
-        <motion.div 
-            initial={{ opacity: 0, y: 10 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            className="flex h-full flex-col md:p-2"
+        {/* Bouton Nouveau chat : icône seule sur mobile, texte sur desktop */}
+        <Button
+          onClick={() => onSelectConversation(null)}
+          size="sm"
+          className="shrink-0 h-8 rounded-xl bg-primary hover:bg-primary/90 text-white shadow-md flex items-center gap-1.5 px-3"
         >
-            <div className="flex items-center justify-between pb-6 px-1">
-                <div>
-                    <h2 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5 text-primary" />
-                        Historique
-                    </h2>
-                    <p className="text-xs font-medium text-muted-foreground mt-1">Vos échanges précédents avec l'IA</p>
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest whitespace-nowrap">Nouveau</span>
+        </Button>
+      </div>
+
+      {/* ── Liste scrollable ── */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-1.5">
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <Loader2 className="h-7 w-7 animate-spin text-primary/30" />
+            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Chargement...</p>
+          </div>
+        )}
+
+        {!isLoading && conversations && conversations.map((conv) => {
+          const isActive = activeConversationId === conv.id;
+          return (
+            <button
+              key={conv.id}
+              onClick={() => onSelectConversation(conv.id)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-200 text-left group active:scale-[0.98]",
+                isActive
+                  ? "bg-primary border-primary text-white shadow-md"
+                  : "bg-card border-border/50 hover:border-primary/30 hover:bg-primary/5"
+              )}
+            >
+              {/* Icône */}
+              <div className={cn(
+                "shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-300",
+                isActive ? "bg-white/20" : "bg-primary/5 group-hover:bg-primary/10"
+              )}>
+                <MessageSquare className={cn("h-4 w-4", isActive ? "text-white" : "text-primary")} />
+              </div>
+
+              {/* Texte */}
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  "text-sm font-bold truncate leading-tight",
+                  isActive ? "text-white" : "text-foreground group-hover:text-primary"
+                )}>
+                  {conv.title || "Nouvelle conversation"}
+                </p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Clock className={cn("h-3 w-3 shrink-0", isActive ? "text-white/70" : "text-muted-foreground/60")} />
+                  <span className={cn(
+                    "text-[9px] font-semibold uppercase tracking-wider truncate",
+                    isActive ? "text-white/70" : "text-muted-foreground/60"
+                  )}>
+                    {formatDate(conv.createdAt)}
+                  </span>
                 </div>
-                <motion.button 
-                    whileHover={{ scale: 1.05 }} 
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => {
-                        // Small vibration / interaction feedback
-                        if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-                            window.navigator.vibrate(50);
-                        }
-                        onSelectConversation(null);
-                    }}
-                    className="cursor-pointer h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
-                    title="Nouvelle conversation"
-                >
-                    <Plus className="h-5 w-5 md:h-6 md:w-6" />
-                </motion.button>
+              </div>
+            </button>
+          );
+        })}
+
+        {!isLoading && (!conversations || conversations.length === 0) && (
+          <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
+            <div className="h-14 w-14 bg-muted/30 rounded-2xl flex items-center justify-center mb-4">
+              <Sparkles className="h-7 w-7 text-primary/20" />
             </div>
-            
-            <ScrollArea className="flex-1 -mx-2 px-2">
-                <div className="space-y-3 pb-8">
-            {isLoading && (
-                 <div className="flex justify-center items-center h-24">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-            )}
-                    {conversations && conversations.map((conv, idx) => (
-                        <motion.button
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            key={conv.id}
-                            onClick={() => onSelectConversation(conv.id)}
-                            className={cn(
-                                "w-full text-left p-4 rounded-2xl transition-all group border",
-                                activeConversationId === conv.id 
-                                    ? "bg-primary/5 border-primary/20" 
-                                    : "bg-background border-border hover:bg-muted/50 hover:border-primary/20 shadow-sm"
-                            )}
-                        >
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                    <MessageSquare className="h-4 w-4 text-primary" />
-                                </div>
-                                <div className="flex-1 min-w-0 pr-2">
-                                    <p className="text-sm font-bold truncate text-foreground">{conv.title}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1.5">{formatDate(conv.createdAt)}</p>
-                                </div>
-                            </div>
-                        </motion.button>
-                    ))}
-                    {!isLoading && conversations?.length === 0 && (
-                        <motion.div 
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                            className="text-center space-y-4 py-12 bg-muted/30 rounded-3xl border border-dashed border-border"
-                        >
-                            <div className="h-16 w-16 mx-auto bg-background rounded-full flex items-center justify-center shadow-sm border border-border">
-                                <MessageSquare className="h-6 w-6 text-muted-foreground/50" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black">Aucun historique</h3>
-                                <p className="text-xs text-muted-foreground mt-1">Vos conversations apparaîtront ici.</p>
-                            </div>
-                            <Button 
-                                variant="outline" 
-                                className="rounded-full h-8 text-xs font-bold uppercase tracking-widest mt-2"
-                                onClick={() => onSelectConversation(null)}
-                            >
-                                <Sparkles className="h-3.5 w-3.5 mr-2 text-primary" /> Lancer le chat
-                            </Button>
-                        </motion.div>
-                    )}
-                </div>
-            </ScrollArea>
-        </motion.div>
-    );
+            <p className="text-sm font-black tracking-tight mb-1">Aucune conversation</p>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-6 max-w-[180px]">
+              Lancez votre première discussion !
+            </p>
+            <Button
+              onClick={() => onSelectConversation(null)}
+              size="sm"
+              className="rounded-xl h-9 px-6 font-black uppercase text-[9px] tracking-widest"
+            >
+              Commencer
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

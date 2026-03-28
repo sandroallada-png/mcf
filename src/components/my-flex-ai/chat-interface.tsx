@@ -263,16 +263,16 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
 
     return (
         <div className="flex h-full flex-col bg-transparent min-h-0">
-            {/* Zone scrollable des messages - remplit tout l'espace disponible */}
-            <div className="flex-1 overflow-y-auto min-h-0" ref={scrollAreaRef}>
+            {/* Zone scrollable des messages */}
+            <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin overflow-x-hidden" ref={scrollAreaRef}>
                 <div className="p-3 md:p-6 space-y-6" ref={viewportRef}>
                     {(isDataLoading && conversationId) ? (
-                        <div className="flex flex-col items-center justify-center h-full py-20 gap-4">
+                        <div className="flex flex-col items-center justify-center py-10 gap-4">
                             <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Synchronisation...</p>
                         </div>
                     ) : (
-                        <>
+                        <div className="flex flex-col gap-6 w-full">
                             {messages.map((message, index) => {
                                 const { intro, plan } = message.role === 'ai' ? parseMealPlan(message.text) : { intro: message.text, plan: null };
                                 const isAiMessage = message.role === 'ai';
@@ -371,7 +371,7 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
                                     </div>
                                 </div>
                             )}
-                        </>
+                        </div>
                     )}
                 </div>
             </div>

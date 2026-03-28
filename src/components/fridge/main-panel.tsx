@@ -28,6 +28,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { useReadOnly } from '@/contexts/read-only-context';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../ui/select';
+
+const COMMON_INGREDIENTS = [
+    { category: 'Protéines', items: ['Œufs', 'Poulet', 'Steak haché', 'Saumon', 'Jambon', 'Tofu'] },
+    { category: 'Légumes', items: ['Tomates', 'Oignons', 'Carottes', 'Courgettes', 'Épinards', 'Salade'] },
+    { category: 'Féculents', items: ['Riz', 'Pâtes', 'Pommes de terre', 'Pain', 'Quinoa'] },
+    { category: 'Produits Laitiers', items: ['Lait', 'Emmental', 'Beurre', 'Yaourt', 'Crème fraîche'] },
+];
 
 interface FridgeItem {
     id: string;
@@ -173,25 +181,51 @@ export function MainPanel() {
                         </div>
 
                         <form onSubmit={handleAddItem} className="space-y-4">
-                            <div className="relative group/input">
-                                <Input
-                                    placeholder={isReadOnly ? "Consultation uniquement..." : "Ajouter un ingrédient..."}
-                                    className="h-12 px-4 text-sm rounded-xl border-2 border-primary/30 bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 shadow-md transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed pr-12 placeholder:text-muted-foreground/40"
-                                    value={newItem}
-                                    onChange={e => setNewItem(e.target.value)}
-                                    disabled={isReadOnly}
-                                    onClick={isReadOnly ? () => triggerBlock() : undefined}
-                                    readOnly={isReadOnly}
-                                />
-                                {!isReadOnly && (
-                                    <button
-                                        type="submit"
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-primary/40 hover:text-primary transition-colors disabled:opacity-30"
-                                        disabled={!newItem.trim()}
-                                    >
-                                        <PlusCircle className="h-5 w-5" />
-                                    </button>
-                                )}
+                             {/* Combo Box like Selection for anti-flemme */}
+                             <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Ingrédients communs</label>
+                                <Select onValueChange={(val) => setNewItem(val)}>
+                                    <SelectTrigger className="w-full h-11 rounded-2xl border-2 border-primary/20 bg-background hover:border-primary/40 transition-all font-bold">
+                                        <SelectValue placeholder="Choisir un ingrédient rapide..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl border-2 border-border shadow-2xl">
+                                        {COMMON_INGREDIENTS.map((group) => (
+                                            <SelectGroup key={group.category}>
+                                                <SelectLabel className="text-[9px] uppercase tracking-widest font-black text-primary/40 pt-2">{group.category}</SelectLabel>
+                                                {group.items.map((ing) => (
+                                                    <SelectItem key={ing} value={ing} className="font-bold py-2.5 rounded-xl cursor-pointer">
+                                                        {ing}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                             </div>
+
+                             <div className="relative group/input space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Saisie libre</label>
+                                <div className="flex flex-col gap-2">
+                                    <Input
+                                        placeholder={isReadOnly ? "Consultation uniquement..." : "Ou tapez manuellement..."}
+                                        className="h-12 px-4 text-sm rounded-2xl border-2 border-primary/30 bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 shadow-md transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-muted-foreground/40"
+                                        value={newItem}
+                                        onChange={e => setNewItem(e.target.value)}
+                                        disabled={isReadOnly}
+                                        onClick={isReadOnly ? () => triggerBlock() : undefined}
+                                        readOnly={isReadOnly}
+                                    />
+                                    {!isReadOnly && (
+                                        <Button
+                                            type="submit"
+                                            className="w-full h-12 flex items-center justify-center gap-3 rounded-2xl bg-primary text-white hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl shadow-primary/20 disabled:opacity-30 disabled:grayscale font-black uppercase text-[10px] tracking-widest animate-in slide-in-from-bottom-2 duration-500"
+                                            disabled={!newItem.trim()}
+                                        >
+                                            <PlusCircle className="h-5 w-5" />
+                                            Ajouter au frigo
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         </form>
 

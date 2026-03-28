@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ImageUploader } from '@/components/admin/image-uploader';
+import { ImageUploader } from '@/modules/admin/components/image-uploader';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -68,8 +68,8 @@ export default function AtelierPage() {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
     const { toast } = useToast();
-    const [userCookingItems, setUserCookingItems] = useState<(Cooking & { share?: boolean })[]>([]);
-    const [isLoadingUserCooking, setIsLoadingUserCooking] = useState(true);
+    const [grimoireItems, setGrimoireItems] = useState<(Cooking & { share?: boolean })[]>([]);
+    const [isLoadingGrimoire, setIsLoadingGrimoire] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
@@ -138,22 +138,22 @@ export default function AtelierPage() {
             setIsLoadingAllMeals(false);
         });
 
-        // Fetch user cooking items
-        const userCookingCollectionRef = collection(firestore, `users/${user.uid}/cooking`);
-        const userCookingQuery = query(userCookingCollectionRef, orderBy('createdAt', 'desc'));
-        const unsubscribeUserCooking = onSnapshot(userCookingQuery, (snapshot) => {
-            const cookingItemsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Cooking & { share?: boolean })));
-            setUserCookingItems(cookingItemsData);
-            setIsLoadingUserCooking(false);
+        // Fetch grimoire items
+        const grimoireCollectionRef = collection(firestore, `users/${user.uid}/grimoire`);
+        const grimoireQuery = query(grimoireCollectionRef, orderBy('createdAt', 'desc'));
+        const unsubscribeGrimoire = onSnapshot(grimoireQuery, (snapshot) => {
+            const grimoireData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as (Cooking & { share?: boolean })));
+            setGrimoireItems(grimoireData);
+            setIsLoadingGrimoire(false);
         }, (error) => {
-            console.error("Error fetching user cooking items:", error);
-            setIsLoadingUserCooking(false);
+            console.error("Error fetching grimoire items:", error);
+            setIsLoadingGrimoire(false);
         });
 
         return () => {
             unsubscribeGoals();
             unsubscribeMeals();
-            unsubscribeUserCooking();
+            unsubscribeGrimoire();
         };
     }, [user, firestore]);
 
@@ -185,14 +185,14 @@ export default function AtelierPage() {
         });
     }, [books, searchTerm, selectedCategory, favorites]);
 
-    const filteredUserCookingItems = useMemo(() => {
-        if (!userCookingItems) return [];
-        return userCookingItems.filter(item =>
+    const filteredGrimoireItems = useMemo(() => {
+        if (!grimoireItems) return [];
+        return grimoireItems.filter(item =>
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.type?.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [userCookingItems, searchTerm]);
+    }, [grimoireItems, searchTerm]);
 
     const onFormSubmit = async (data: RecipeFormValues) => {
         if (!user) return;
@@ -204,10 +204,10 @@ export default function AtelierPage() {
         };
 
         try {
-            const cookingCollectionRef = collection(firestore, 'users', user.uid, 'cooking');
+            const grimoireCollectionRef = collection(firestore, 'users', user.uid, 'grimoire');
 
-            // Save to user's personal 'cooking' collection
-            const cookingDocPromise = addDocumentNonBlocking(cookingCollectionRef, {
+            // Save to user's personal 'grimoire' collection
+            const grimoireDocPromise = addDocumentNonBlocking(grimoireCollectionRef, {
                 ...recipeData,
                 userId: user.uid,
                 createdAt: serverTimestamp(),
@@ -229,7 +229,7 @@ export default function AtelierPage() {
                 });
             }
 
-            await Promise.all([cookingDocPromise, publicationPromise]);
+            await Promise.all([grimoireDocPromise, publicationPromise]);
 
             toast({
                 title: "Recette enregistrée !",
@@ -258,7 +258,7 @@ export default function AtelierPage() {
     const handleAcceptSuggestion = async (meal: any, date: Date, recipe: string) => {
         if (!user) return;
         try {
-            await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cooking`), {
+            await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/grimoire`), {
                 userId: user.uid,
                 name: meal.name,
                 calories: meal.calories || 0,
@@ -303,7 +303,7 @@ export default function AtelierPage() {
         }
     };
 
-    const isLoading = isUserLoading || isLoadingAllMeals || isLoadingGoals || isLoadingBooks || isLoadingUserCooking || !user;
+    const isLoading = isUserLoading || isLoadingAllMeals || isLoadingGoals || isLoadingBooks || isLoadingGrimoire || !user;
 
     if (isLoading) {
         return (
@@ -473,12 +473,12 @@ export default function AtelierPage() {
 
                             <TabsContent value="my_recipes" className="mt-0 focus-visible:ring-0 outline-none w-full">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 w-full">
-                                    {isLoadingUserCooking ? (
+                                    {isLoadingGrimoire ? (
                                         Array.from({ length: 3 }).map((_, i) => (
                                             <div key={i} className="aspect-[16/10] w-full bg-muted/50 rounded-lg animate-pulse border border-border/50" />
                                         ))
-                                    ) : filteredUserCookingItems.length > 0 ? (
-                                        filteredUserCookingItems.map((item) => (
+                                    ) : filteredGrimoireItems.length > 0 ? (
+                                        filteredGrimoireItems.map((item) => (
                                             <Card
                                                 key={item.id}
                                                 className="group relative aspect-[7/10] rounded-lg overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-1 bg-muted"

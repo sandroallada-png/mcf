@@ -83,6 +83,17 @@
     height: 100%;
     width: 100%;
     position: relative;
+    /* Prevent text selection across the whole app to feel native */
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* But allow text selection inside form inputs and text areas */
+  input, textarea {
+    -webkit-user-select: auto;
+    -ms-user-select: auto;
+    user-select: auto;
   }
 
   body {

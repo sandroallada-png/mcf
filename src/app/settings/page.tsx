@@ -33,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn, formatUserIdentifier } from '@/lib/utils';
 import { useReadOnly } from '@/contexts/read-only-context';
 
+import { useTranslation } from 'react-i18next';
 
 const mainObjectives = [
     "Perte de poids",
@@ -60,6 +61,8 @@ export default function SettingsPage() {
     const { toast } = useToast();
     const { theme: activeAccentTheme, setTheme: setAccentTheme } = useAccentTheme();
     const { isReadOnly, triggerBlock } = useReadOnly();
+    
+    const { t, i18n } = useTranslation();
 
     // Helper function to get supported language
     const getSupportedLanguage = (lang: string) => {
@@ -137,8 +140,13 @@ export default function SettingsPage() {
             }
             setMainObjective(userProfile.mainObjective || '');
             setLanguage(userProfile.language || 'system');
+            if (userProfile.language && userProfile.language !== 'system') {
+                i18n.changeLanguage(userProfile.language);
+            } else if (typeof navigator !== 'undefined') {
+                i18n.changeLanguage(getSupportedLanguage(navigator.language));
+            }
         }
-    }, [goalsData, user, isLoadingGoals, firestore, userProfile, isTrainingEnabled]);
+    }, [goalsData, user, isLoadingGoals, firestore, userProfile, isTrainingEnabled, i18n]);
 
     const updateGoals = (newDescription: string) => {
         setGoals(newDescription);
@@ -242,10 +250,17 @@ export default function SettingsPage() {
         if (isReadOnly) { triggerBlock(); return; }
         if (!user || !userProfileRef) return;
         setLanguage(value);
+        
+        let validLang = value;
+        if (value === 'system' && typeof navigator !== 'undefined') {
+             validLang = getSupportedLanguage(navigator.language);
+        }
+        i18n.changeLanguage(validLang);
+        
         try {
             updateDocumentNonBlocking(userProfileRef, { language: value });
             toast({
-                title: "Langue mise à jour",
+                title: t('language_region'),
                 description: "La langue de l'application a été modifiée.",
             });
         } catch (error) {
@@ -302,8 +317,8 @@ export default function SettingsPage() {
                 <main className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 md:px-8 py-6 md:py-10 space-y-10 md:space-y-12">
 
                     <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
-                        <p className="text-muted-foreground text-sm">Gérez votre compte, vos préférences et personnalisez votre expérience.</p>
+                        <h1 className="text-3xl font-bold tracking-tight">{t('settings')}</h1>
+                        <p className="text-muted-foreground text-sm">{t('settings_desc')}</p>
                     </div>
 
                     <div className="space-y-10">
@@ -311,7 +326,7 @@ export default function SettingsPage() {
                         <section className="space-y-6">
                             <div className="flex items-center gap-2 border-b pb-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
-                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Profil public</h2>
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('public_profile')}</h2>
                             </div>
 
                             <div className="flex flex-col md:flex-row gap-10 items-start">
@@ -642,13 +657,13 @@ export default function SettingsPage() {
                         <section className="space-y-6">
                             <div className="flex items-center gap-2 border-b pb-2">
                                 <Languages className="h-4 w-4 text-muted-foreground" />
-                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Langue & Région</h2>
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('language_region')}</h2>
                             </div>
                             <div className="max-w-2xl bg-card p-6 rounded-lg border">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                                     <div className="space-y-1">
-                                        <Label htmlFor="language-select" className="text-sm font-medium">Langue de l'application</Label>
-                                        <p className="text-xs text-muted-foreground">Choisissez la langue d'affichage de l'interface et de l'assistant.</p>
+                                        <Label htmlFor="language-select" className="text-sm font-medium">{t('app_language')}</Label>
+                                        <p className="text-xs text-muted-foreground">{t('app_language_desc')}</p>
                                     </div>
                                     <Select value={language} onValueChange={handleSaveLanguage}>
                                         <SelectTrigger id="language-select" className="w-full">
@@ -666,11 +681,11 @@ export default function SettingsPage() {
                                                 })
                                             </SelectItem>
                                             <SelectItem value="fr">Français (France)</SelectItem>
-                                            <SelectItem value="en">English (US)</SelectItem>
-                                            <SelectItem value="de">Deutsch</SelectItem>
-                                            <SelectItem value="it">Italiano</SelectItem>
-                                            <SelectItem value="es">Español</SelectItem>
-                                            <SelectItem value="pt">Português</SelectItem>
+                                            <SelectItem value="en">English (US) - En cours d'évolution</SelectItem>
+                                            <SelectItem value="de" disabled>Deutsch (Bientôt dispo)</SelectItem>
+                                            <SelectItem value="it" disabled>Italiano (Bientôt dispo)</SelectItem>
+                                            <SelectItem value="es" disabled>Español (Bientôt dispo)</SelectItem>
+                                            <SelectItem value="pt" disabled>Português (Bientôt dispo)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

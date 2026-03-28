@@ -46,18 +46,19 @@ import { AIAssistantPanel } from '@/components/dashboard/ai-assistant-panel';
 import { MealActionDialogs } from '@/components/dashboard/meal-action-dialogs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageWrapper } from '@/components/shared/page-wrapper';
+import { useTranslation } from 'react-i18next';
 
 const XP_PER_LEVEL = 500;
 
-const getContextualInfo = (hour: number): { message: string, image: string } => {
-  if (hour >= 5 && hour < 10) return { message: "Préparez un bon petit-déjeuner pour bien démarrer !", image: "/matin.png" };
-  if (hour >= 10 && hour < 12) return { message: "Bientôt l'heure du déjeuner !", image: "/midi.png" };
-  if (hour >= 12 && hour < 14) return { message: 'Bon appétit ! Profitez de votre pause déjeuner.', image: "/midi.png" };
-  if (hour >= 14 && hour < 16) return { message: "L'après-midi commence, restez concentré.", image: "/colation.png" };
-  if (hour >= 16 && hour < 18) return { message: "C'est l'heure du goûter ! Un fruit pour recharger les batteries ?", image: "/colation.png" };
-  if (hour >= 18 && hour < 20) return { message: 'Que diriez-vous de commencer à préparer un bon dîner ?', image: "/soir.png" };
-  if (hour >= 20 && hour < 22) return { message: 'Passez une bonne soirée. Un repas léger est idéal.', image: "/soir.png" };
-  return { message: 'Planifiez vos repas, mangez sainement, et profitez !', image: "/soir.png" };
+const getContextualInfo = (hour: number, t: any): { message: string, image: string } => {
+  if (hour >= 5 && hour < 10) return { message: t('ctx_morning', 'Préparez un bon petit-déjeuner pour bien démarrer !'), image: "/matin.png" };
+  if (hour >= 10 && hour < 12) return { message: t('ctx_pre_lunch', "Bientôt l'heure du déjeuner !"), image: "/midi.png" };
+  if (hour >= 12 && hour < 14) return { message: t('ctx_lunch', 'Bon appétit ! Profitez de votre pause déjeuner.'), image: "/midi.png" };
+  if (hour >= 14 && hour < 16) return { message: t('ctx_afternoon', "L'après-midi commence, restez concentré."), image: "/colation.png" };
+  if (hour >= 16 && hour < 18) return { message: t('ctx_snack', "C'est l'heure du goûter ! Un fruit pour recharger les batteries ?"), image: "/colation.png" };
+  if (hour >= 18 && hour < 20) return { message: t('ctx_evening', 'Que diriez-vous de commencer à préparer un bon dîner ?'), image: "/soir.png" };
+  if (hour >= 20 && hour < 22) return { message: t('ctx_night', 'Passez une bonne soirée. Un repas léger est idéal.'), image: "/soir.png" };
+  return { message: t('ctx_late', 'Planifiez vos repas, mangez sainement, et profitez !'), image: "/soir.png" };
 };
 
 
@@ -76,6 +77,7 @@ export default function DashboardPage() {
   const [selectedMagicMeal, setSelectedMagicMeal] = useState<DayPlanMeal | null>(null);
 
   const { isReadOnly, guardAction } = useReadOnly();
+  const { t } = useTranslation();
 
   const openFormForType = (type?: Meal['type']) => {
     if (isReadOnly && type) {
@@ -240,22 +242,22 @@ export default function DashboardPage() {
   }, []);
 
   const timeString = currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  const { message: contextualMessage, image: contextualImage } = getContextualInfo(currentTime.getHours());
+  const { message: contextualMessage, image: contextualImage } = getContextualInfo(currentTime.getHours(), t);
 
   const mealTypes: Meal['type'][] = ['breakfast', 'lunch', 'dinner', 'dessert'];
 
   const mealTypeDetails: Record<string, { translation: string; className: string; icon: any; glow: string }> = {
-    breakfast: { translation: 'Petit-déjeuner', className: "border-blue-500/20 bg-blue-500/5", icon: Coffee, glow: "shadow-blue-500/20" },
-    lunch: { translation: 'Déjeuner', className: "border-yellow-500/20 bg-yellow-500/5", icon: UtensilsCrossed, glow: "shadow-yellow-500/20" },
-    dinner: { translation: 'Dîner', className: "border-purple-500/20 bg-purple-500/5", icon: Moon, glow: "shadow-purple-500/20" },
-    dessert: { translation: 'Dessert / Collation', className: "border-green-500/20 bg-green-500/5", icon: Apple, glow: "shadow-green-500/20" },
+    breakfast: { translation: t('meal_breakfast', 'Petit-déjeuner'), className: "border-blue-500/20 bg-blue-500/5", icon: Coffee, glow: "shadow-blue-500/20" },
+    lunch: { translation: t('meal_lunch', 'Déjeuner'), className: "border-yellow-500/20 bg-yellow-500/5", icon: UtensilsCrossed, glow: "shadow-yellow-500/20" },
+    dinner: { translation: t('meal_dinner', 'Dîner'), className: "border-purple-500/20 bg-purple-500/5", icon: Moon, glow: "shadow-purple-500/20" },
+    dessert: { translation: t('meal_dessert', 'Dessert / Collation'), className: "border-green-500/20 bg-green-500/5", icon: Apple, glow: "shadow-green-500/20" },
   };
 
   const mealTypeTranslations: Record<string, string> = {
-    breakfast: 'Petit-déjeuner',
-    lunch: 'Déjeuner',
-    dinner: 'Dîner',
-    dessert: 'Dessert / Collation',
+    breakfast: t('meal_breakfast', 'Petit-déjeuner'),
+    lunch: t('meal_lunch', 'Déjeuner'),
+    dinner: t('meal_dinner', 'Dîner'),
+    dessert: t('meal_dessert', 'Dessert / Collation'),
   };
 
   useEffect(() => {
@@ -667,7 +669,7 @@ export default function DashboardPage() {
       </AppSidebar>
       <SidebarInset className="bg-background flex flex-col h-screen">
         <AppHeader
-          title="Tableau de bord"
+          title={t('dashboard_title')}
           icon={<LayoutDashboard className="h-4 w-4" />}
           user={user}
           sidebarProps={sidebarProps}
@@ -675,7 +677,7 @@ export default function DashboardPage() {
 
         <PageWrapper className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 md:py-8 space-y-4 md:space-y-8">
           <WelcomeSection
-            userName={userProfile?.name?.split(' ')[0] || 'Chef'}
+            userName={userProfile?.name?.split(' ')[0] || user?.displayName?.split(' ')[0] || 'Chef'}
             contextualMessage={contextualMessage}
             contextualImage={contextualImage}
           />
@@ -686,12 +688,12 @@ export default function DashboardPage() {
               onClick={() => setFormOpen(true)}
             >
               <PlusCircle className="mr-2 h-5 w-5" />
-              Ajouter un repas
+              {t('dashboard_add_meal')}
             </Button>
             <Button variant="outline" className="h-9 md:h-10 w-full md:w-auto px-3 md:px-5 text-[10px] md:text-xs font-black rounded-lg border border-border hover:bg-accent transition-all shadow-sm" asChild>
               <Link href="/cuisine">
                 <ChefHat className="mr-1.5 h-3.5 w-3.5 md:h-4 md:w-4" />
-                Cuisiner
+                {t('dashboard_cook')}
               </Link>
             </Button>
           </div>
@@ -797,6 +799,7 @@ export default function DashboardPage() {
             userId={user?.uid}
             chefId={effectiveChefId}
             defaultType={defaultMealType}
+            mainObjective={userProfile?.mainObjective}
           />
         </Dialog>
 
@@ -826,9 +829,9 @@ export default function DashboardPage() {
                   <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
                   <div className="relative z-10 flex items-center justify-between">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary-foreground/60">Choisissez votre plat</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary-foreground/60">{t('dashboard_magic_title')}</p>
                       <h2 className="text-xl font-black text-primary-foreground mt-0.5 flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 animate-pulse" /> Magie ✨
+                        <Sparkles className="h-5 w-5 animate-pulse" /> {t('dashboard_magic_subtitle')}
                       </h2>
                     </div>
                     <button
@@ -847,16 +850,16 @@ export default function DashboardPage() {
                         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
                         <Loader2 className="relative h-8 w-8 animate-spin text-primary" />
                       </div>
-                      <span className="text-xs font-bold text-muted-foreground">Génération du planning...</span>
+                      <span className="text-xs font-bold text-muted-foreground">{t('dashboard_generating')}</span>
                     </div>
                   ) : dayPlan.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
                       <ChefHat className="h-10 w-10 opacity-20" />
-                      <p className="text-sm font-bold">Aucun plan pour aujourd'hui</p>
+                      <p className="text-sm font-bold">{t('dashboard_no_plan')}</p>
                       <button
                         onClick={() => fetchDayPlan()}
                         className="text-xs font-black text-primary underline underline-offset-2"
-                      >Régénérer</button>
+                      >{t('dashboard_regenerate')}</button>
                     </div>
                   ) : (
                     dayPlan.map((meal) => {
@@ -923,7 +926,7 @@ export default function DashboardPage() {
                       className="w-full h-11 rounded-2xl bg-primary text-primary-foreground font-black text-xs tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-primary/30 active:scale-95 transition-all"
                     >
                       <ChefHat className="h-4 w-4" />
-                      Cuisiner ce plat
+                      {t('dashboard_cook_this')}
                     </button>
                   </motion.div>
                 )}

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/chart';
 import type { Meal } from '@/lib/types';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const chartConfig = {
   calories: {
@@ -28,12 +29,14 @@ interface ProgressChartProps {
 }
 
 export function ProgressChart({ meals = [] }: ProgressChartProps) {
+  const { t } = useTranslation();
+
   const chartData = React.useMemo(() => {
     const data = [
-      { type: 'Petit-déj.', calories: 0 },
-      { type: 'Déjeuner', calories: 0 },
-      { type: 'Dîner', calories: 0 },
-      { type: 'Desserts / Collations', calories: 0 },
+      { type: t('chart_breakfast'), calories: 0, key: 'breakfast' },
+      { type: t('chart_lunch'), calories: 0, key: 'lunch' },
+      { type: t('chart_dinner'), calories: 0, key: 'dinner' },
+      { type: t('chart_dessert'), calories: 0, key: 'dessert' },
     ];
 
     if (!meals) {
@@ -44,16 +47,17 @@ export function ProgressChart({ meals = [] }: ProgressChartProps) {
       let item;
       switch (meal.type) {
         case 'breakfast':
-          item = data.find(d => d.type === 'Petit-déj.');
+          item = data.find(d => d.key === 'breakfast');
           break;
         case 'lunch':
-          item = data.find(d => d.type === 'Déjeuner');
+          item = data.find(d => d.key === 'lunch');
           break;
         case 'dinner':
-          item = data.find(d => d.type === 'Dîner');
+          item = data.find(d => d.key === 'dinner');
           break;
         case 'dessert':
-          item = data.find(d => d.type === 'Desserts / Collations');
+        case 'snack':
+          item = data.find(d => d.key === 'dessert');
           break;
       }
       if (item) {
@@ -61,7 +65,7 @@ export function ProgressChart({ meals = [] }: ProgressChartProps) {
       }
     }
     return data;
-  }, [meals]);
+  }, [meals, t]);
 
   const totalCalories = React.useMemo(() => {
     if (!meals) {
@@ -73,7 +77,7 @@ export function ProgressChart({ meals = [] }: ProgressChartProps) {
   return (
     <div className="relative h-80 w-full">
       <div className="absolute top-6 right-6 text-right">
-        <p className="text-sm text-muted-foreground">Total Aujourd'hui</p>
+        <p className="text-sm text-muted-foreground">{t('chart_total_today')}</p>
         <p className="text-3xl font-bold text-primary">
           {totalCalories}{' '}
           <span className="text-base font-normal text-muted-foreground">

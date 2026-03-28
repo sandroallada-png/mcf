@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 interface StatCardsProps {
   displayMeals: any[];
@@ -40,9 +41,11 @@ export function StatCards({
   setCalorieExplanation,
   cooksForToday
 }: StatCardsProps) {
+  const { t } = useTranslation();
+
   const stats = [
     {
-      label: 'CALORIES',
+      label: t('stat_calories'),
       value: displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0),
       unit: 'kcal',
       icon: Flame,
@@ -51,36 +54,36 @@ export function StatCards({
       progress: (displayMeals.reduce((acc, m) => acc + (m.calories || 0), 0) / (userProfile?.targetCalories || 2000)) * 100
     },
     {
-      label: 'REPAS',
-      value: displayMeals.filter(m => !m.isScheduled).length,
+      label: t('stat_meals'),
+      value: displayMeals.length,
       unit: `/ ${userProfile?.targetMeals || 4}`,
       icon: UtensilsCrossed,
       color: 'text-blue-500',
       bg: 'bg-blue-500/10',
-      progress: (displayMeals.filter(m => !m.isScheduled).length / (userProfile?.targetMeals || 4)) * 100
+      progress: (displayMeals.length / (userProfile?.targetMeals || 4)) * 100
     },
     {
-      label: 'OBJECTIF',
+      label: t('stat_objective'),
       value: userProfile?.targetCalories || calculateRecommendedCalories(userProfile),
       unit: 'kcal / jour',
       icon: Target,
       color: 'text-emerald-500',
       bg: 'bg-emerald-500/10',
-      description: `${(userProfile?.household?.length || 0) + 1 > 1 ? "Famille" : "Individuel"} - ${userProfile?.targetCalories ? "Manuel" : "Profil"}`
+      description: `${(userProfile?.household?.length || 0) + 1 > 1 ? t('stat_family') : t('stat_individual')} - ${userProfile?.targetCalories ? t('stat_manual') : t('stat_profile')}`
     },
     {
-      label: 'QUI CUISINE',
+      label: t('stat_cook'),
       value: (() => {
         const uniqueCooks = Array.from(new Set(Object.values(cooksForToday)));
-        if (uniqueCooks.length === 0) return 'Personne';
+        if (uniqueCooks.length === 0) return t('stat_no_cook');
         if (uniqueCooks.length === 1) return uniqueCooks[0];
-        return 'Plusieurs';
+        return t('stat_many_cooks');
       })(),
       unit: '',
       icon: Award,
       color: 'text-purple-500',
       bg: 'bg-purple-500/10',
-      description: Object.entries(cooksForToday).length > 0 ? "Assignations actives" : "Aucun cuisinier"
+      description: Object.entries(cooksForToday).length > 0 ? t('stat_active_assignments') : t('stat_no_assignments')
     },
   ];
 
@@ -114,15 +117,15 @@ export function StatCards({
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                          <DialogTitle>Modifier l'objectif calorique</DialogTitle>
+                          <DialogTitle>{t('stat_edit_goal_title')}</DialogTitle>
                           <DialogDescription>
-                            Définissez votre objectif quotidien de calories.
+                            {t('stat_edit_goal_desc')}
                           </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-6 py-4">
                           <div className="space-y-4">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Objectif (kcal / jour)</label>
+                                  <div className="flex flex-col gap-1">
+                              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">{t('stat_goal_input_label')}</label>
                               <div className="flex gap-2">
                                 <input
                                   type="number"
@@ -140,10 +143,10 @@ export function StatCards({
                             <div className="bg-muted/30 rounded-2xl p-4 border border-border/50 space-y-4">
                               <div className="grid grid-cols-4 gap-2">
                                 {[
-                                  { label: 'Pdj', icon: Coffee, color: 'text-blue-500', bg: 'bg-blue-500/10', pct: 0.2 },
-                                  { label: 'Dej', icon: Pizza, color: 'text-yellow-500', bg: 'bg-yellow-500/10', pct: 0.35 },
-                                  { label: 'Col', icon: Cookie, color: 'text-orange-500', bg: 'bg-orange-500/10', pct: 0.1 },
-                                  { label: 'Din', icon: Moon, color: 'text-purple-500', bg: 'bg-purple-500/10', pct: 0.35 },
+                                  { label: t('stat_pdj'), icon: Coffee, color: 'text-blue-500', bg: 'bg-blue-500/10', pct: 0.2 },
+                                  { label: t('stat_dej'), icon: Pizza, color: 'text-yellow-500', bg: 'bg-yellow-500/10', pct: 0.35 },
+                                  { label: t('stat_col'), icon: Cookie, color: 'text-orange-500', bg: 'bg-orange-500/10', pct: 0.1 },
+                                  { label: t('stat_din'), icon: Moon, color: 'text-purple-500', bg: 'bg-purple-500/10', pct: 0.35 },
                                 ].map((slot, idx) => (
                                   <div key={idx} className="flex flex-col items-center gap-2 p-2 rounded-xl bg-background/50 border border-border/50">
                                     <div className={cn("p-2 rounded-lg", slot.bg)}>
@@ -168,11 +171,11 @@ export function StatCards({
                               {calorieExplanation ? (
                                 <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 relative">
                                   <p className="text-[10px] leading-relaxed italic text-foreground/80">{calorieExplanation}</p>
-                                  <button onClick={() => setCalorieExplanation(null)} className="mt-2 text-[8px] font-black uppercase text-primary/60">Fermer</button>
+                                  <button onClick={() => setCalorieExplanation(null)} className="mt-2 text-[8px] font-black uppercase text-primary/60">{t('stat_close')}</button>
                                 </div>
                               ) : (
                                 <Button variant="outline" size="sm" onClick={handleExplainCalories} disabled={isExplainingCalories} className="w-full h-9 rounded-xl border-dashed">
-                                  {isExplainingCalories ? 'Analyse...' : 'Explique-moi avec l\'IA'}
+                                  {isExplainingCalories ? t('stat_analyzing') : t('stat_explain_ai')}
                                 </Button>
                               )}
                             </div>

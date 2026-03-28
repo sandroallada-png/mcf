@@ -882,6 +882,20 @@ export default function CuisinePage() {
 
     const tabsRef = useRef<HTMLDivElement>(null);
 
+    const todayStr_fixed = currentTime ? format(currentTime, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+
+    const mealsToday = useMemo(() => cookingInProgress.filter(item => {
+        const plannedDate = item.plannedFor?.toDate();
+        if (!plannedDate) return false;
+        return format(plannedDate, 'yyyy-MM-dd') === todayStr_fixed;
+    }), [cookingInProgress, todayStr_fixed]);
+
+    const mealsUpcoming = useMemo(() => cookingInProgress.filter(item => {
+        const plannedDate = item.plannedFor?.toDate();
+        if (!plannedDate) return false;
+        return format(plannedDate, 'yyyy-MM-dd') > todayStr_fixed;
+    }), [cookingInProgress, todayStr_fixed]);
+
     const isLoading = isUserLoading || isLoadingAllMeals || isLoadingGoals || isLoadingProfile || isLoadingDishes || isLoadingCookingItems || isLoadingPendingItems;
 
     if (isLoading) {
@@ -897,6 +911,73 @@ export default function CuisinePage() {
         setGoals: updateGoals,
         meals: allMeals ?? [],
     };
+
+    const renderCookingCard = (item: Cooking) => (
+        <div
+            key={item.id}
+            style={{
+                transition: 'transform 0.45s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.45s ease',
+                transform: dismissingCookingId === item.id ? 'translateY(130%) rotate(-4deg) scale(0.75)' : 'translateY(0) rotate(0deg) scale(1)',
+                opacity: dismissingCookingId === item.id ? 0 : 1,
+                pointerEvents: dismissingCookingId === item.id ? 'none' : 'auto',
+            }}
+        >
+            <Card
+                className="group flex flex-col rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-lg transition-all overflow-hidden"
+            >
+                <div
+                    className="relative aspect-[16/9] bg-muted overflow-hidden cursor-pointer"
+                    onClick={() => handleSelectCookingItem(item)}
+                >
+                    <Image
+                        src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
+                        alt={item.name}
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                        sizes="(max-width: 640px) 100vw, 33vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute top-2 left-2 flex items-center gap-2">
+                        <Badge className="bg-primary/90 text-white text-[8px] font-black uppercase tracking-widest border-none px-2 py-0.5 animate-pulse shadow-lg shadow-primary/30">
+                            🍳 En cuisine
+                        </Badge>
+                    </div>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCookingItem(item);
+                        }}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 backdrop-blur-md text-white/70 hover:bg-rose-500 hover:text-white transition-all border border-white/10 z-10"
+                        title="Retirer ce repas"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="absolute bottom-3 left-3">
+                        <p className="text-white font-black text-base leading-tight drop-shadow">{item.name}</p>
+                    </div>
+                </div>
+                <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                        <div className="flex items-center gap-1.5">
+                            <ClockIcon className="h-3 w-3" />
+                            <span>{item.cookingTime || 'Prêt'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3" />
+                            <span>{item.plannedFor ? format(item.plannedFor.toDate(), 'd MMM', { locale: fr }) : 'Chef'}</span>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => guardAction(setCookingModeItem)(item)}
+                        className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-primary text-white border border-primary shadow-lg hover:bg-primary/90 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                        <span className="text-lg mr-2">👨‍🍳</span>
+                        Cuisine moi !
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
 
     return (
         <SidebarProvider defaultOpen={true}>
@@ -1260,78 +1341,34 @@ export default function CuisinePage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                        {cookingInProgress && cookingInProgress.length > 0 ? cookingInProgress.map(item => (
-                                            <div
-                                                key={item.id}
-                                                style={{
-                                                    transition: 'transform 0.45s cubic-bezier(0.36,0.07,0.19,0.97), opacity 0.45s ease',
-                                                    transform: dismissingCookingId === item.id ? 'translateY(130%) rotate(-4deg) scale(0.75)' : 'translateY(0) rotate(0deg) scale(1)',
-                                                    opacity: dismissingCookingId === item.id ? 0 : 1,
-                                                    pointerEvents: dismissingCookingId === item.id ? 'none' : 'auto',
-                                                }}
-                                            >
-                                                <Card
-                                                    className="group flex flex-col rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-lg transition-all overflow-hidden"
-                                                >
-                                                    <div
-                                                        className="relative aspect-[16/9] bg-muted overflow-hidden cursor-pointer"
-                                                        onClick={() => handleSelectCookingItem(item)}
-                                                    >
-                                                        <Image
-                                                            src={item.imageUrl || `https://picsum.photos/seed/${item.name.replace(/\s/g, '-')}/400/250`}
-                                                            alt={item.name}
-                                                            fill
-                                                            className="object-cover transition-transform duration-700 group-hover:scale-105"
-                                                            sizes="(max-width: 640px) 100vw, 33vw"
-                                                        />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                                        <div className="absolute top-2 left-2 flex items-center gap-2">
-                                                            <Badge className="bg-primary/90 text-white text-[8px] font-black uppercase tracking-widest border-none px-2 py-0.5 animate-pulse shadow-lg shadow-primary/30">
-                                                                🍳 En cuisine
-                                                            </Badge>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteCookingItem(item);
-                                                            }}
-                                                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 backdrop-blur-md text-white/70 hover:bg-rose-500 hover:text-white transition-all border border-white/10 z-10"
-                                                            title="Retirer ce repas"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <div className="absolute bottom-3 left-3">
-                                                            <p className="text-white font-black text-base leading-tight drop-shadow">{item.name}</p>
-                                                        </div>
+                                    <div className="space-y-12">
+                                        <div className="space-y-4">
+                                            <h3 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-3">
+                                                <span className="bg-primary/10 text-primary p-2 rounded-xl">🍽️</span> 
+                                                Repas du jour
+                                            </h3>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                {mealsToday.length > 0 ? mealsToday.map(renderCookingCard) : (
+                                                    <div className="col-span-full py-12 text-center border border-dashed rounded-lg bg-accent/5">
+                                                        <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Aucun repas prévu aujourd'hui</h3>
                                                     </div>
-                                                    <CardContent className="p-4 space-y-3">
-                                                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <ClockIcon className="h-3 w-3" />
-                                                                <span>{item.cookingTime || 'Prêt'}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Calendar className="h-3 w-3" />
-                                                                <span>{item.plannedFor ? format(item.plannedFor.toDate(), 'd MMM', { locale: fr }) : 'Chef'}</span>
-                                                            </div>
-                                                        </div>
-                                                        {/* CTA PRINCIPAL */}
-                                                        <Button
-                                                            onClick={() => guardAction(setCookingModeItem)(item)}
-                                                            className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-primary text-white border border-primary shadow-lg hover:bg-primary/90 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                                        >
-                                                            <span className="text-lg mr-2">👨‍🍳</span>
-                                                            Cuisine moi !
-                                                        </Button>
-                                                    </CardContent>
-                                                </Card>
+                                                )}
                                             </div>
-                                        )) : (
-                                            <div className="col-span-full py-20 text-center border border-dashed rounded-lg bg-accent/5">
-                                                <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Rien en cours de préparation</h3>
+                                        </div>
+                                        
+                                        <div className="space-y-4">
+                                            <h3 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-3">
+                                                <span className="bg-primary/10 text-primary p-2 rounded-xl">📅</span> 
+                                                À venir
+                                            </h3>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                {mealsUpcoming.length > 0 ? mealsUpcoming.map(renderCookingCard) : (
+                                                    <div className="col-span-full py-12 text-center border border-dashed rounded-lg bg-accent/5">
+                                                        <h3 className="text-sm font-bold text-muted-foreground/50 uppercase tracking-widest">Aucun repas à venir</h3>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 )}
                             </TabsContent>

@@ -19,12 +19,12 @@ export function useNativeBack() {
             listener = await App.addListener('backButton', (data: { canGoBack: boolean }) => {
                 const rootPaths = ['/dashboard', '/', '/login', '/welcome'];
                 if (rootPaths.includes(pathname || '')) {
-                    // Let the system handle it (exit app) if we're on a root page
-                    return;
+                    // Force the app to exit on root paths
+                    App.exitApp();
+                } else {
+                    // Otherwise, go back in the Next.js router
+                    router.back();
                 }
-
-                // Otherwise, go back in the Next.js router
-                router.back();
             });
         };
 

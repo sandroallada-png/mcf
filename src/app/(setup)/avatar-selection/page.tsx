@@ -8,7 +8,7 @@ import { useUser, useFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Check, Sparkles, User, Camera, ArrowRight, Globe, HelpCircle } from 'lucide-react';
-import { ImageUploader } from '@/components/admin/image-uploader';
+import { ImageUploader } from '@/modules/admin/components/image-uploader';
 import Image from 'next/image';
 import { avatarUrls } from '@/lib/avatars';
 import { countries } from '@/lib/countries';
