@@ -10,7 +10,9 @@
 
 # next.js
 /.next/
+/src/.next/
 /out/
+/src/node_modules/
 
 # production
 /build
@@ -64,7 +66,3 @@ PROJECT_ANALYSIS.md
 
 # Architecture reminders
 project-rules.md
-
-# Admin module
-/src/modules/admin/
-/src/app/admin/
