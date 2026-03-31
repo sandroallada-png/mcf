@@ -19,6 +19,7 @@ import { GlobalDishPreview } from '@/components/shared/global-dish-preview';
 import { OfflineDetector } from '@/components/shared/offline-detector';
 import { NativeSplashScreen } from '@/components/shared/native-splash';
 import { useNativeBack } from '@/hooks/use-native-back';
+import { PushNotificationManager } from '@/components/shared/push-notification-manager';
 
 import { DexieSyncManager } from '@/lib/dexie/sync';
 
@@ -38,6 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AccentThemeProvider>
           <LoadingProvider>
             <AuthProvider>
+              <PushNotificationManager />
               <ReadOnlyProvider>
                 <AnimatePresence mode="wait">
                   {children}

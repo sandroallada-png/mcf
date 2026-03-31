@@ -277,6 +277,10 @@ export type ShoppingListHistoryItem = z.infer<typeof ShoppingListHistoryItemSche
 // nutritional-agent-chat
 export const NutritionalAgentChatInputSchema = z.object({
   message: z.string().describe("The user's message to the agent."),
+  history: z.array(z.object({
+    role: z.enum(['user', 'ai']),
+    text: z.string()
+  })).optional().describe("Previous messages in the conversation for context."),
   userName: z.string().optional().describe("The user's display name."),
   personality: AIPersonalitySchema.optional().describe("The user's AI training preferences."),
   mealHistory: z.array(z.string()).optional().describe("A list of the user's recently logged meals to provide context and avoid repetition."),

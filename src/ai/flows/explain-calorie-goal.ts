@@ -45,7 +45,8 @@ Ta réponse DOIT être un objet JSON avec la clé "explanation".`;
                 { role: 'user', content: userContent },
             ],
             response_format: { type: 'json_object' },
-            temperature: 0.7,
+            temperature: 0.3,
+            max_tokens: 500,
         });
 
         const responseJson = completion.choices[0]?.message?.content;

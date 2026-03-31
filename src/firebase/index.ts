@@ -35,15 +35,19 @@ export function initializeFirebase() {
 let firestoreInstance: any = null;
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  const { getMessaging, isSupported } = require('firebase/messaging');
+  
   if (!firestoreInstance) {
     firestoreInstance = initializeFirestore(firebaseApp, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     });
   }
+
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: firestoreInstance
+    firestore: firestoreInstance,
+    messaging: typeof window !== 'undefined' ? getMessaging(firebaseApp) : null
   };
 }
 

@@ -95,7 +95,8 @@ Your response MUST be a valid JSON object with the following structure:
       model: 'openai/gpt-4o-mini',
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.7,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      max_tokens: 1000,
     });
 
     const responseContent = completion.choices[0]?.message?.content;

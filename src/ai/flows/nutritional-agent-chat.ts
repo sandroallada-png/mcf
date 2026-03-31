@@ -218,18 +218,30 @@ ${appDocumentation}
   // --- End of new context integration ---
 
 
+  // --- Interaction Guidelines ---
+  systemPrompt += `\n\n**CONVERSATION GUIDELINES**:
+  - Do NOT greet the user with "Bonjour" or "Hello" if you are already in a conversation (i.e., if there is a message history).
+  - If the user just says something short like "cc" or "oui", answer directly and briefly without generic filler.
+  - Be direct and get to the point.
+  - Maintain the persona of My Flex AI but act as a continuous partner, not a new stranger in each message.`;
+
+
   try {
-    const userContent: (
-      | OpenAI.Chat.Completions.ChatCompletionContentPartText
-      | OpenAI.Chat.Completions.ChatCompletionContentPartImage
-    )[] = [{ type: 'text', text: input.message }];
+    const formattedHistory: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = (input.history || []).map(m => ({
+      role: m.role === 'ai' ? 'assistant' : 'user',
+      content: m.text
+    }));
+
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      ...formattedHistory,
+      { role: 'user', content: input.message }
+    ];
 
     const completion = await openrouter.chat.completions.create({
       model: 'openai/gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContent },
-      ],
+      messages: messages,
+      max_tokens: 4096,
     });
 
     const response = completion.choices[0]?.message?.content;

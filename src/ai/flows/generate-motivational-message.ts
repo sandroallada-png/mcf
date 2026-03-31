@@ -35,6 +35,7 @@ Main Objective: ${input.mainObjective}`;
             ],
             response_format: { type: 'json_object' },
             temperature: 0.8,
+            max_tokens: 500,
         });
 
         const responseJson = completion.choices[0]?.message?.content;

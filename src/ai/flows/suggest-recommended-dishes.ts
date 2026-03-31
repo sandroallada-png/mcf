@@ -121,6 +121,7 @@ EXEMPLE DE SORTIE :
             messages: [{ role: 'system', content: systemPrompt }],
             response_format: { type: 'json_object' },
             temperature: 0.5,
+            max_tokens: 1000,
         });
 
         const aiResponse = JSON.parse(completion.choices[0]?.message?.content || '{"recommendations":[]}');

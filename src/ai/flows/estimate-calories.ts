@@ -53,6 +53,7 @@ Your response MUST be a JSON object matching the following schema: { "calories":
             ],
             response_format: { type: 'json_object' },
             temperature: 0.2,
+            max_tokens: 500,
         });
 
         const responseJson = completion.choices[0]?.message?.content;

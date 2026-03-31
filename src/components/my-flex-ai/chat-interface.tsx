@@ -257,6 +257,7 @@ export function ChatInterface({ conversationId, setConversationId }: ChatInterfa
 
             const response = await chatAction({
                 message: currentInput,
+                history: messages, // On envoie l'historique actuel
                 userName: userProfile?.name || user?.displayName || undefined,
                 personality: personality,
                 mealHistory: mealHistory,

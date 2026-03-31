@@ -51,6 +51,7 @@ FORMAT DE SORTIE (JSON STRICT) :
             ],
             response_format: { type: 'json_object' },
             temperature: 0.7,
+            max_tokens: 1500,
         });
 
         const result = JSON.parse(completion.choices[0]?.message?.content || '{}');

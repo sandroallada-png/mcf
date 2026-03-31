@@ -12,7 +12,7 @@ import { useUser, useFirebase, updateDocumentNonBlocking, useCollection, useMemo
 import { collection, doc, query, limit, updateDoc, setDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Meal, UserProfile as UserProfileType } from '@/lib/types';
-import { Loader2, Settings, Palette, Save, Trash2, ShieldCheck, KeyRound, BookOpen, Tag, Info, BrainCircuit, Target, User, Image as ImageIcon, Languages, Sparkles } from 'lucide-react';
+import { Loader2, Settings, Palette, Save, Trash2, ShieldCheck, KeyRound, BookOpen, Tag, Info, BrainCircuit, Target, User, Image as ImageIcon, Languages, Sparkles, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -533,6 +533,56 @@ export default function SettingsPage() {
                                                 title: `Raccourci ${checked ? 'activé' : 'désactivé'}`,
                                                 description: `Le menu flottant a été ${checked ? 'activé' : 'masqué'}.`,
                                             });
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* NOTIFICATIONS SECTION */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <Bell className="h-4 w-4 text-muted-foreground" />
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Alertes & Notifications</h2>
+                            </div>
+                            <div className="max-w-2xl bg-card p-6 rounded-lg border space-y-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1 pr-4">
+                                        <Label htmlFor="push-notifications" className="text-sm font-bold">Notifications Push PWA</Label>
+                                        <p className="text-xs text-muted-foreground">Recevoir des rappels pour vos repas et des messages de motivation sur cet appareil.</p>
+                                    </div>
+                                    <Switch
+                                        id="push-notifications"
+                                        checked={userProfile?.pwaNotificationEnabled || false}
+                                        onCheckedChange={(checked) => {
+                                            if (isReadOnly) { triggerBlock(); return; }
+                                            if (!userProfileRef) return;
+                                            updateDocumentNonBlocking(userProfileRef, { pwaNotificationEnabled: checked });
+                                            
+                                            if (checked && Notification.permission !== 'granted') {
+                                                Notification.requestPermission().then(permission => {
+                                                    if (permission === 'granted') {
+                                                        toast({
+                                                            title: "Notifications activées",
+                                                            description: "Vous recevrez désormais des alertes sur cet appareil.",
+                                                        });
+                                                        // Refreshing to trigger PushNotificationManager logic
+                                                        window.location.reload();
+                                                    } else {
+                                                        toast({
+                                                            variant: "destructive",
+                                                            title: "Permission refusée",
+                                                            description: "Veuillez autoriser les notifications dans les réglages de votre navigateur.",
+                                                        });
+                                                        updateDocumentNonBlocking(userProfileRef, { pwaNotificationEnabled: false });
+                                                    }
+                                                });
+                                            } else {
+                                                toast({
+                                                    title: `Notifications ${checked ? 'activées' : 'désactivées'}`,
+                                                    description: `Les alertes push ont été ${checked ? 'mises à jour' : 'masquées'}.`,
+                                                });
+                                            }
                                         }}
                                     />
                                 </div>

@@ -30,6 +30,7 @@ Your response must be a JSON object matching the following schema: { "title": "s
                 { role: 'user', content: userMessages },
             ],
             response_format: { type: 'json_object' },
+            max_tokens: 500,
         });
 
         const responseJson = completion.choices[0]?.message?.content;
