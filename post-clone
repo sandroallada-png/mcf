@@ -1,0 +1,7 @@
+#!/bin/bash
+echo "--- Appflow Post-Clone Hook Start ---"
+# Make scripts executable
+chmod +x scripts/fix-ios-signing.sh
+# Run the script
+./scripts/fix-ios-signing.sh
+echo "--- Appflow Post-Clone Hook End ---"
