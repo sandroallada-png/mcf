@@ -32,7 +32,8 @@ import { ImageZoomLightbox } from '@/components/shared/image-zoom-lightbox';
 import { Textarea } from '@/components/ui/textarea';
 import { cn, formatUserIdentifier } from '@/lib/utils';
 import { useReadOnly } from '@/contexts/read-only-context';
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTranslation } from 'react-i18next';
 
 const mainObjectives = [
@@ -53,6 +54,17 @@ const defaultPersonality: Partial<UserProfileType> = {
     allergies: '',
     preferences: '',
 };
+
+const predefinedAvatars = [
+    { id: 'av1', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Felix&backgroundColor=ff009e', name: 'Flexy Girl' },
+    { id: 'av2', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Cook&backgroundColor=00c2ff', name: 'Chef Blue' },
+    { id: 'av3', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=AIAssistant&backgroundColor=60e6a8', name: 'AI Bot' },
+    { id: 'av4', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Gamer&backgroundColor=7047eb', name: 'Smart Guy' },
+    { id: 'av5', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Mimi&backgroundColor=ffb800', name: 'Lady Gold' },
+    { id: 'av6', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Nico&backgroundColor=f44336', name: 'Spicy Red' },
+    { id: 'av7', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Sam&backgroundColor=4caf50', name: 'Green Sam' },
+    { id: 'av8', url: 'https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Sonia&backgroundColor=9c27b0', name: 'Purple Sonia' },
+];
 
 export default function SettingsPage() {
     const { user, isUserLoading } = useUser();
@@ -75,6 +87,8 @@ export default function SettingsPage() {
     const [isMarketSubscribed, setIsMarketSubscribed] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+    const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
+    const [avatarSelectionMode, setAvatarSelectionMode] = useState<'options' | 'gallery'>('options');
 
     // AI Personality State
     const [personality, setPersonality] = useState<Partial<UserProfileType>>(defaultPersonality);
@@ -283,6 +297,52 @@ export default function SettingsPage() {
         }
     };
 
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user || !userProfileRef) return;
+
+        // Visual feedback
+        setIsSaving(true);
+        setIsAvatarPickerOpen(false);
+
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64String = reader.result as string;
+            try {
+                // Update Firestore profile
+                await setDoc(userProfileRef, { avatarUrl: base64String }, { merge: true });
+                // Update Auth profile as well to keep them in sync
+                if (auth.currentUser) {
+                    await updateProfile(auth.currentUser, { photoURL: base64String });
+                }
+                toast({ title: "Photo mise à jour", description: "Votre nouvelle photo a été enregistrée." });
+            } catch (err) {
+                console.error(err);
+                toast({ variant: 'destructive', title: "Erreur", description: "Impossible d'enregistrer la photo." });
+            } finally {
+                setIsSaving(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleAvatarSelect = async (avatarUrl: string) => {
+        if (!user || !userProfileRef) return;
+        setIsSaving(true);
+        setIsAvatarPickerOpen(false);
+        try {
+            await setDoc(userProfileRef, { avatarUrl }, { merge: true });
+            if (auth.currentUser) {
+                await updateProfile(auth.currentUser, { photoURL: avatarUrl });
+            }
+            toast({ title: "Avatar mis à jour", description: "Votre nouvel avatar a été enregistré." });
+        } catch (err) {
+            toast({ variant: 'destructive', title: "Erreur", description: "Impossible d'enregistrer l'avatar." });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     if (isUserLoading || isLoadingAllMeals || isLoadingGoals || isLoadingProfile || !user) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -334,11 +394,21 @@ export default function SettingsPage() {
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-background border shadow-sm"
-                                        onClick={() => router.push('/avatar-selection')}
+                                        className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-background border shadow-sm transition-transform hover:scale-110 active:scale-95"
+                                        onClick={() => {
+                                            setAvatarSelectionMode('options');
+                                            setIsAvatarPickerOpen(true);
+                                        }}
                                     >
                                         <ImageIcon className="h-3.5 w-3.5" />
                                     </Button>
+                                    <input 
+                                        type="file" 
+                                        id="avatar-upload" 
+                                        className="hidden" 
+                                        accept="image/*" 
+                                        onChange={handleFileChange}
+                                    />
                                 </div>
 
                                 <div className="flex-1 w-full space-y-4">
@@ -742,6 +812,73 @@ export default function SettingsPage() {
                     </div>
                 </main>
                 <ImageZoomLightbox isOpen={!!zoomImageUrl} imageUrl={zoomImageUrl || ''} onClose={() => setZoomImageUrl(null)} />
+
+                {/* MODALE DE CHANGEMENT DE PHOTO */}
+                <Dialog open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
+                    <DialogContent className="max-w-md rounded-2xl p-6">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-primary" />
+                                {avatarSelectionMode === 'gallery' ? 'Galerie d\'avatars' : 'Changer ma photo'}
+                            </DialogTitle>
+                            <DialogDescription className="text-sm">
+                                {avatarSelectionMode === 'gallery' ? 'Choisissez le personnage qui vous ressemble le plus.' : 'Sélectionnez une option pour mettre à jour votre profil public.'}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {avatarSelectionMode === 'options' ? (
+                            <div className="grid grid-cols-1 gap-4 py-4">
+                                <Button 
+                                    variant="outline" 
+                                    className="h-20 flex-col gap-2 rounded-xl border-dashed hover:border-primary hover:bg-primary/5 transition-all"
+                                    onClick={() => document.getElementById('avatar-upload')?.click()}
+                                >
+                                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                                    <div className="text-xs font-bold">Image (depuis téléphone)</div>
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    className="h-20 flex-col gap-2 rounded-xl border-dashed hover:border-primary hover:bg-primary/5 transition-all"
+                                    onClick={() => setAvatarSelectionMode('gallery')}
+                                >
+                                    <Avatar className="h-6 w-6">
+                                        <AvatarImage src="https://api.dicebear.com/7.x/avataaars-neutral/svg?seed=Felix&backgroundColor=ff009e" />
+                                    </Avatar>
+                                    <div className="text-xs font-bold">Avatar (personnage 3D)</div>
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-4 gap-3 py-4 max-h-[300px] overflow-y-auto pr-2">
+                                {predefinedAvatars.map((av) => (
+                                    <button
+                                        key={av.id}
+                                        className="relative group p-1.5 rounded-xl border hover:border-primary hover:bg-primary/5 transition-all active:scale-95"
+                                        onClick={() => handleAvatarSelect(av.url)}
+                                    >
+                                        <Avatar className="h-full w-full">
+                                            <AvatarImage src={av.url} />
+                                            <AvatarFallback>{av.name[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity flex items-center justify-center">
+                                            <Save className="h-5 w-5 text-white" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <DialogFooter className="flex-row gap-2 sm:justify-start">
+                            {avatarSelectionMode === 'gallery' && (
+                                <Button variant="ghost" size="sm" onClick={() => setAvatarSelectionMode('options')} className="text-xs">
+                                    Retour
+                                </Button>
+                            )}
+                            <Button variant="ghost" size="sm" onClick={() => setIsAvatarPickerOpen(false)} className="text-xs text-muted-foreground ml-auto">
+                                Annuler
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </SidebarInset>
         </SidebarProvider>
     );
