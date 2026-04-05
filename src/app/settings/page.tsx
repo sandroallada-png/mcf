@@ -618,7 +618,7 @@ export default function SettingsPage() {
                             <div className="max-w-2xl bg-card p-6 rounded-lg border space-y-4 shadow-sm">
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-1 pr-4">
-                                        <Label htmlFor="push-notifications" className="text-sm font-bold">Notifications Push PWA</Label>
+                                        <Label htmlFor="push-notifications" className="text-sm font-bold">Notifications de l'application</Label>
                                         <p className="text-xs text-muted-foreground">Recevoir des rappels pour vos repas et des messages de motivation sur cet appareil.</p>
                                     </div>
                                     <Switch
