@@ -53,5 +53,16 @@
 	<string>Cette application nécessite l'accès à votre bibliothèque de photos pour vous permettre de choisir une photo de profil.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Cette application nécessite l'accès à votre bibliothèque de photos pour enregistrer vos photos de profil.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.769390935626-1e54056opdssq72bfb0o9t4470v2556b</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
