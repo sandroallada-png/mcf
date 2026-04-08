@@ -47,5 +47,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Cette application nécessite l'accès à la caméra pour vous permettre de prendre une photo de profil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application nécessite l'accès à votre bibliothèque de photos pour vous permettre de choisir une photo de profil.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Cette application nécessite l'accès à votre bibliothèque de photos pour enregistrer vos photos de profil.</string>
 </dict>
 </plist>
