@@ -2,7 +2,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: process.env.IS_STATIC_EXPORT === 'true' ? 'export' : undefined,
   trailingSlash: true,
   /* config options here */
   typescript: {
