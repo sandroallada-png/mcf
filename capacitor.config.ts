@@ -3,7 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'my.cook.flex',
   appName: 'My Cook Flex',
-  webDir: 'dist',
+  webDir: 'out',
   server: {
     androidScheme: 'https',
     cleartext: true
