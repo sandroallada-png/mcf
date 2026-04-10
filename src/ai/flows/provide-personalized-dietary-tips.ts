@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview Provides personalized dietary tips based on food logs and dietary goals.
  */

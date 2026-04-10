@@ -1,4 +1,4 @@
-'use server';
+
 /**
  * @fileOverview AI agent that estimates calories and assigns XP based on a meal's alignment with user goals.
  */

@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview AI agent that generates a personalized motivational message for a user.
  */

@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview AI agent that generates a simple recipe for a given meal name.
  */

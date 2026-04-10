@@ -11,43 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Loader2, Sparkles, Target, User, Activity, Calendar, Refrigerator, BarChart2, Star, History, ShoppingCart, MessageSquare, Bot, Save, LayoutDashboard, Trophy, ChefHat, Library } from 'lucide-react';
 import type { Meal } from '@/lib/types';
-import { getTipsAction } from '@/app/actions';
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { Logo } from '@/components/icons';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import Link from 'next/link';
-import { useUser, useFirebase } from '@/firebase';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useRouter } from 'next/navigation';
-import { ButtonWithLoading } from '@/components/ui/button-with-loading';
-import { Progress } from '@/components/ui/progress';
-import { SidebarContent } from '@/components/ui/sidebar';
-
-export const mainNavLinks = [
-    { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="h-5 w-5" /> },
-    { href: '/market', label: 'My Cook Market', icon: <ShoppingCart className="h-5 w-5" /> },
-    { href: '/calendar', label: 'Calendrier', icon: <Calendar className="h-5 w-5" /> },
-    { href: '/forum', label: 'Forum', icon: <MessageSquare className="h-5 w-5" /> },
-    { href: '/my-flex-ai', label: 'Assistant Personnel', icon: <Bot className="h-5 w-5" /> },
-    { href: '/fridge', label: 'Frigo', icon: <Refrigerator className="h-5 w-5" /> },
-    { href: '/mon-niveau', label: 'Mon Niveau', icon: <Trophy className="h-5 w-5" /> },
-    { href: '/cuisine', label: 'Cuisine', icon: <ChefHat className="h-5 w-5" /> },
-    { href: '/atelier', label: 'Atelier du Chef', icon: <Library className="h-5 w-5" /> },
-];
-
-export const accountNavLinks = [
-    { href: '#', label: 'Mon Abonnement', icon: <Star className="h-5 w-5" /> },
-    { href: '#', label: 'Profil', icon: <User className="h-5 w-5" /> },
-]
-
-interface SidebarProps {
-    goals: string;
-    setGoals: (goals: string) => void;
-    meals: Meal[];
-    isMobile?: boolean;
-}
+import { getApiUrl } from '@/lib/api-utils';
 
 export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarProps) {
     const [tips, setTips] = useState<string>('');
@@ -58,15 +22,21 @@ export function Sidebar({ goals, setGoals, meals, isMobile = false }: SidebarPro
         setTips('');
         const foodLogs = meals.map(m => `${m.name} (${m.calories} kcal)`).join(', ');
         try {
-            const { tips: newTips, error } = await getTipsAction({
-                foodLogs: foodLogs || 'Aucun aliment enregistré aujourd\'hui.',
-                dietaryGoals: goals,
+            const response = await fetch(getApiUrl('/api/ai/provide-dietary-tips'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    foodLogs: foodLogs || 'Aucun aliment enregistré aujourd\'hui.',
+                    dietaryGoals: goals,
+                }),
             });
 
-            if (error) {
-                throw new Error(error);
-            } else if (newTips) {
-                setTips(newTips);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erreur lors de la génération des conseils.');
+            } else if (data.tips) {
+                setTips(data.tips);
             }
         } catch (e: any) {
             toast({

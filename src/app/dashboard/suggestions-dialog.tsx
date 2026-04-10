@@ -10,20 +10,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
-import { getSuggestionsAction } from '@/app/actions';
-import { useToast } from '@/hooks/use-toast';
-import { Lightbulb, Loader2, Sparkles, UtensilsCrossed } from 'lucide-react';
-import type { Meal } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-
-interface SuggestionsDialogProps {
-  meal: Meal;
-  goals: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+import { getApiUrl } from '@/lib/api-utils';
 
 export function SuggestionsDialog({
   meal,
@@ -38,20 +25,31 @@ export function SuggestionsDialog({
   const handleGetSuggestions = async () => {
     setIsLoading(true);
     setSuggestions([]);
-    const { suggestions: newSuggestions, error } = await getSuggestionsAction({
-      loggedFood: meal.name,
-      healthGoals: goals,
-    });
-    setIsLoading(false);
+    try {
+      const response = await fetch(getApiUrl('/api/ai/suggest-healthy-replacements'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loggedFood: meal.name,
+          healthGoals: goals,
+        }),
+      });
 
-    if (error) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la génération des suggestions.');
+      } else if (data.suggestions) {
+        setSuggestions(data.suggestions);
+      }
+    } catch (e: any) {
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error,
+        description: e.message || 'Impossible de générer des suggestions.',
       });
-    } else if (newSuggestions) {
-      setSuggestions(newSuggestions);
+    } finally {
+      setIsLoading(false);
     }
   };
 

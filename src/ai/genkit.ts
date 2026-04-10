@@ -1,5 +1,5 @@
 // @ts-nocheck
-'use server';
+
 
 import {genkit, googleAI} from 'genkit';
 import {genkitEval} from 'genkitx-eval';

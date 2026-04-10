@@ -1,4 +1,4 @@
-'use server';
+
 /**
  * @fileOverview AI agent that suggests healthier replacements for logged meals.
  */

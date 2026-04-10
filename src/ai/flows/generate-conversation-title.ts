@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview Generates a concise title for a conversation.
  */

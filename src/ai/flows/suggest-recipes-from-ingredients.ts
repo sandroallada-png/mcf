@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview Suggests recipes based on a list of available ingredients.
  */

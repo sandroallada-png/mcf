@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview Suggests a single meal based on the time of day and user preferences.
  * This flow now uses an AI model to intelligently select a dish name from the database,

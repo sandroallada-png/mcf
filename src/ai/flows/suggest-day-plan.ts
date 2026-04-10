@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview Suggests a full day meal plan (breakfast, lunch, dinner) and assigns cooks.
  */

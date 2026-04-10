@@ -1,4 +1,4 @@
-'use server';
+
 /**
  * @fileOverview A conversational AI agent for nutritional advice using a direct SDK call to OpenRouter.
  */

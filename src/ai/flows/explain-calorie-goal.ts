@@ -1,4 +1,4 @@
-'use server';
+
 /**
  * @fileOverview AI agent that explains a calorie target with concrete eamples.
  */

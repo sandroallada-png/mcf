@@ -1,5 +1,5 @@
 
-'use server';
+
 /**
  * @fileOverview Suggests a meal plan by intelligently selecting dishes from Firestore using an AI model.
  */
