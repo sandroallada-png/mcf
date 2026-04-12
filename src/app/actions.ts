@@ -276,6 +276,7 @@ export async function trackInteractionAction(
         return { success: false };
     }
 }
+
 export async function getInviteAction(inviteId: string) {
     if (process.env.IS_STATIC_EXPORT === 'true') {
         const { getInviteAction } = await import('./actions.native');
@@ -285,7 +286,6 @@ export async function getInviteAction(inviteId: string) {
         const { getFirestoreInstance } = await import('@/firebase/server-init');
         const { doc, getDoc } = await import('firebase/firestore');
         const firestore = await getFirestoreInstance();
-// ... (rest of the code remains the same as in view_file)
 
         const inviteRef = doc(firestore, 'invites', inviteId);
         const inviteSnap = await getDoc(inviteRef);
@@ -317,6 +317,10 @@ export async function getInviteAction(inviteId: string) {
 export async function explainCalorieGoalAction(
     input: ExplainCalorieGoalInput
 ): Promise<{ explanation: string | null; error: string | null }> {
+    if (process.env.IS_STATIC_EXPORT === 'true') {
+        const { explainCalorieGoalAction } = await import('./actions.native');
+        return explainCalorieGoalAction(input);
+    }
     try {
         const { explainCalorieGoal } = await import('@/ai/flows/explain-calorie-goal');
         const result = await explainCalorieGoal(input);
