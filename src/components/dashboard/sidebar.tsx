@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, Loader2, Sparkles, Target, User, Activity, Calendar, Refrigerator, BarChart2, Star, History, ShoppingCart, MessageSquare, Bot, Save, LayoutDashboard, Trophy, ChefHat, Shield, UtensilsCrossed, Edit, Package, Library } from 'lucide-react';
+import { Bug, Lightbulb, Loader2, Sparkles, Target, User, Activity, Calendar, Refrigerator, BarChart2, Star, History, ShoppingCart, MessageSquare, Bot, Save, LayoutDashboard, Trophy, ChefHat, Shield, UtensilsCrossed, Edit, Package, Library } from 'lucide-react';
 import type { Meal } from '@/lib/types';
 import { getApiUrl } from '@/lib/api-utils';
 import { useState, useEffect } from 'react';
@@ -47,6 +47,7 @@ export const adminNavLinks = [
   { href: '/admin', labelKey: 'nav_admin_tools', icon: <Shield className="h-5 w-5" /> },
   { href: '/admin/feedbacks', labelKey: 'nav_feedbacks', icon: <Star className="h-5 w-5" /> },
   { href: '/admin/follow-up', labelKey: 'nav_follow_up', icon: <Activity className="h-5 w-5" /> },
+  { href: '/admin/bugs', labelKey: 'nav_bugs', icon: <Bug className="h-5 w-5" /> },
 ];
 
 export const accountNavLinks = [

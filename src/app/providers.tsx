@@ -21,7 +21,7 @@ import { NativeSplashScreen } from '@/components/shared/native-splash';
 import { useNativeBack } from '@/hooks/use-native-back';
 import { PushNotificationManager } from '@/components/shared/push-notification-manager';
 
-import { DexieSyncManager } from '@/lib/dexie/sync';
+import ErrorBoundary from '@/components/shared/error-boundary';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useNativeBack();
@@ -41,9 +41,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <AuthProvider>
               <PushNotificationManager />
               <ReadOnlyProvider>
-                <AnimatePresence mode="wait">
-                  {children}
-                </AnimatePresence>
+                <ErrorBoundary>
+                  <AnimatePresence mode="wait">
+                    {children}
+                  </AnimatePresence>
+                </ErrorBoundary>
                 <FamilyMemberGuardModal />
                 <FeedbackButton />
                 <FloatingShortcuts />

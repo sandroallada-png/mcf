@@ -330,3 +330,31 @@ export async function explainCalorieGoalAction(
         return { explanation: null, error: e.message || 'Failed to explain calorie goal.' };
     }
 }
+
+export async function reportBugAction(data: {
+    errorCode: string;
+    message: string;
+    stack?: string;
+    userId?: string;
+    path: string;
+}) {
+    if (typeof window !== 'undefined') {
+        const { reportBugAction } = await import('./actions.native');
+        return reportBugAction(data);
+    }
+    try {
+        const { getFirestoreInstance } = await import('@/firebase/server-init');
+        const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+        const firestore = await getFirestoreInstance();
+
+        await addDoc(collection(firestore, 'bugs'), {
+            ...data,
+            status: 'new',
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (e) {
+        console.error('Failed to report bug:', e);
+        return { success: false };
+    }
+}

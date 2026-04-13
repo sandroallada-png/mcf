@@ -301,3 +301,17 @@ export async function generateShoppingListAction(
         return { list: null, error: e.message };
     }
 }
+
+export async function reportBugAction(data: any) {
+    try {
+        const response = await fetch(`${API_URL}/api/bugs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return await response.json();
+    } catch (e) {
+        console.error('Native reportBugAction error:', e);
+        return { success: false };
+    }
+}
