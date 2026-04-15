@@ -141,9 +141,10 @@
   }
 }
 
-/* Give pages breathing room above the global mobile bottom nav */
+/* Give pages breathing room around iPhone Notch and Bottom Nav */
 @media (max-width: 767px) {
   main {
+    padding-top: env(safe-area-inset-top);
     padding-bottom: calc(5rem + max(0px, env(safe-area-inset-bottom)));
   }
 }
