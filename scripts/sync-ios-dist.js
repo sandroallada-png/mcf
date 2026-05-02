@@ -17,7 +17,7 @@ const path = require('path');
 const ROOT        = path.join(__dirname, '..');
 const DIST_SRC    = path.join(ROOT, 'out');
 const IOS_REPO    = path.join(ROOT, '..', 'mcf-ios-dist');
-const IOS_PUBLIC  = path.join(IOS_REPO, 'ios', 'App', 'public');
+const IOS_PUBLIC  = path.join(IOS_REPO, 'public');
 
 async function main() {
   console.log('\n📦  MCF — Sync build web → dépôt iOS\n');
@@ -72,16 +72,6 @@ async function main() {
 
   console.log(`
 ✅  Sync terminée !
-
-Prochaines étapes :
-  cd ..\\mcf-ios-dist
-  git add App/App/public/
-  git commit -m "chore: web build $(date +%Y-%m-%d)"
-  git push
-
-Sur le Mac :
-  git pull
-  → Xcode recharge les fichiers automatiquement
 `);
 }
 
