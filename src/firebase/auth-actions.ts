@@ -1,5 +1,5 @@
-
 'use client';
+import { Capacitor } from '@capacitor/core';
 import {
   Auth,
   signInAnonymously,
@@ -91,10 +91,8 @@ export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
   provider.addScope('email');
   provider.addScope('profile');
 
-  // Détecte si on tourne dans Capacitor (APK natif)
-  const isCapacitor = typeof window !== 'undefined' &&
-    !!(window as any).Capacitor &&
-    (window as any).Capacitor.isNativePlatform?.();
+  // Détecte si on tourne dans Capacitor (iOS/Android)
+  const isCapacitor = Capacitor.isNativePlatform();
 
   if (isCapacitor) {
     try {
@@ -102,17 +100,32 @@ export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
       const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
       const { signInWithCredential } = await import('firebase/auth');
 
-      const result = await FirebaseAuthentication.signInWithGoogle();
+      console.log('[Auth] Lancement de la connexion Google native...');
+      
+      // Timeout de sécurité pour éviter le blocage infini si le plugin ne répond pas
+      const nativeSignInPromise = FirebaseAuthentication.signInWithGoogle();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT_NATIVE_UI')), 30000)
+      );
+
+      const result = await Promise.race([nativeSignInPromise, timeoutPromise]) as any;
+      console.log('[Auth] Réponse native reçue:', result ? 'OK' : 'VIDE');
 
       // 2. Si le token est reçu, on certifie l'app auprès de Firebase
-      if (result.credential?.idToken) {
+      if (result?.credential?.idToken) {
         const credential = GoogleAuthProvider.credential(result.credential.idToken);
         await signInWithCredential(authInstance, credential);
+        console.log('[Auth] Connexion Firebase réussie via token natif');
       } else {
         throw new Error('Aucun jeton Google reçu');
       }
     } catch (error: any) {
       console.error('Google sign-in (Capacitor) native error:', error);
+      
+      if (error.message === 'TIMEOUT_NATIVE_UI') {
+        showError('Délai dépassé', 'La fenêtre Google ne s\'est pas ouverte. Redémarrez l\'application.');
+        return;
+      }
       
       if (error.code === 'Sign in action cancelled' || error.message?.includes('cancelled')) {
          // L'utilisateur a simplement fermé la fenêtre native sans se connecter
