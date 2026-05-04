@@ -102,10 +102,10 @@ export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
 
       console.log('[Auth] Lancement de la connexion Google native...');
       
-      // Timeout de sécurité pour éviter le blocage infini si le plugin ne répond pas
+      // Timeout de sécurité réduit à 10s pour le débogage
       const nativeSignInPromise = FirebaseAuthentication.signInWithGoogle();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('TIMEOUT_NATIVE_UI')), 30000)
+        setTimeout(() => reject(new Error('TIMEOUT_NATIVE_UI')), 10000)
       );
 
       const result = await Promise.race([nativeSignInPromise, timeoutPromise]) as any;
