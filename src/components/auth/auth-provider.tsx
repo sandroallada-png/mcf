@@ -63,16 +63,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userData, setUserDataState] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFullySetup, setIsFullySetup] = useState(false);
+  const [authTimeout, setAuthTimeout] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   const ADMIN_EMAIL_LOCAL = ADMIN_EMAIL;
 
   useEffect(() => {
+    // Sécurité : Si l'auth met plus de 8 secondes, on considère qu'il y a un souci et on débloque
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.warn('[Auth] Timeout de chargement atteint.');
+        setAuthTimeout(true);
+        setLoading(false);
+        signalAppReady();
+      }
+    }, 8000);
+
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
 
       if (!u) {
+        clearTimeout(timer);
         setUserDataState(null);
         setIsFullySetup(false);
         setLoading(false);
@@ -91,9 +103,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // User logged in - Set up real-time listener for user document
       const { onSnapshot } = await import('firebase/firestore');
       const userDocRef = doc(firestore, 'users', u.uid);
+      console.log('[Auth] Vérification du profil Firestore pour:', u.uid);
       
       const unsubDoc = onSnapshot(userDocRef, async (docSnap) => {
+          clearTimeout(timer);
           if (!docSnap.exists()) {
+              console.log('[Auth] Aucun profil trouvé, tentative de création...');
               const isAdmin = u.email === ADMIN_EMAIL_LOCAL;
               const newData = {
                 id: u.uid,
@@ -106,10 +121,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 xp: 0,
                 level: 1,
               };
-              await setDoc(userDocRef, newData, { merge: true });
+              try {
+                console.log('[Auth] Envoi du document à Firestore...');
+                await setDoc(userDocRef, newData, { merge: true });
+                console.log('[Auth] Document créé avec succès !');
+              } catch (err) {
+                console.error('[Auth] ERREUR CRITIQUE de création Firestore:', err);
+                setLoading(false);
+                signalAppReady();
+              }
               return; // next snapshot will handle it
           }
 
+          console.log('[Auth] Profil trouvé, chargement des données...');
           const data = docSnap.data();
           const isAdmin = u.email === ADMIN_EMAIL_LOCAL;
 
@@ -129,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return;
           }
 
-          // --- FLUX DE REDIRECTION (iPhone & Web) ---
+          // --- FLUX DE REDIRECTION STRICT (iPhone & Web) ---
           const hasPersonalization = !!data?.theme;
           const hasPreferences = !!data?.mainObjective;
           const hasPricing = !!data?.subscriptionStatus;
@@ -152,18 +176,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   router.replace('/dashboard');
               }
           } else {
-              // --- FLUX UTILISATEUR CLASSIQUE (VOTRE RECONSTITUTION) ---
-              if (!hasPersonalization && !pathname.startsWith('/personalization') && !isAuthRoute) {
-                  router.replace('/personalization');
-              } else if (hasPersonalization && !hasPreferences && !pathname.startsWith('/preferences')) {
-                  router.replace('/preferences');
-              } else if (hasPreferences && !hasPricing && !pathname.startsWith('/pricing')) {
-                  router.replace('/pricing');
-              } else if (hasPricing && !hasAvatar && !pathname.startsWith('/avatar-selection')) {
-                  router.replace('/avatar-selection');
+              // --- FORÇAGE DU FLUX ÉTAPE PAR ÉTAPE ---
+              if (!hasPersonalization) {
+                  if (!pathname.startsWith('/personalization') && !isAuthRoute) {
+                      router.replace('/personalization');
+                  }
+              } else if (!hasPreferences) {
+                  if (!pathname.startsWith('/preferences')) {
+                      router.replace('/preferences');
+                  }
+              } else if (!hasPricing) {
+                  if (!pathname.startsWith('/pricing')) {
+                      router.replace('/pricing');
+                  }
+              } else if (!hasAvatar) {
+                  if (!pathname.startsWith('/avatar-selection')) {
+                      router.replace('/avatar-selection');
+                  }
               } else if (fullySetup) {
-                  // Si tout est OK et qu'on essaie de retourner dans le flux, on renvoie au Dashboard
-                  if (isAuthRoute || ['/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p))) {
+                  // Si tout est OK et qu'on est sur une page de setup ou auth, on renvoie au Dashboard
+                  if (isAuthRoute || ['/personalization', '/preferences', '/pricing', '/avatar-selection'].some(p => pathname.startsWith(p)) || pathname === '/') {
                       router.replace('/dashboard?welcome=true');
                   }
               }
@@ -173,7 +205,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return () => unsubDoc();
     });
 
-    return () => unsubAuth();
+    return () => {
+      clearTimeout(timer);
+      unsubAuth();
+    };
   }, [pathname, firestore, router]);
 
   // Le NativeSplashScreen reste visible PENDANT le chargement de l'auth.

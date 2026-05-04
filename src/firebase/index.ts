@@ -3,7 +3,7 @@
 import { Capacitor } from '@capacitor/core';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, indexedDBLocalPersistence } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
@@ -39,14 +39,26 @@ export function getSdks(firebaseApp: FirebaseApp) {
   const { getMessaging, isSupported } = require('firebase/messaging');
   
   if (!firestoreInstance) {
+    const isNative = Capacitor.isNativePlatform();
     firestoreInstance = initializeFirestore(firebaseApp, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      localCache: persistentLocalCache(
+        isNative ? {} : { tabManager: persistentMultipleTabManager() }
+      )
+    });
+  }
+
+  const auth = getAuth(firebaseApp);
+  
+  // Force persistence to IndexedDB to avoid iOS Keychain issues (-34018)
+  if (typeof window !== 'undefined') {
+    setPersistence(auth, indexedDBLocalPersistence).catch(err => {
+      console.warn('[Auth] Error setting persistence:', err);
     });
   }
 
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
+    auth,
     firestore: firestoreInstance,
     messaging: (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) ? getMessaging(firebaseApp) : null
   };

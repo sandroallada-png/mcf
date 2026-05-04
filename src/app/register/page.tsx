@@ -166,8 +166,11 @@ export default function RegisterPage() {
           createdAt: serverTimestamp(),
         });
 
+        hideLoading();
         router.push('/personalization');
         localStorage.removeItem('mcf_register_draft');
+      } else {
+        hideLoading();
       }
     } catch (error: any) {
       console.error("Registration failed:", error);
@@ -180,6 +183,9 @@ export default function RegisterPage() {
     showLoading("Connexion sécurisée...");
     try {
       await initiateGoogleSignIn(auth);
+      // Note: On ne cache pas forcément ici si on s'attend à ce que le AuthContext 
+      // redirige l'utilisateur, mais par sécurité :
+      hideLoading();
     } catch (error) {
       console.error("Google sign in failed:", error);
       hideLoading();

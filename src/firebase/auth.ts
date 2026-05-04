@@ -1,7 +1,7 @@
 
 'use client';
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, indexedDBLocalPersistence } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
 let app: FirebaseApp;
@@ -15,5 +15,13 @@ if (getApps().length === 0) {
 
 
 // IMPORTANT: single auth instance
-export const auth = getAuth(app);
+const authInstance = getAuth(app);
+
+if (typeof window !== 'undefined') {
+    setPersistence(authInstance, indexedDBLocalPersistence).catch(err => {
+        console.warn('[Auth] Error setting persistence in auth.ts:', err);
+    });
+}
+
+export const auth = authInstance;
 export const firebaseApp = app;

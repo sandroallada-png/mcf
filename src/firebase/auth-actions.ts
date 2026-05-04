@@ -92,9 +92,10 @@ export async function initiateGoogleSignIn(authInstance: Auth): Promise<void> {
   provider.addScope('profile');
 
   // Détecte si on tourne dans Capacitor (iOS/Android)
-  const isCapacitor = Capacitor.isNativePlatform();
+  // FORCE FALSE pour bypasser les erreurs de Keychain iOS (-34018) sur simulateur
+  const isNative = false; // Capacitor.isNativePlatform();
 
-  if (isCapacitor) {
+  if (isNative) {
     try {
       // 1. Appelle la boîte de dialogue Google Android native (fluide, pas de Chrome)
       const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
